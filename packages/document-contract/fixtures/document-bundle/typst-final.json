@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "rin-document-bundle/v1",
+  "projectHash": "4444444444444444444444444444444444444444444444444444444444444444",
+  "bundleHash": "5555555555555555555555555555555555555555555555555555555555555555",
+  "state": "final",
+  "contentKind": "typst",
+  "documentEngine": "typst",
+  "title": "Typst 示例书籍",
+  "pages": [
+    {
+      "id": "typst-chapter-01",
+      "sourcePath": "chapters/introduction.typ",
+      "fragment": "<section data-rin-chapter=\"intro\"><h2 id=\"intro\">引言</h2><p>本书使用 Typst 排版。</p></section>",
+      "fragmentFormat": "html",
+      "toc": [
+        { "id": "intro", "text": "引言", "depth": 2 }
+      ],
+      "dependencyHashes": ["6666666666666666666666666666666666666666666666666666666666666666"]
+    }
+  ],
+  "workUnits": [],
+  "assets": [
+    {
+      "id": "asset-figure-1",
+      "kind": "generated",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "bytes": 1024,
+      "mediaType": "image/svg+xml",
+      "artifactKey": "public/typst/77/7777777777777777777777777777777777777777777777777777777777777777.svg"
+    }
+  ],
+  "diagnostics": [],
+  "provenance": {
+    "adapter": "typst",
+    "adapterVersion": "0.1.0",
+    "engineVersion": "0.15.1",
+    "projectGraphSchemaVersion": "rin-project-graph/v1"
+  }
+}

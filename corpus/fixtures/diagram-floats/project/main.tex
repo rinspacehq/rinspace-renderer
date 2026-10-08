@@ -1,0 +1,19 @@
+\documentclass{article}
+\usepackage{tikz}
+\begin{document}
+\section{Diagram floats}
+\begin{figure}
+\centering
+\begin{minipage}{0.8\linewidth}
+\centering
+\begin{tikzpicture}
+\draw (0,0) rectangle (2,1);
+\draw[->] (0.2,0.5) -- (1.8,0.5);
+\end{tikzpicture}
+\end{minipage}
+\caption{Rin diagram float}
+\label{fig:rin-diagram-float}
+\end{figure}
+
+Figure~\ref{fig:rin-diagram-float} should keep LaTeXML caption and reference ownership.
+\end{document}

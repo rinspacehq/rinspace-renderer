@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rin-render-result/v1",
+  "jobId": "job-inline-1",
+  "requestId": "request-inline-1",
+  "projectHash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "resultHash": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contentKind": "markdown",
+  "engine": "rin-markdown",
+  "inline": {
+    "schemaVersion": "rin-document-bundle/v1",
+    "projectHash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "bundleHash": "2222222222222222222222222222222222222222222222222222222222222222",
+    "state": "final",
+    "contentKind": "markdown",
+    "documentEngine": "rin-markdown",
+    "title": "Inline result",
+    "pages": [
+      {
+        "id": "page-main",
+        "sourcePath": "main.md",
+        "fragment": "<article><p>Rendered formula.</p></article>",
+        "fragmentFormat": "html",
+        "toc": [],
+        "dependencyHashes": ["3333333333333333333333333333333333333333333333333333333333333333"]
+      }
+    ],
+    "workUnits": [],
+    "assets": [],
+    "diagnostics": [],
+    "provenance": {
+      "adapter": "rin-markdown",
+      "adapterVersion": "0.1.0",
+      "engineVersion": "unified-pinned",
+      "projectGraphSchemaVersion": "rin-project-graph/v1"
+    }
+  },
+  "assets": [],
+  "diagnostics": [],
+  "versions": { "rinRenderer": "0.1.0-dev", "documentContract": "rin-document-bundle/v1" },
+  "cache": { "hit": false, "reusedStages": [] }
+}

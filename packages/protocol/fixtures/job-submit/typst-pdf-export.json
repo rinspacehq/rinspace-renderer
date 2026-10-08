@@ -1,0 +1,18 @@
+{
+  "idempotencyKey": "0069c41dd667eb76ef7ebc36ad8b04dac170a5373a66097128f4d6a631f932ef",
+  "fields": {
+    "source": "published-commit.tar.gz",
+    "contentKind": "typst",
+    "outputKind": "typst-pdf-export",
+    "documentEngine": "typst",
+    "entrypoint": "main.typ",
+    "priorityIntent": "rebuild",
+    "resourceClass": "typst-pdf",
+    "priorityClass": "rebuild",
+    "controlProjectId": "book:361",
+    "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "controlProjectHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "enginePolicyId": "rinspace-typst-pdf-safe-v1",
+    "imageDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  }
+}

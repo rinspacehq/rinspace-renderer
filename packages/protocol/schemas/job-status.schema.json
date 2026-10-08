@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/job-status.schema.json",
+  "title": "RinRendererJobStatus",
+  "type": "object",
+  "required": ["jobId", "contentKind", "documentEngine", "state", "stage", "progress", "createdAt", "updatedAt", "expiresAt", "cancelRequested"],
+  "properties": {
+    "jobId": { "type": "string", "format": "uuid" },
+    "contentKind": { "enum": ["latex", "markdown", "typst"] },
+    "outputKind": { "enum": ["document", "latex-pdf-preview", "typst-pdf-preview", "typst-pdf-export"] },
+    "documentEngine": { "type": "string", "minLength": 1 },
+    "resourceClass": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "priorityClass": { "enum": ["publish", "preview", "rebuild", "migration"] },
+    "snapshotHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sessionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+    "draftRevision": { "type": "integer", "minimum": 0 },
+    "enginePolicyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$" },
+    "renderProfileId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$",
+      "description": "Render profile the job was pinned to. Echoed for every job that pinned one so the Control Plane can persist and compare it."
+    },
+    "imageDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "entrypoint": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//).+$"
+    },
+    "state": { "enum": ["queued", "running", "succeeded", "failed", "canceled", "expired"] },
+    "stage": { "type": "string" },
+    "progress": {
+      "type": "object",
+      "required": ["completedStages", "totalStages"],
+      "properties": {
+        "completedStages": { "type": "integer", "minimum": 0 },
+        "totalStages": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "elapsedSeconds": { "type": "integer", "minimum": 0 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "queuedAt": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "cancelRequested": { "type": "boolean" },
+    "error": { "$ref": "./latex-pdf-preview-error.schema.json" },
+    "queue": { "$ref": "./queue-status.schema.json" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outputKind": { "const": "latex-pdf-preview" } }, "required": ["outputKind"] },
+      "then": {
+        "required": ["resourceClass", "priorityClass", "snapshotHash", "sessionId", "draftRevision", "enginePolicyId", "imageDigest", "entrypoint"],
+        "properties": {
+          "contentKind": { "const": "latex" },
+          "documentEngine": { "const": "latexmk" },
+          "resourceClass": { "const": "latex-pdf" },
+          "priorityClass": { "const": "preview" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "outputKind": { "enum": ["typst-pdf-preview", "typst-pdf-export"] } }, "required": ["outputKind"] },
+      "then": {
+        "required": ["resourceClass", "priorityClass", "enginePolicyId", "imageDigest", "entrypoint"],
+        "properties": {
+          "contentKind": { "const": "typst" },
+          "documentEngine": { "const": "typst" },
+          "resourceClass": { "const": "typst-pdf" }
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          { "properties": { "outputKind": { "enum": ["latex-pdf-preview", "typst-pdf-preview", "typst-pdf-export"] } }, "required": ["outputKind"] },
+          { "properties": { "state": { "const": "failed" } }, "required": ["state"] }
+        ]
+      },
+      "then": { "required": ["error"] }
+    },
+    {
+      "if": {
+        "properties": { "contentKind": { "const": "typst" }, "resourceClass": { "const": "document-typst" } },
+        "required": ["contentKind", "resourceClass"]
+      },
+      "then": { "required": ["renderProfileId"] }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["queued", "running", "succeeded", "expired"] } }, "required": ["state"] },
+      "then": { "not": { "required": ["error"] } }
+    }
+  ],
+  "additionalProperties": false
+}

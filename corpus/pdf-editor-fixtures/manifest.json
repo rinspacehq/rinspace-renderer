@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "rin-latex-pdf-editor-corpus/v1",
+  "cases": [
+    { "id": "single", "entrypoint": "main.tex", "expected": "success", "features": ["single"] },
+    { "id": "multi-root", "entrypoint": "main.tex", "expected": "success", "features": ["multi", "root"] },
+    { "id": "subfiles", "entrypoint": "main.tex", "expected": "success", "features": ["subfiles", "root"] },
+    { "id": "cjk-path", "entrypoint": "中文 目录/主 文档.tex", "expected": "success", "features": ["CJK", "spaces", "chinese-path"] },
+    { "id": "bibliography", "entrypoint": "main.tex", "expected": "success", "features": ["Bib"] },
+    { "id": "tikz", "entrypoint": "main.tex", "expected": "success", "features": ["TikZ"] },
+    { "id": "compile-error", "entrypoint": "main.tex", "expected": "failure", "features": ["error"], "diagnostic": { "file": "main.tex", "line": 5 } }
+  ]
+}

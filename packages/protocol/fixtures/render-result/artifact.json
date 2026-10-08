@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rin-render-result/v1",
+  "jobId": "job-artifact-1",
+  "requestId": "request-artifact-1",
+  "projectHash": "4444444444444444444444444444444444444444444444444444444444444444",
+  "resultHash": "5555555555555555555555555555555555555555555555555555555555555555",
+  "contentKind": "latex",
+  "engine": "latexml",
+  "resultArtifact": {
+    "artifactId": "private/results/job-artifact-1/result.json",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "bytes": 20977911,
+    "mediaType": "application/vnd.rinspace.document-bundle+json",
+    "visibility": "private",
+    "expiresAt": "2026-08-16T07:00:00Z"
+  },
+  "assets": [
+    {
+      "artifactId": "public/diagrams/66/6666666666666666666666666666666666666666666666666666666666666666.svg",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "bytes": 4096,
+      "mediaType": "image/svg+xml",
+      "visibility": "public"
+    }
+  ],
+  "diagnostics": [],
+  "versions": { "rinRenderer": "0.1.0-dev", "latexml": "0d02309d" },
+  "cache": { "hit": true, "reusedStages": ["math", "diagram"] }
+}

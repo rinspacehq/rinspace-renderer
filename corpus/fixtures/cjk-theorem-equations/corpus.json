@@ -1,0 +1,22 @@
+{
+  "id": "cjk-theorem-equations",
+  "title": "CJK Theorem Equations",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["cjk", "theorem", "equations"],
+  "invariants": {
+    "htmlContains": ["连续函数", "Pythagoras", "rin-math", "rin-math-mathjax", "rin-env", "rin-env-theorem"],
+    "htmlNotContains": ["<script", "javascript:", "RINRENDERERMATHPLACEHOLDER", "rin-latexml-katex"],
+    "htmlContainsCountAtLeast": {
+      "rin-math-mathjax": 1
+    },
+    "noLateXMLMathML": true,
+    "noLateXMLEquationTables": true,
+    "noKatexErrors": true,
+    "minMathCount": 1,
+    "minMathJaxCount": 1,
+    "maxMathFailedCount": 0,
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 0
+  }
+}

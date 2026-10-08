@@ -1,0 +1,259 @@
+{
+  "schemaVersion": "rin-renderer-completion/v2-test-vectors",
+  "vectors": [
+    {
+      "name": "succeeded completion",
+      "valid": true,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:11111111-1111-4111-8111-111111111111:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:30:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "11111111-1111-4111-8111-111111111111" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "11111111-1111-4111-8111-111111111111",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "article:42",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "succeeded",
+          "resultHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      }
+    },
+    {
+      "name": "failed completion",
+      "valid": true,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:22222222-2222-4222-8222-222222222222:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:31:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "22222222-2222-4222-8222-222222222222" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "22222222-2222-4222-8222-222222222222",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "book:7",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "failed",
+          "failureCode": "document_render_failed"
+        }
+      }
+    },
+    {
+      "name": "canceled completion",
+      "valid": true,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:33333333-3333-4333-8333-333333333333:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:32:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "33333333-3333-4333-8333-333333333333" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "33333333-3333-4333-8333-333333333333",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "article:42",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "canceled",
+          "failureCode": "job_canceled"
+        }
+      }
+    },
+    {
+      "name": "retried completion",
+      "valid": true,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:44444444-4444-4444-8444-444444444444:completed:2",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:33:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "44444444-4444-4444-8444-444444444444" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 2,
+          "rendererJobId": "44444444-4444-4444-8444-444444444444",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "article:42",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "failed",
+          "failureCode": "invalid_project_source"
+        }
+      }
+    },
+    {
+      "name": "success missing result hash",
+      "valid": false,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:11111111-1111-4111-8111-111111111111:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:30:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "11111111-1111-4111-8111-111111111111" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "11111111-1111-4111-8111-111111111111",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "article:42",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "succeeded"
+        }
+      }
+    },
+    {
+      "name": "failed completion contains result hash",
+      "valid": false,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:22222222-2222-4222-8222-222222222222:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:31:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "22222222-2222-4222-8222-222222222222" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "22222222-2222-4222-8222-222222222222",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "book:7",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "failed",
+          "resultHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "failureCode": "document_render_failed"
+        }
+      }
+    },
+    {
+      "name": "unknown failure code",
+      "valid": false,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:22222222-2222-4222-8222-222222222222:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:31:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "22222222-2222-4222-8222-222222222222" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "22222222-2222-4222-8222-222222222222",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "book:7",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "failed",
+          "failureCode": "raw_provider_secret"
+        }
+      }
+    },
+    {
+      "name": "mismatched event id",
+      "valid": false,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:99999999-9999-4999-8999-999999999999:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:30:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "11111111-1111-4111-8111-111111111111" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "11111111-1111-4111-8111-111111111111",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "article:42",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "succeeded",
+          "resultHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      }
+    },
+    {
+      "name": "unknown completion field",
+      "valid": false,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:11111111-1111-4111-8111-111111111111:completed:1",
+        "type": "renderer.job.completed",
+        "occurred_at": "2026-08-22T00:30:00Z",
+        "producer": "rin-renderer",
+        "correlation_id": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "subject": { "rendererJobId": "11111111-1111-4111-8111-111111111111" },
+        "data": {
+          "schemaVersion": "rin-renderer-completion/v2",
+          "protocolVersion": "v2",
+          "terminalVersion": 1,
+          "rendererJobId": "11111111-1111-4111-8111-111111111111",
+          "requestId": "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "controlProjectId": "article:42",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "controlProjectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "rendererProjectHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "terminalState": "succeeded",
+          "resultHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "internalLog": "must not cross the boundary"
+        }
+      }
+    },
+    {
+      "name": "legacy callback is not v2 completion",
+      "valid": false,
+      "value": {
+        "schema": "rin-control-event/v1",
+        "event_id": "renderer:legacy-job:succeeded",
+        "type": "renderer.job.succeeded",
+        "occurred_at": "2026-08-22T00:30:00Z",
+        "producer": "rin-renderer",
+        "subject": { "rendererJobId": "legacy-job" },
+        "data": {
+          "rendererJobId": "legacy-job",
+          "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "projectHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "resultHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "result": {}
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "source": "project.zip",
+  "contentKind": "typst",
+  "outputKind": "document",
+  "documentEngine": "typst",
+  "entrypoint": "main.typ",
+  "renderProfileId": "typst-html-0123456789abcdef0123456789abcdef",
+  "priorityIntent": "publish",
+  "resourceClass": "document-typst"
+}

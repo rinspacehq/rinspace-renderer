@@ -1,0 +1,24 @@
+\documentclass{article}
+\usepackage{amscd}
+\usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\section{Diagram corpus}
+\begin{tikzpicture}
+\draw (0,0) -- (1,1) -- (2,0);
+\end{tikzpicture}
+
+\begin{tikzcd}
+A \arrow[r] & B
+\end{tikzcd}
+
+\begin{axis}
+\addplot coordinates {(0,0) (1,1) (2,4)};
+\end{axis}
+
+\[
+\xymatrix{A \ar[r] & B}
+\]
+\end{document}

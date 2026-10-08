@@ -1,0 +1,19 @@
+{
+  "idempotencyKey": "bc230c8d895a1f415cb6a3f73bca5fed09650ed0eee722cfc37e3b3cc0341a5f",
+  "fields": {
+    "source": "immutable-snapshot.tar.gz",
+    "contentKind": "latex",
+    "outputKind": "latex-pdf-preview",
+    "documentEngine": "latexmk",
+    "entrypoint": "main.tex",
+    "priorityIntent": "preview",
+    "resourceClass": "latex-pdf",
+    "priorityClass": "preview",
+    "snapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sessionId": "session-018fcafe",
+    "draftRevision": 42,
+    "enginePolicyId": "rinspace-latex-pdf-safe-v1",
+    "imageDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "previewContractVersion": "rin-latex-pdf-preview/v1"
+  }
+}

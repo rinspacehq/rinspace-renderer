@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/job-submit-response.schema.json",
+  "title": "RinRendererJobSubmission",
+  "type": "object",
+  "required": ["job", "queue", "location", "reused"],
+  "properties": {
+    "job": { "$ref": "./job-status.schema.json" },
+    "queue": { "$ref": "./queue-status.schema.json" },
+    "location": { "type": "string", "pattern": "^/api/render/jobs/[0-9a-f-]+$" },
+    "reused": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,54 @@
+ARG BASE_IMAGE=docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867
+FROM --platform=linux/amd64 ${BASE_IMAGE}
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+
+ARG SOURCE_HASH=unresolved
+LABEL com.rinspace.latex-pdf.source-sha256="${SOURCE_HASH}"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SOURCE_DATE_EPOCH=0 \
+    FORCE_SOURCE_DATE=1 \
+    HOME=/tmp/rinspace-home \
+    TEXMFHOME=/tmp/rinspace-texmf-home \
+    TEXMFVAR=/tmp/rinspace-texmf-var \
+    TEXMFCONFIG=/tmp/rinspace-texmf-config \
+    TEXMFOUTPUT=/output \
+    openin_any=p \
+    openout_any=p \
+    shell_escape=f
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates=20250419~deb12u1 \
+      fonts-lmodern=2.005-1 \
+      fonts-noto-cjk=1:20220127+repack1-1 \
+      fonts-texgyre=20180621-6 \
+      ghostscript=10.0.0~dfsg-11+deb12u8 \
+      latexmk=1:4.79-1 \
+      texlive-base=2022.20230122-3 \
+      texlive-binaries=2022.20220321.62855-5.1+deb12u2 \
+      texlive-fonts-recommended=2022.20230122-3 \
+      texlive-lang-chinese=2022.20230122-1 \
+      texlive-latex-base=2022.20230122-3 \
+      texlive-latex-extra=2022.20230122-4 \
+      texlive-latex-recommended=2022.20230122-3 \
+      texlive-luatex=2022.20230122-3 \
+      texlive-pictures=2022.20230122-3 \
+      texlive-xetex=2022.20230122-3 \
+    && rm -f /usr/bin/tlmgr \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /root/.cache
+
+COPY ${RENDERER_SOURCE_ROOT}/deploy/texmf-rinspace.cnf /etc/texmf/web2c/texmf.cnf.d/99-rinspace.cnf
+COPY ${RENDERER_SOURCE_ROOT}/deploy/latex-pdf.lock.json /opt/rinspace/latex-pdf.lock.json
+COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/rinspace-latex-compile /usr/local/bin/rinspace-latex-compile
+COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/verify-latex-pdf-runtime.sh /usr/local/bin/verify-latex-pdf-runtime
+
+RUN mkdir -p /workspace /output \
+    && chown 65532:65532 /workspace /output \
+    && mktexlsr
+
+USER 65532:65532
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/rinspace-latex-compile"]

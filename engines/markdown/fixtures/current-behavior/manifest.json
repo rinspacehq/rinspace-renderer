@@ -1,0 +1,222 @@
+{
+  "schemaVersion": "rin-markdown-current-behavior-fixtures/v1",
+  "provenance": {
+    "sourcePolicy": "synthetic-derived-from-public-regression-shapes",
+    "containsPrivateSource": false,
+    "notes": "Fixtures recombine syntax shapes already represented by repository tests; they contain no copied article or book prose."
+  },
+  "cases": [
+    {
+      "id": "article-storage-source-only",
+      "path": "article-storage.txt",
+      "sha256": "1a124d26262cea4cb9b069cd7647ac7530a45b7cf012183b8da31565b528e0ba",
+      "surfaces": ["article", "storage"],
+      "expectations": [
+        {
+          "behavior": "article-storage-source-only",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "Canonical blog writes retain RIN_MARKDOWN_SOURCE and optional file metadata; the legacy browser HTML marker is stripped."
+        },
+        {
+          "behavior": "legacy-markdown-html-marker",
+          "classification": "deprecated",
+          "disposition": "deprecate",
+          "note": "Do not revive RIN_MARKDOWN as the canonical article result slot; task 6.2 adds explicit Renderer provenance."
+        }
+      ]
+    },
+    {
+      "id": "article-commonmark-gfm",
+      "path": "article-gfm.md",
+      "sha256": "587d5a946ee52fa538952816aa2683c9e1c622aea51ac5255952a6d754740d99",
+      "surfaces": ["article", "editor", "reader", "repository-import"],
+      "expectations": [
+        {
+          "behavior": "commonmark-blocks",
+          "classification": "commonmark-gfm",
+          "disposition": "retain",
+          "note": "Headings, paragraphs, emphasis, code, lists and blockquotes move to unified standards behavior."
+        },
+        {
+          "behavior": "gfm-tables",
+          "classification": "commonmark-gfm",
+          "disposition": "retain",
+          "note": "Retain aligned tables; malformed one-dash separators remain a compatibility fixture, not GFM syntax."
+        },
+        {
+          "behavior": "gfm-autolink",
+          "classification": "commonmark-gfm",
+          "disposition": "retain",
+          "note": "Preserve reader-visible autolinks under the final URL policy."
+        },
+        {
+          "behavior": "gfm-task-list",
+          "classification": "commonmark-gfm",
+          "disposition": "migrate",
+          "note": "Milkdown authors the syntax but the legacy browser converter leaves markers literal; remark-gfm becomes canonical."
+        },
+        {
+          "behavior": "gfm-strikethrough",
+          "classification": "commonmark-gfm",
+          "disposition": "migrate",
+          "note": "Milkdown authors the syntax but the legacy browser converter does not emit del; remark-gfm becomes canonical."
+        },
+        {
+          "behavior": "footnotes",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Keep repeated references, stable IDs/backrefs and reader scroll semantics through an AST plugin."
+        },
+        {
+          "behavior": "stable-heading-ids",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Generate collision-safe IDs before final links and TOC are built; do not depend on reader DOM mutation."
+        },
+        {
+          "behavior": "admonition",
+          "classification": "rin-plugin",
+          "disposition": "migrate",
+          "note": "The legacy excerpt recognizes alert markers but legacy HTML is literal; task 5.3 must select and validate named schemas."
+        },
+        {
+          "behavior": "repository-import-parser",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "The separate Go regex parser remains readable until repository import routes through the Renderer."
+        }
+      ]
+    },
+    {
+      "id": "math-code-work-units",
+      "path": "math-and-code.md",
+      "sha256": "ef0f0cbbfeec700927b20ab86a1a7881db9926c6b4f55bfc7635e423739ea7ba",
+      "surfaces": ["article", "book", "editor", "reader"],
+      "expectations": [
+        {
+          "behavior": "math-source",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Preserve exact TeX and display mode for the shared MathJax contract; do not carry source-rewriting heuristics forward."
+        },
+        {
+          "behavior": "fenced-code-metadata",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Keep normalized language plus original info/fence metadata for the Shiki work unit and diagnostics."
+        },
+        {
+          "behavior": "client-katex-fallback",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "Existing stored/source-only content remains readable, but newly published Markdown uses shared MathJax output."
+        },
+        {
+          "behavior": "client-shiki",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "Keep as rollout fallback; final server-highlighted blocks must not be highlighted twice."
+        }
+      ]
+    },
+    {
+      "id": "media-links-policy",
+      "path": "media-links.md",
+      "sha256": "4c8c455f8a95fefa6853c0d261c495087ad89377bfd75c3cb0666c3d51d6b93b",
+      "surfaces": ["article", "book", "reader", "repository-import"],
+      "expectations": [
+        {
+          "behavior": "images-captions",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Retain explicit title/meaningful-alt captions and generated-alt suppression as typed figure semantics."
+        },
+        {
+          "behavior": "safe-links",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Resolve project-relative links and enforce the shared URL policy with diagnostics."
+        },
+        {
+          "behavior": "data-image",
+          "classification": "deprecated",
+          "disposition": "deprecate",
+          "note": "The browser helper historically accepts data:image; shared final-output policy rejects it for new publication."
+        }
+      ]
+    },
+    {
+      "id": "quiver-directive-compatibility",
+      "path": "quiver-and-directives.md",
+      "sha256": "ddf89f84ddb35369d681e9c221c3989a4065fd0c07c57282ba0a2490b5f9fa8e",
+      "surfaces": ["article", "book", "editor", "reader"],
+      "expectations": [
+        {
+          "behavior": "quiver-image",
+          "classification": "compatibility-only",
+          "disposition": "retain",
+          "note": "Existing generated diagram image URLs remain readable and editable through their source endpoint."
+        },
+        {
+          "behavior": "legacy-quiver-comment",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "Old rin-quiver comments are ignored/stripped; do not make hidden HTML comments the new source contract."
+        },
+        {
+          "behavior": "diagram-directive",
+          "classification": "rin-plugin",
+          "disposition": "migrate",
+          "note": "Only allowlisted directive types/options may create RinDiagramUnit work."
+        },
+        {
+          "behavior": "raw-latex-diagram-recovery",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "Reader text-node recovery is a rollout fallback; canonical Markdown must create a typed unit or diagnostic."
+        }
+      ]
+    },
+    {
+      "id": "raw-html-policy",
+      "path": "raw-html.md",
+      "sha256": "f315b16cd3e261bcaab957a889c3712068c9f89acafecde0e731d1030ef9dc39",
+      "surfaces": ["article", "book", "reader", "repository-import"],
+      "expectations": [
+        {
+          "behavior": "standalone-break",
+          "classification": "compatibility-only",
+          "disposition": "migrate",
+          "note": "A standalone br line is the only proven raw-HTML compatibility shape; prefer a documented break transform."
+        },
+        {
+          "behavior": "raw-html",
+          "classification": "deprecated",
+          "disposition": "deprecate",
+          "note": "Scripts, event handlers, iframes and arbitrary raw HTML are disabled for canonical publication."
+        }
+      ]
+    },
+    {
+      "id": "markdown-book-storage-v01",
+      "path": "book-project.json",
+      "sha256": "33705cdd35eef6e5edad8c3d274495a1e07f8b12ba21eb6d1ee0b072747a7f2a",
+      "surfaces": ["book", "storage", "reader"],
+      "expectations": [
+        {
+          "behavior": "book-storage-version-0.1",
+          "classification": "compatibility-only",
+          "disposition": "retain",
+          "note": "Keep existing files/toc/pages JSON readable; new Renderer results gain separate provenance and versioning."
+        },
+        {
+          "behavior": "book-page-per-file",
+          "classification": "rin-plugin",
+          "disposition": "retain",
+          "note": "Preserve file/page identity, level 2/3 hierarchy and deterministic paths for incremental compilation."
+        }
+      ]
+    }
+  ]
+}

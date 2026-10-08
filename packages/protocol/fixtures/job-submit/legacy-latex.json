@@ -1,0 +1,9 @@
+{
+  "source": "legacy-latex-project.tar.gz",
+  "contentKind": "latex",
+  "documentEngine": "latexml",
+  "entrypoint": "main.tex",
+  "documentMode": "article",
+  "priorityIntent": "publish",
+  "options": "{\"schemaVersion\":\"rin-render-options/v1\"}"
+}

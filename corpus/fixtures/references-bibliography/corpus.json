@@ -1,0 +1,13 @@
+{
+  "id": "references-bibliography",
+  "title": "References Bibliography",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["references", "citations", "bibliography"],
+  "invariants": {
+    "htmlContains": ["Knuth", "bibliography", "Section", "rin-ref", "rin-citation", "rin-bibliography"],
+    "htmlNotContains": ["[[RIN_MARKDOWN]]", "javascript:"],
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 0
+  }
+}

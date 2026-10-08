@@ -1,0 +1,6 @@
+% Rinspace PDF compiler policy. The broker also fixes these values in the
+% environment so a job cannot relax them with workspace content.
+openin_any = p
+openout_any = p
+shell_escape = f
+shell_escape_commands =

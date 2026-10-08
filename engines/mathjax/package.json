@@ -1,0 +1,13 @@
+{
+  "name": "@rinspace/rin-renderer-mathjax-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render-mathjax.mjs",
+    "smoke": "node smoke-mathjax.mjs"
+  },
+  "dependencies": {
+    "@mathjax/src": "4.1.3"
+  }
+}

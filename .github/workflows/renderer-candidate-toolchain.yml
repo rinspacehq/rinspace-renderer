@@ -1,0 +1,108 @@
+name: Renderer Typst HTML toolchain candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-toolchain-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.repository == 'rinspacehq/rinspace-renderer' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+      - name: Download and verify locked inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p candidate/downloads candidate/unpacked candidate/toolchain/{bin,fonts,packages,licenses}
+          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
+          import { readFileSync } from 'node:fs';
+          const lock = JSON.parse(readFileSync('deploy/typst-html-toolchain.lock.json'));
+          const fields = {
+            TYPST_VERSION: lock.compiler.version,
+            TYPST_ASSET: lock.compiler.asset,
+            TYPST_ASSET_SHA256: lock.compiler.assetSha256,
+            TYPST_BINARY_SHA256: lock.compiler.binarySha256,
+            FONT_URL: lock.font.release,
+            FONT_PACKAGE_SHA256: lock.font.packageSha256,
+            FONT_DEB_PATH: lock.font.debPath,
+            FONT_SHA256: lock.font.sha256,
+          };
+          for (const [name, value] of Object.entries(fields)) {
+            if (typeof value !== 'string' || !value || /[\r\n]/.test(value)) throw new Error(`invalid ${name}`);
+            console.log(`${name}=${value}`);
+          }
+          NODE
+      - name: Assemble candidate, notices and SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 --retry 3 \
+            -o "candidate/downloads/${TYPST_ASSET}" \
+            "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/${TYPST_ASSET}"
+          printf '%s  %s\n' "$TYPST_ASSET_SHA256" "candidate/downloads/${TYPST_ASSET}" | sha256sum -c -
+          curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 --retry 3 \
+            -o candidate/downloads/font.deb "$FONT_URL"
+          printf '%s  %s\n' "$FONT_PACKAGE_SHA256" candidate/downloads/font.deb | sha256sum -c -
+          tar -xJf "candidate/downloads/${TYPST_ASSET}" -C candidate/unpacked --strip-components=1 \
+            typst-x86_64-unknown-linux-musl/typst
+          install -m 0755 candidate/unpacked/typst candidate/toolchain/bin/typst
+          printf '%s  %s\n' "$TYPST_BINARY_SHA256" candidate/toolchain/bin/typst | sha256sum -c -
+          dpkg-deb -x candidate/downloads/font.deb candidate/unpacked/font
+          install -m 0644 "candidate/unpacked/font/${FONT_DEB_PATH}" candidate/toolchain/fonts/wqy-zenhei.ttc
+          printf '%s  %s\n' "$FONT_SHA256" candidate/toolchain/fonts/wqy-zenhei.ttc | sha256sum -c -
+          cp candidate/unpacked/font/usr/share/doc/fonts-wqy-zenhei/copyright \
+            candidate/toolchain/licenses/fonts-wqy-zenhei-copyright
+          curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 --retry 3 \
+            -o candidate/toolchain/licenses/typst-LICENSE \
+            "https://raw.githubusercontent.com/typst/typst/v${TYPST_VERSION}/LICENSE"
+          grep -q 'Apache License' candidate/toolchain/licenses/typst-LICENSE
+          cp deploy/typst-html-toolchain.lock.json candidate/typst-html-toolchain.lock.json
+          cp deploy/typst-html-toolchain.lock.json candidate/toolchain/typst-html-toolchain.lock.json
+          cat > candidate/toolchain/THIRD_PARTY_NOTICES.md <<'NOTICE'
+          # Typst HTML toolchain notices
+
+          Typst is Apache-2.0; its exact upstream license is in `licenses/typst-LICENSE`.
+          WenQuanYi Zen Hei is GPL-2.0-only WITH Font-exception-2.0; its Debian
+          copyright and license notice is in `licenses/fonts-wqy-zenhei-copyright`.
+          Their exact versions and file hashes are in `typst-html-toolchain.lock.json`.
+          NOTICE
+          deploy/verify-typst-html-toolchain.sh --root candidate
+          node deploy/generate-typst-html-toolchain-sbom.mjs \
+            --lock deploy/typst-html-toolchain.lock.json --artifact-root candidate \
+            --commit "$GITHUB_SHA" --output candidate/toolchain/typst-html-toolchain.spdx.json
+          mkdir -p candidate/probe
+          printf '= Typst offline probe\n汉字 $sum_(i=1)^n i$\n' > candidate/probe/main.typ
+          env -i HOME="$PWD/candidate/probe" TMPDIR="$PWD/candidate/probe" LANG=C.UTF-8 \
+            PATH=/usr/bin:/bin candidate/toolchain/bin/typst compile --format html \
+            --root "$PWD/candidate/probe" --ignore-system-fonts \
+            --font-path "$PWD/candidate/toolchain/fonts" \
+            --package-path "$PWD/candidate/toolchain/packages" \
+            --package-cache-path "$PWD/candidate/toolchain/packages" \
+            --jobs 1 --creation-timestamp 0 --features html \
+            candidate/probe/main.typ candidate/probe/output.html
+          grep -q 'Typst offline probe' candidate/probe/output.html
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -C candidate -czf candidate/rin-renderer-typst-html-toolchain.tar.gz toolchain
+          sha256sum candidate/rin-renderer-typst-html-toolchain.tar.gz \
+            candidate/toolchain/typst-html-toolchain.spdx.json \
+            candidate/toolchain/THIRD_PARTY_NOTICES.md > candidate/checksums.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renderer-typst-html-candidate-${{ github.sha }}
+          path: |
+            candidate/rin-renderer-typst-html-toolchain.tar.gz
+            candidate/toolchain/typst-html-toolchain.spdx.json
+            candidate/toolchain/THIRD_PARTY_NOTICES.md
+            candidate/checksums.sha256
+          if-no-files-found: error

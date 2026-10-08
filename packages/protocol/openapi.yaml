@@ -1,0 +1,437 @@
+openapi: 3.1.0
+info:
+  title: Rin Renderer API
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service health
+  /ready:
+    get:
+      summary: Dependency and worker readiness
+      responses:
+        '200':
+          description: All required components can accept work
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/readiness.schema.json'
+        '503':
+          description: API is live but one or more required components are degraded
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/readiness.schema.json'
+  /metrics:
+    get:
+      summary: Privacy-safe Prometheus metrics
+      responses:
+        '200':
+          description: Bounded queue, worker, ETA, cache, and stage metrics without source content
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/render/capabilities:
+    get:
+      summary: Renderer capabilities
+      responses:
+        '200':
+          description: Supported engines, diagram types, limits, storage, and versions
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/capabilities.schema.json'
+  /api/render/pdf/inspect:
+    post:
+      summary: Validate an authoritative PDF and describe bounded cover/preview derivatives without re-encoding the original
+      security:
+        - serviceToken: []
+      requestBody:
+        required: true
+        content:
+          application/pdf:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: PDF identity, metadata, TOC, and derivative descriptors
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/pdf-inspection.schema.json'
+        '400':
+          description: Invalid or damaged PDF
+        '413':
+          description: PDF exceeds 80 MiB
+        '422':
+          description: PDF contains active or embedded content and is quarantined
+  /api/render/jobs:
+    post:
+      summary: Submit a durable render job
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/ownerScope'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: |
+            Durable request identity. For `latex-pdf-preview` and `typst-pdf-preview`, this must be
+            the lowercase SHA-256 of `sessionId + snapshotHash + entrypoint + enginePolicyId +
+            imageDigest` in that order, using the contract-specific engine policy and image digest.
+            `typst-pdf-export` uses the exact project commit identity instead of a session.
+            A `typst` document job must send `renderProfileId` pinned to the profile the Renderer
+            currently advertises in `versions.typstProfile`; an unknown, missing or stale profile is
+            rejected with `invalid_render_profile` instead of silently reusing an older result.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 240
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: './schemas/job-submit-request.schema.json'
+      responses:
+        '202':
+          description: Job accepted after durable source storage and queue commit
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/job-submit-response.schema.json'
+        '429':
+          description: Principal queue limit reached
+        '409':
+          description: Idempotency key was already bound to different preview identity fields
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/latex-pdf-preview-error.schema.json'
+        '413':
+          description: Snapshot or a declared input exceeds the bounded preview contract
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/latex-pdf-preview-error.schema.json'
+        '422':
+          description: Snapshot, entrypoint, engine policy, preview identity, or Typst render profile is invalid
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/latex-pdf-preview-error.schema.json'
+        '503':
+          description: Renderer admission, queue, or private storage is unavailable
+  /api/render/jobs/{jobId}:
+    get:
+      summary: Poll an authorized render job
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Current job state and queued-job summary when applicable
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/job-status.schema.json'
+        '404':
+          description: Job does not exist in this principal and owner scope
+    delete:
+      summary: Cancel an authorized queued or running job
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Canceled job or cooperative running cancellation request
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/job-status.schema.json'
+        '404':
+          description: Job does not exist in this principal and owner scope
+        '409':
+          description: Job is already terminal and cannot be canceled
+  /api/render/jobs/{jobId}/result:
+    get:
+      summary: Retrieve an authorized successful project result
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Canonical project Render Result or private PDF preview/export artifact set
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: './schemas/render-result.schema.json'
+                  - $ref: './schemas/latex-pdf-preview-result.schema.json'
+                  - $ref: './schemas/typst-pdf-result.schema.json'
+        '404':
+          description: Job or retained private result was not found
+        '409':
+          description: Job result is not ready
+        '410':
+          description: Job retention expired
+  /api/render/jobs/{jobId}/artifacts/{artifactKind}:
+    get:
+      summary: Download one authorized retained PDF preview artifact
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+        - name: artifactKind
+          in: path
+          required: true
+          schema:
+            enum: [pdf, synctex, log, aux, fls, bbl, blg, toc, out]
+      responses:
+        '200':
+          description: Exact private artifact bytes with digest and no-store headers
+          headers:
+            X-Rinspace-Artifact-SHA256:
+              schema: { type: string, pattern: '^[a-f0-9]{64}$' }
+          content:
+            application/pdf: {}
+            application/gzip: {}
+            text/plain: {}
+        '404':
+          description: Job, result, or requested artifact kind was not found in this owner scope
+        '410':
+          description: Artifact retention expired
+  /api/render/jobs/{jobId}/events:
+    get:
+      summary: Replay and stream authorized safe job events
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Persisted Server-Sent Events; polling the job route remains the fallback
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '404':
+          description: Job does not exist in this principal and owner scope
+  /api/render/jobs/{jobId}/support:
+    get:
+      summary: Inspect privacy-safe support metadata for an owned job
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Job, attempt, estimator, and private artifact metadata without identities or storage paths
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/job-support.schema.json'
+        '404':
+          description: Job does not exist in this principal and owner scope
+  /api/render/jobs/{jobId}/retry:
+    post:
+      summary: Queue an owned failed job when its bounded attempt budget and source retention allow it
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Job returned to the durable queue
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/job-status.schema.json'
+        '409':
+          description: State, attempt budget, or retained source does not permit retry
+  /api/render/jobs/{jobId}/expire:
+    post:
+      summary: Expire an owned terminal job and stage its private artifacts for normal cleanup
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Job marked expired
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/job-status.schema.json'
+        '409':
+          description: Only succeeded, failed, or canceled jobs may be manually expired
+  /api/render/queue:
+    get:
+      summary: Aggregate privacy-safe queue status
+      security:
+        - serviceToken: []
+      parameters:
+        - $ref: '#/components/parameters/ownerScope'
+      responses:
+        '200':
+          description: Instance or cluster aggregate without job or author identities; estimate is null without a target job
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/queue-status.schema.json'
+  /api/render/projects:
+    post:
+      summary: Submit a LaTeX project through the durable queue and wait for its compatibility response
+      description: |
+        By default this route waits for the durable job and returns the legacy synchronous payload.
+        `Prefer: respond-async` opts into an immediate 202 response and requires `Idempotency-Key`.
+        On disconnect or bounded-wait timeout, non-idempotent work is canceled while idempotent work
+        remains attached to the durable job and can be polled through its Location.
+      security:
+        - serviceToken: []
+      parameters:
+        - name: Prefer
+          in: header
+          schema:
+            type: string
+            enum: [respond-async]
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Required with `Prefer: respond-async`; also permits detached continuation on timeout or disconnect.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - source
+              properties:
+                source:
+                  type: string
+                  format: binary
+                mainFile:
+                  type: string
+                activeFile:
+                  type: string
+                activePath:
+                  type: string
+                title:
+                  type: string
+                engine:
+                  type: string
+                  enum: [auto, latexml]
+                diagramPolicy:
+                  type: string
+                  enum: [auto, rin, latexml]
+                mathPolicy:
+                  type: string
+                  enum: [server, mathml-debug, source-debug]
+                status:
+                  type: string
+                project:
+                  type: string
+                  description: JSON metadata object. `mainFile`, `main_file`, `activeFile`, `activePath`, `active_file`, and `active_path` are used during main file selection.
+                metadata:
+                  type: string
+                  description: JSON metadata object with the same path fields as `project`.
+      responses:
+        '200':
+          description: Legacy-compatible rendered project after the durable job succeeds
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/project-render-response.schema.json'
+        '202':
+          description: Durable job accepted without waiting for completion
+          headers:
+            Location:
+              schema: { type: string }
+            Preference-Applied:
+              schema: { type: string, const: respond-async }
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/project-render-accepted.schema.json'
+        '429':
+          description: Queue or principal capacity is exhausted; includes Retry-After
+        '504':
+          description: Compatibility wait expired; Location identifies the durable job
+        '502':
+          description: Selected document engine failed
+        '503':
+          description: Admission, queue, storage, or job status is unavailable
+  /api/render/diagrams/{type}:
+    post:
+      summary: Render a diagram and persist the SVG to CloudBase
+      security:
+        - serviceToken: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/diagram-render-request.schema.json'
+      responses:
+        '200':
+          description: Rendered and persisted diagram
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/diagram-render-response.schema.json'
+        '502':
+          description: TeX SVG worker or CloudBase persistence failed
+components:
+  parameters:
+    jobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ownerScope:
+      name: X-Rin-Renderer-Owner-Scope
+      in: header
+      required: true
+      description: Opaque owner or tenant scope asserted by the authenticated service principal.
+      schema:
+        type: string
+        minLength: 1
+  securitySchemes:
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Rin-Renderer-Token

@@ -1,0 +1,28 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\begin{document}
+\section{MathJax reader contract}
+
+The native negated-exists glyph must preserve its original source:
+$\not\exists k\in\mathbb{R}$.
+
+The dynamic double-struck font table must remain available:
+$\forall c_i, c_i\in\mathbb{R}$.
+
+The column vector must keep its matrix source unwrapped and use stretchy delimiters:
+\[
+\mathbf{x}=\begin{bmatrix}
+a_1\\
+a_2\\
+\cdots\\
+a_n
+\end{bmatrix}.
+\]
+
+The alignment group must remain one display math unit:
+\begin{align*}
+\mathbf{x}_1+\mathbf{x}_2 &= \begin{bmatrix}a_1+b_1\\a_2+b_2\end{bmatrix}.
+\end{align*}
+
+\end{document}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/job-event.schema.json",
+  "title": "RinRendererJobEvent",
+  "type": "object",
+  "required": ["id", "type", "stage", "payload", "createdAt"],
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "type": { "type": "string", "minLength": 1 },
+    "stage": { "type": "string" },
+    "payload": { "type": "object" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

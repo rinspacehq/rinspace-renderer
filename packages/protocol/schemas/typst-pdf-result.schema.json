@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/typst-pdf-result.schema.json",
+  "title": "RinTypstPDFResultV1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "jobId",
+    "requestId",
+    "contentKind",
+    "outputKind",
+    "documentEngine",
+    "resourceClass",
+    "priorityClass",
+    "idempotencyKey",
+    "entrypoint",
+    "workspaceRoot",
+    "renderProfileId",
+    "artifacts",
+    "totalArtifactBytes",
+    "diagnostics",
+    "cache",
+    "versions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rin-typst-pdf/v1" },
+    "jobId": { "type": "string", "minLength": 1 },
+    "requestId": { "type": "string", "minLength": 1 },
+    "contentKind": { "const": "typst" },
+    "outputKind": { "enum": ["typst-pdf-preview", "typst-pdf-export"] },
+    "documentEngine": { "const": "typst" },
+    "resourceClass": { "const": "typst-pdf" },
+    "priorityClass": { "enum": ["preview", "rebuild", "publish"] },
+    "idempotencyKey": { "$ref": "#/$defs/sha256" },
+    "renderProfileId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$" },
+    "entrypoint": { "$ref": "#/$defs/canonicalPath" },
+    "workspaceRoot": { "const": "/workspace" },
+    "snapshotHash": { "$ref": "#/$defs/sha256" },
+    "sessionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+    "draftRevision": { "type": "integer", "minimum": 0 },
+    "enginePolicyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$" },
+    "imageDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "controlProjectId": { "$ref": "#/$defs/canonicalPath" },
+    "sourceCommit": { "type": "string", "pattern": "^[a-f0-9]{40}(?:[a-f0-9]{24})?$" },
+    "controlProjectHash": { "$ref": "#/$defs/sha256" },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/artifact" },
+      "allOf": [
+        { "contains": { "properties": { "kind": { "const": "pdf" } }, "required": ["kind"] }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "totalArtifactBytes": { "type": "integer", "minimum": 1, "maximum": 50331648 },
+    "diagnostics": { "type": "array", "items": { "$ref": "./diagnostic.schema.json" } },
+    "cache": {
+      "type": "object",
+      "required": ["hit"],
+      "properties": {
+        "hit": { "type": "boolean" },
+        "reusedJobId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "versions": {
+      "type": "object",
+      "required": ["rinRenderer", "typst", "compilerImage"],
+      "properties": {
+        "rinRenderer": { "type": "string", "minLength": 1 },
+        "typst": { "type": "string", "minLength": 1 },
+        "compilerImage": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outputKind": { "const": "typst-pdf-preview" } }, "required": ["outputKind"] },
+      "then": {
+        "required": ["snapshotHash", "sessionId", "draftRevision", "enginePolicyId", "imageDigest"],
+        "properties": { "priorityClass": { "const": "preview" } },
+        "not": { "anyOf": [{ "required": ["sourceCommit"] }, { "required": ["controlProjectId"] }, { "required": ["controlProjectHash"] }] }
+      }
+    },
+    {
+      "if": { "properties": { "outputKind": { "const": "typst-pdf-export" } }, "required": ["outputKind"] },
+      "then": {
+        "required": ["controlProjectId", "sourceCommit", "controlProjectHash", "enginePolicyId", "imageDigest"],
+        "properties": { "priorityClass": { "enum": ["rebuild", "publish"] } },
+        "not": { "anyOf": [{ "required": ["sessionId"] }, { "required": ["draftRevision"] }, { "required": ["snapshotHash"] }] }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "canonicalPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//).+$"
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["artifactId", "kind", "path", "sha256", "bytes", "mediaType", "visibility", "expiresAt"],
+      "properties": {
+        "artifactId": { "$ref": "#/$defs/canonicalPath" },
+        "kind": { "enum": ["pdf", "log"] },
+        "path": {
+          "allOf": [
+            { "$ref": "#/$defs/canonicalPath" },
+            { "pattern": "^(?:[^/]+/)*\\.rinspace/typst/[^/]+\\.(?:pdf|log)$" }
+          ]
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 33554432 },
+        "mediaType": { "enum": ["application/pdf", "text/plain; charset=utf-8"] },
+        "visibility": { "const": "private" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "pdf" } }, "required": ["kind"] },
+          "then": { "properties": { "path": { "pattern": "\\.pdf$" }, "mediaType": { "const": "application/pdf" }, "bytes": { "maximum": 33554432 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "log" } }, "required": ["kind"] },
+          "then": { "properties": { "path": { "pattern": "\\.log$" }, "mediaType": { "const": "text/plain; charset=utf-8" }, "bytes": { "maximum": 2097152 } } }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

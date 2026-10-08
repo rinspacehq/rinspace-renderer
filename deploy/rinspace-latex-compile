@@ -1,0 +1,73 @@
+#!/bin/sh
+set -eu
+
+fail() {
+  printf '%s\n' "rinspace-latex-compile: $*" >&2
+  exit 64
+}
+
+[ "$#" -eq 1 ] || fail "exactly one relative .tex entrypoint is required"
+entrypoint="$1"
+case "$entrypoint" in
+  ''|/*|-*|*\\*|*..*|*//*|*/.|*.|*~|*.tex/) fail "unsafe entrypoint" ;;
+  *.tex) ;;
+  *) fail "entrypoint must end in .tex" ;;
+esac
+
+workspace="$(realpath -e /workspace)" || fail "workspace is unavailable"
+output="$(realpath -e /output)" || fail "output is unavailable"
+source_file="$(realpath -e "/workspace/$entrypoint")" || fail "entrypoint does not exist"
+case "$source_file" in
+  "$workspace"/*) ;;
+  *) fail "entrypoint escapes /workspace" ;;
+esac
+[ -f "$source_file" ] || fail "entrypoint is not a regular file"
+[ -r "$source_file" ] || fail "entrypoint is not readable"
+[ -w "$output" ] || fail "output is not writable"
+
+export HOME=/tmp/rinspace-home
+export TEXMFHOME=/tmp/rinspace-texmf-home
+export TEXMFVAR=/tmp/rinspace-texmf-var
+export TEXMFCONFIG=/tmp/rinspace-texmf-config
+export TEXMFOUTPUT="$output"
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
+export FORCE_SOURCE_DATE=1
+export openin_any=p
+export openout_any=p
+export shell_escape=f
+mkdir -p "$HOME" "$TEXMFHOME" "$TEXMFVAR" "$TEXMFCONFIG"
+
+compile_log="$output/compile.log"
+set +e
+(
+  cd "$workspace"
+  latexmk \
+    -norc \
+    -no-shell-escape \
+    -pdfxe \
+    -interaction=nonstopmode \
+    -halt-on-error \
+    -file-line-error \
+    -recorder \
+    -synctex=1 \
+    -outdir="$output" \
+    "$entrypoint"
+) >"$compile_log" 2>&1
+status=$?
+set -e
+
+log_limit=2097152
+if [ "$(wc -c < "$compile_log")" -gt "$log_limit" ]; then
+  head -c "$log_limit" "$compile_log" > "$output/.compile.log.limited"
+  mv "$output/.compile.log.limited" "$compile_log"
+fi
+
+[ "$status" -eq 0 ] || exit "$status"
+
+stem="$(basename "$entrypoint" .tex)"
+pdf="$output/$stem.pdf"
+[ -f "$pdf" ] || fail "compiler completed without the expected PDF"
+pdf_bytes="$(wc -c < "$pdf")"
+[ "$pdf_bytes" -le 33554432 ] || fail "PDF exceeds 32 MiB"
+artifact_bytes="$(find "$output" -xdev -type f -printf '%s\n' | awk '{ total += $1 } END { print total + 0 }')"
+[ "$artifact_bytes" -le 50331648 ] || fail "artifacts exceed 48 MiB"

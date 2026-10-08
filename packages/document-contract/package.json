@@ -1,0 +1,9 @@
+{
+  "name": "@rinspace/rin-renderer-document-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node validate-contract.mjs"
+  }
+}

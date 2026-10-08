@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/rin-project-graph-v1.schema.json",
+  "title": "RinProjectGraphV1",
+  "type": "object",
+  "required": ["schemaVersion", "projectHash", "contentKind", "entrypoints", "files", "references", "options"],
+  "properties": {
+    "schemaVersion": { "const": "rin-project-graph/v1" },
+    "projectHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "contentKind": { "enum": ["latex", "markdown", "typst", "pdf"] },
+    "entrypoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entrypoint" }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reference" }
+    },
+    "options": { "type": "object" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "canonicalPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "entrypoint": {
+      "type": "object",
+      "required": ["path", "role"],
+      "properties": {
+        "path": { "$ref": "#/$defs/canonicalPath" },
+        "role": { "enum": ["document", "book-page"] }
+      },
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "required": ["path", "sha256", "bytes", "role"],
+      "properties": {
+        "path": { "$ref": "#/$defs/canonicalPath" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "mediaType": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["source", "asset", "bibliography", "generated"] }
+      },
+      "additionalProperties": false
+    },
+    "reference": {
+      "type": "object",
+      "required": ["from", "to", "kind", "resolved"],
+      "properties": {
+        "from": { "$ref": "#/$defs/canonicalPath" },
+        "to": { "type": "string" },
+        "kind": { "type": "string", "minLength": 1 },
+        "resolved": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

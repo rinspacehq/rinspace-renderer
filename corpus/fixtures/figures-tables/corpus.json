@@ -1,0 +1,13 @@
+{
+  "id": "figures-tables",
+  "title": "Figures Tables",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["figures", "tables", "references"],
+  "invariants": {
+    "htmlContains": ["Sample figure", "Parameter", "Value", "rin-float", "rin-table", "rin-caption", "rin-ref"],
+    "htmlNotContains": ["/rin/api/diagrams", "RINRENDERERDIAGRAMPLACEHOLDER"],
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 0
+  }
+}

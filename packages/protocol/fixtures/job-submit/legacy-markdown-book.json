@@ -1,0 +1,9 @@
+{
+  "source": "legacy-markdown-book.tar.gz",
+  "contentKind": "markdown",
+  "documentEngine": "unified",
+  "entrypoint": "README.md",
+  "documentMode": "book",
+  "bookPages": "[{\"path\":\"README.md\",\"id\":\"intro\"}]",
+  "priorityIntent": "rebuild"
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rin-markdown-book-shadow-manifest/v1",
+  "provenance": { "sourcePolicy": "synthetic-public", "containsPrivateSource": false },
+  "books": [
+    {
+      "id": "small-contract-book", "title": "Small Contract Book", "sizeClass": "small",
+      "maxOutputBytes": 1048576, "maxElapsedMs": 300000, "maxReaderMs": 250,
+      "pages": [
+        { "id": "small-intro", "path": "01-intro.md", "title": "Intro", "source": "book-shadow/small-intro.md" },
+        { "id": "small-math", "path": "02-math.md", "title": "Math", "source": "book-shadow/small-math.md", "changeProbe": true }
+      ]
+    },
+    {
+      "id": "large-contract-book", "title": "Large Contract Book", "sizeClass": "large",
+      "maxOutputBytes": 4194304, "maxElapsedMs": 600000, "maxReaderMs": 250,
+      "assets": [
+        { "path": "assets/fixture.svg", "source": "book-shadow/fixture.svg" }
+      ],
+      "pages": [
+        { "id": "large-intro", "path": "01-intro.md", "title": "Intro", "source": "book-shadow/large-intro.md" },
+        { "id": "large-math", "path": "02-math.md", "title": "Math", "source": "book-shadow/large-math.md" },
+        { "id": "large-code", "path": "03-code.md", "title": "Code", "source": "book-shadow/large-code.md", "changeProbe": true },
+        { "id": "large-table", "path": "04-table.md", "title": "Table", "source": "book-shadow/large-table.md" },
+        { "id": "large-diagram", "path": "05-diagram.md", "title": "Diagram", "source": "book-shadow/large-diagram.md" },
+        { "id": "large-end", "path": "06-end.md", "title": "End", "source": "book-shadow/large-end.md" }
+      ]
+    }
+  ]
+}

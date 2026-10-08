@@ -1,0 +1,14 @@
+{
+  "id": "diagram-floats",
+  "title": "Diagram Floats",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["diagrams", "figures", "references"],
+  "invariants": {
+    "htmlContains": ["Diagram floats", "Rin diagram float", "rin-tikz", "rin-float", "rin-caption", "rin-ref"],
+    "htmlNotContains": ["/rin/api/diagrams", "RINRENDERERDIAGRAMPLACEHOLDER", "\\begin{tikzpicture}"],
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 1,
+    "requireCloudBaseDiagrams": true
+  }
+}

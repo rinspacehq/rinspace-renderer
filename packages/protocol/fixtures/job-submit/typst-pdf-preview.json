@@ -1,0 +1,19 @@
+{
+  "idempotencyKey": "5523f0965d5e01c7cb7a0b75635c99909b44fbaf09912868aa530ef1e4c79575",
+  "fields": {
+    "source": "immutable-snapshot.tar.gz",
+    "contentKind": "typst",
+    "outputKind": "typst-pdf-preview",
+    "documentEngine": "typst",
+    "entrypoint": "main.typ",
+    "priorityIntent": "preview",
+    "resourceClass": "typst-pdf",
+    "priorityClass": "preview",
+    "snapshotHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "sessionId": "session-018fcafe-typst",
+    "draftRevision": 17,
+    "enginePolicyId": "rinspace-typst-pdf-safe-v1",
+    "imageDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "previewContractVersion": "rin-typst-pdf-preview/v1"
+  }
+}

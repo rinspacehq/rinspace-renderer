@@ -1,0 +1,39 @@
+{
+  "version": "0.1",
+  "title": "Synthetic Markdown Book",
+  "files": [
+    {
+      "id": "md-001-introduction",
+      "path": "01-introduction.md",
+      "title": "Introduction",
+      "body": "# Introduction\n\nA synthetic first page.",
+      "level": 2
+    },
+    {
+      "id": "md-001-introduction-sec-001-example",
+      "path": "01-introduction/01-example.md",
+      "title": "Example",
+      "body": "# Example\n\nA nested synthetic page with $x_1$.",
+      "level": 3,
+      "parentId": "md-001-introduction"
+    }
+  ],
+  "toc": [
+    { "id": "md-001-introduction", "text": "Introduction", "level": 2 },
+    { "id": "md-001-introduction-sec-001-example", "text": "Example", "level": 3 }
+  ],
+  "pages": [
+    {
+      "id": "md-001-introduction",
+      "text": "Introduction",
+      "level": 2,
+      "html": "<h1>Introduction</h1><p>A synthetic first page.</p>"
+    },
+    {
+      "id": "md-001-introduction-sec-001-example",
+      "text": "Example",
+      "level": 3,
+      "html": "<h1>Example</h1><p>A nested synthetic page with <span class=\"rin-deferred-math\" data-rin-math-display=\"inline\" data-rin-math-source=\"x_1\">x_1</span>.</p>"
+    }
+  ]
+}

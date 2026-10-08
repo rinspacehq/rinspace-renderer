@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/project-render-accepted.schema.json",
+  "title": "RinRendererProjectAccepted",
+  "type": "object",
+  "required": ["requestId", "jobId", "state", "location"],
+  "properties": {
+    "requestId": { "type": "string", "minLength": 1 },
+    "jobId": { "type": "string", "format": "uuid" },
+    "state": { "enum": ["queued", "running", "succeeded", "failed", "canceled", "expired"] },
+    "location": { "type": "string", "pattern": "^/api/render/jobs/[0-9a-f-]+$" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "rin-document-bundle/v1",
+  "projectHash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "state": "draft",
+  "contentKind": "latex",
+  "documentEngine": "latexml",
+  "title": "Linear Algebra",
+  "pages": [
+    {
+      "id": "page-main",
+      "sourcePath": "main.tex",
+      "title": "Linear Algebra",
+      "fragment": "<article><h1 id=\"independence\">Independence</h1><p><rin-work data-id=\"rw_11111111111111111111111111111111\"></rin-work></p><figure><rin-work data-id=\"rw_22222222222222222222222222222222\"></rin-work></figure></article>",
+      "fragmentFormat": "html-with-rin-placeholders",
+      "toc": [{ "id": "independence", "depth": 1, "text": "Independence" }],
+      "dependencyHashes": ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+    }
+  ],
+  "workUnits": [
+    {
+      "kind": "math",
+      "id": "rw_11111111111111111111111111111111",
+      "source": "\\not\\exists k\\in\\mathbb{R}",
+      "display": false,
+      "macroContextHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "accessibilityContext": { "language": "zh-CN", "label": "不存在实数 k" },
+      "sourceLocation": { "path": "main.tex", "start": { "line": 8, "column": 4 }, "end": { "line": 8, "column": 36 } }
+    },
+    {
+      "kind": "diagram",
+      "id": "rw_22222222222222222222222222222222",
+      "diagramType": "tikzpicture",
+      "source": "\\draw (0,0) -- (1,1);",
+      "layout": { "alignment": "center" },
+      "sourceLocation": { "path": "main.tex", "start": { "line": 12, "column": 1 } }
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-cover",
+      "kind": "project-file",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "bytes": 4096,
+      "mediaType": "image/png",
+      "projectPath": "images/cover.png"
+    }
+  ],
+  "diagnostics": [],
+  "provenance": {
+    "adapter": "rin-latexml",
+    "adapterVersion": "0.1.0",
+    "engineVersion": "0d02309d",
+    "projectGraphSchemaVersion": "rin-project-graph/v1"
+  }
+}

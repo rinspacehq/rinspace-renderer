@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rin-project-graph/v1",
+  "projectHash": "d2fc2dba5ec9ee77c059ef5914c447dfd68ebe5ce21499e25e3160067b47666b",
+  "contentKind": "markdown",
+  "entrypoints": [
+    { "path": "chapters/one.md", "role": "book-page" },
+    { "path": "chapters/two.md", "role": "book-page" }
+  ],
+  "files": [
+    {
+      "path": "book.md",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "bytes": 120,
+      "mediaType": "text/markdown",
+      "role": "source"
+    },
+    {
+      "path": "chapters/one.md",
+      "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "bytes": 450,
+      "mediaType": "text/markdown",
+      "role": "source"
+    },
+    {
+      "path": "chapters/two.md",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "bytes": 500,
+      "mediaType": "text/markdown",
+      "role": "source"
+    }
+  ],
+  "references": [
+    { "from": "book.md", "to": "chapters/one.md", "kind": "book-page", "resolved": true },
+    { "from": "book.md", "to": "chapters/two.md", "kind": "book-page", "resolved": true }
+  ],
+  "options": { "documentMode": "book", "pageOrder": ["chapters/one.md", "chapters/two.md"] }
+}

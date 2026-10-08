@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/job-submit-request.schema.json",
+  "title": "RinRendererJobSubmitRequest",
+  "type": "object",
+  "required": ["source", "contentKind", "documentEngine", "priorityIntent"],
+  "properties": {
+    "source": { "type": "string", "format": "binary" },
+    "contentKind": { "enum": ["latex", "markdown", "typst"] },
+    "outputKind": { "enum": ["document", "latex-pdf-preview", "typst-pdf-preview", "typst-pdf-export"], "default": "document" },
+    "documentEngine": { "enum": ["auto", "latexml", "unified", "latexmk", "typst"] },
+    "entrypoint": { "$ref": "#/$defs/canonicalPath" },
+    "documentMode": { "enum": ["article", "book"], "default": "article" },
+    "bookPages": {
+      "type": "string",
+      "description": "Ordered JSON array of Markdown Book pages with path, stable id, and optional title."
+    },
+    "priorityIntent": { "enum": ["publish", "preview", "rebuild", "migration"] },
+    "resourceClass": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "priorityClass": { "enum": ["publish", "preview", "rebuild", "migration"] },
+    "snapshotHash": { "$ref": "#/$defs/sha256" },
+    "sessionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+    "draftRevision": { "type": "integer", "minimum": 0 },
+    "enginePolicyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$" },
+    "renderProfileId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$",
+      "description": "Exact Typst HTML render profile this job was resolved against. Required for a Typst document job; rejected for every other output."
+    },
+    "imageDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "previewContractVersion": { "enum": ["rin-latex-pdf-preview/v1", "rin-typst-pdf-preview/v1"] },
+    "controlProjectId": { "$ref": "#/$defs/canonicalPath" },
+    "sourceCommit": { "type": "string", "pattern": "^[a-f0-9]{40}(?:[a-f0-9]{24})?$" },
+    "controlProjectHash": { "$ref": "#/$defs/sha256" },
+    "options": { "type": "string", "description": "Versioned JSON options." }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "outputKind": { "const": "latex-pdf-preview" } },
+        "required": ["outputKind"]
+      },
+      "then": {
+        "required": [
+          "entrypoint",
+          "resourceClass",
+          "priorityClass",
+          "snapshotHash",
+          "sessionId",
+          "draftRevision",
+          "enginePolicyId",
+          "imageDigest",
+          "previewContractVersion"
+        ],
+        "properties": {
+          "contentKind": { "const": "latex" },
+          "documentEngine": { "const": "latexmk" },
+          "priorityIntent": { "const": "preview" },
+          "resourceClass": { "const": "latex-pdf" },
+          "priorityClass": { "const": "preview" },
+          "previewContractVersion": { "const": "rin-latex-pdf-preview/v1" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "outputKind": { "const": "typst-pdf-preview" } },
+        "required": ["outputKind"]
+      },
+      "then": {
+        "required": [
+          "entrypoint",
+          "resourceClass",
+          "priorityClass",
+          "snapshotHash",
+          "sessionId",
+          "draftRevision",
+          "enginePolicyId",
+          "imageDigest",
+          "previewContractVersion"
+        ],
+        "properties": {
+          "contentKind": { "const": "typst" },
+          "documentEngine": { "const": "typst" },
+          "priorityIntent": { "const": "preview" },
+          "resourceClass": { "const": "typst-pdf" },
+          "priorityClass": { "const": "preview" },
+          "previewContractVersion": { "const": "rin-typst-pdf-preview/v1" },
+          "entrypoint": { "pattern": "\\.typ$" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "outputKind": { "const": "typst-pdf-export" } },
+        "required": ["outputKind"]
+      },
+      "then": {
+        "required": ["entrypoint", "resourceClass", "priorityClass", "controlProjectId", "sourceCommit", "controlProjectHash"],
+        "properties": {
+          "contentKind": { "const": "typst" },
+          "documentEngine": { "const": "typst" },
+          "priorityIntent": { "enum": ["publish", "rebuild"] },
+          "resourceClass": { "const": "typst-pdf" },
+          "priorityClass": { "enum": ["publish", "rebuild"] },
+          "entrypoint": { "pattern": "\\.typ$" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "contentKind": { "const": "typst" }, "outputKind": { "const": "document" } },
+        "required": ["contentKind", "outputKind"]
+      },
+      "then": {
+        "required": ["entrypoint", "renderProfileId"],
+        "properties": {
+          "documentEngine": { "const": "typst" },
+          "resourceClass": { "const": "document-typst" },
+          "entrypoint": { "pattern": "\\.typ$" },
+          "renderProfileId": { "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$" }
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": { "contentKind": { "const": "typst" }, "outputKind": { "const": "document" } },
+          "required": ["contentKind", "outputKind"]
+        }
+      },
+      "then": { "not": { "required": ["renderProfileId"] } }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": { "outputKind": { "enum": ["latex-pdf-preview", "typst-pdf-preview"] } },
+          "required": ["outputKind"]
+        }
+      },
+      "then": {
+        "properties": {
+          "priorityIntent": { "enum": ["publish", "rebuild", "migration"] }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "canonicalPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//).+$"
+    }
+  }
+}

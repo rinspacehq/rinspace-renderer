@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/latex-pdf-preview-result.schema.json",
+  "title": "RinLatexPDFPreviewResultV1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "jobId",
+    "requestId",
+    "contentKind",
+    "outputKind",
+    "documentEngine",
+    "resourceClass",
+    "priorityClass",
+    "snapshotHash",
+    "sessionId",
+    "draftRevision",
+    "enginePolicyId",
+    "imageDigest",
+    "idempotencyKey",
+    "entrypoint",
+    "workspaceRoot",
+    "artifacts",
+    "totalArtifactBytes",
+    "diagnostics",
+    "cache",
+    "versions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "rin-latex-pdf-preview/v1" },
+    "jobId": { "type": "string", "minLength": 1 },
+    "requestId": { "type": "string", "minLength": 1 },
+    "contentKind": { "const": "latex" },
+    "outputKind": { "const": "latex-pdf-preview" },
+    "documentEngine": { "const": "latexmk" },
+    "resourceClass": { "const": "latex-pdf" },
+    "priorityClass": { "const": "preview" },
+    "snapshotHash": { "$ref": "#/$defs/sha256" },
+    "sessionId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" },
+    "draftRevision": { "type": "integer", "minimum": 0 },
+    "enginePolicyId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._@-]{2,127}$" },
+    "imageDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "idempotencyKey": { "$ref": "#/$defs/sha256" },
+    "entrypoint": { "$ref": "#/$defs/canonicalPath" },
+    "workspaceRoot": { "const": "/workspace" },
+    "artifacts": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/artifact" },
+      "allOf": [
+        { "contains": { "properties": { "kind": { "const": "pdf" } }, "required": ["kind"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "synctex" } }, "required": ["kind"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "log" } }, "required": ["kind"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "aux" } }, "required": ["kind"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "fls" } }, "required": ["kind"] }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "totalArtifactBytes": { "type": "integer", "minimum": 1, "maximum": 50331648 },
+    "diagnostics": { "type": "array", "items": { "$ref": "./diagnostic.schema.json" } },
+    "cache": {
+      "type": "object",
+      "required": ["hit"],
+      "properties": {
+        "hit": { "type": "boolean" },
+        "reusedJobId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "versions": {
+      "type": "object",
+      "required": ["rinRenderer", "latexmk", "texlive", "compilerImage"],
+      "properties": {
+        "rinRenderer": { "type": "string", "minLength": 1 },
+        "latexmk": { "type": "string", "minLength": 1 },
+        "texlive": { "type": "string", "minLength": 1 },
+        "compilerImage": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "canonicalPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*\\\\)(?!.*//).+$"
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["artifactId", "kind", "path", "sha256", "bytes", "mediaType", "visibility", "expiresAt"],
+      "properties": {
+        "artifactId": { "$ref": "#/$defs/canonicalPath" },
+        "kind": { "enum": ["pdf", "synctex", "log", "aux", "fls", "bbl", "blg", "toc", "out"] },
+        "path": {
+          "allOf": [
+            { "$ref": "#/$defs/canonicalPath" },
+            { "pattern": "^(?:[^/]+/)*\\.rinspace/[^/]+\\.(?:pdf|synctex\\.gz|log|aux|fls|bbl|blg|toc|out)$" }
+          ]
+        },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 33554432 },
+        "mediaType": { "enum": ["application/pdf", "application/gzip", "text/plain; charset=utf-8"] },
+        "visibility": { "const": "private" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "pdf" } }, "required": ["kind"] },
+          "then": { "properties": { "path": { "pattern": "\\.pdf$" }, "mediaType": { "const": "application/pdf" }, "bytes": { "maximum": 33554432 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "synctex" } }, "required": ["kind"] },
+          "then": { "properties": { "path": { "pattern": "\\.synctex\\.gz$" }, "mediaType": { "const": "application/gzip" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "log" } }, "required": ["kind"] },
+          "then": { "properties": { "path": { "pattern": "\\.log$" }, "mediaType": { "const": "text/plain; charset=utf-8" }, "bytes": { "maximum": 2097152 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["aux", "fls", "bbl", "blg", "toc", "out"] } }, "required": ["kind"] },
+          "then": { "properties": { "path": { "pattern": "\\.(?:aux|fls|bbl|blg|toc|out)$" }, "mediaType": { "const": "text/plain; charset=utf-8" }, "bytes": { "maximum": 8388608 } } }
+        }
+      ],
+      "additionalProperties": false
+    }
+  }
+}

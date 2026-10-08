@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/capabilities.schema.json",
+  "title": "RinRendererCapabilities",
+  "type": "object",
+  "required": ["version", "engines", "diagramTypes", "limits", "versions", "storage", "async", "nodeWorkers"],
+  "properties": {
+    "version": { "type": "string" },
+    "engines": {
+      "type": "object",
+      "required": ["document", "pdf", "diagram", "math"],
+      "properties": {
+        "document": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pdf": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "diagram": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "math": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "diagramTypes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "projectArchiveMaxBytes",
+        "projectFileMaxCount",
+        "projectFileMaxBytes",
+        "diagramMaxBytes",
+        "finalOutputMaxBytes",
+        "renderTimeoutSeconds",
+        "diagramTimeoutSeconds",
+        "diagramParallelism",
+        "mathSourceMaxBytes",
+        "mathTexSvgFallbackMaxCount",
+        "mathTimeoutSeconds",
+        "mathParallelism"
+      ],
+      "properties": {
+        "projectArchiveMaxBytes": { "type": "integer", "minimum": 1 },
+        "projectFileMaxCount": { "type": "integer", "minimum": 1 },
+        "projectFileMaxBytes": { "type": "integer", "minimum": 1 },
+        "diagramMaxBytes": { "type": "integer", "minimum": 1 },
+        "finalOutputMaxBytes": { "type": "integer", "minimum": 1 },
+        "renderTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "diagramTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "diagramParallelism": { "type": "integer", "minimum": 1 },
+        "mathSourceMaxBytes": { "type": "integer", "minimum": 1 },
+        "mathTexSvgFallbackMaxCount": { "type": "integer", "minimum": 0 },
+        "mathTimeoutSeconds": { "type": "integer", "minimum": 1 },
+        "mathParallelism": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "versions": {
+      "type": "object",
+      "required": ["rinRenderer", "finalOutput"],
+      "properties": {
+        "rinRenderer": { "type": "string" },
+        "finalOutput": { "type": "string", "const": "rin-final-output/v1" },
+        "latexml": { "type": "string" },
+        "latexmlAdapter": { "type": "string" },
+        "perl": { "type": "string" },
+        "texlive": { "type": "string" },
+        "dvisvgm": { "type": "string" },
+        "diagramEngine": { "type": "string" },
+        "mathjax": { "type": "string" },
+        "mathjaxOutput": { "type": "string" },
+        "mathjaxFont": { "type": "string" },
+        "katex": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "storage": {
+      "type": "object",
+      "required": ["provider", "bucket"],
+      "properties": {
+        "provider": { "type": "string" },
+        "bucket": { "type": "string" },
+        "baseUrl": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "async": {
+      "type": "object",
+      "required": ["enabled", "queueScope", "eventReplay", "pollingFallback", "cancellation", "readiness", "degraded"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "queueScope": { "enum": ["instance", "cluster"] },
+        "eventReplay": { "type": "boolean" },
+        "pollingFallback": { "type": "boolean" },
+        "cancellation": { "type": "boolean" },
+        "readiness": { "enum": ["ready", "degraded"] },
+        "degraded": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9_-]+$" }, "uniqueItems": true }
+      },
+      "additionalProperties": false
+    },
+    "nodeWorkers": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "transport",
+        "contractVersion",
+        "mathJaxMode",
+        "count",
+        "maxRequestBytes",
+        "maxResponseBytes",
+        "maxTasks",
+        "maxRssBytes"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "transport": { "enum": ["ndjson-stdio", "ndjson-unix"] },
+        "contractVersion": { "const": "rin-node-worker/v1" },
+        "mathJaxMode": { "enum": ["process-per-batch", "warm"] },
+        "count": { "type": "integer", "minimum": 1 },
+        "maxRequestBytes": { "type": "integer", "minimum": 1 },
+        "maxResponseBytes": { "type": "integer", "minimum": 1 },
+        "maxTasks": { "type": "integer", "minimum": 1 },
+        "maxRssBytes": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

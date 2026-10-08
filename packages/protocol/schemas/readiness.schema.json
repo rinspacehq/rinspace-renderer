@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/readiness.schema.json",
+  "title": "RinRendererReadiness",
+  "type": "object",
+  "required": ["status", "ready", "degraded", "components", "checkedAt"],
+  "properties": {
+    "status": { "enum": ["ready", "degraded"] },
+    "ready": { "type": "boolean" },
+    "degraded": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9_-]+$" }, "uniqueItems": true },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["ready"],
+        "properties": {
+          "ready": { "type": "boolean" },
+          "reason": { "type": "string", "pattern": "^[a-z0-9_-]+$" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "checkedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

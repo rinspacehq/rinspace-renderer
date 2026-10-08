@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/rin-document-bundle-v2.schema.json",
+  "title": "RinDocumentBundleV2",
+  "type": "object",
+  "required": ["schemaVersion", "projectHash", "state", "contentKind", "documentEngine", "title", "pages", "workUnits", "assets", "diagnostics", "provenance"],
+  "properties": {
+    "schemaVersion": { "const": "rin-document-bundle/v2" },
+    "projectHash": { "$ref": "document-bundle.schema.json#/$defs/sha256" },
+    "bundleHash": { "$ref": "document-bundle.schema.json#/$defs/sha256" },
+    "state": { "enum": ["draft", "final"] },
+    "contentKind": { "enum": ["latex", "markdown", "typst"] },
+    "documentEngine": { "$ref": "document-bundle.schema.json#/$defs/nonEmptyString" },
+    "title": { "type": "string" },
+    "pages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/page" } },
+    "workUnits": { "type": "array", "items": { "$ref": "document-bundle.schema.json#/$defs/workUnit" } },
+    "assets": { "type": "array", "items": { "$ref": "document-bundle.schema.json#/$defs/asset" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "document-bundle.schema.json#/$defs/diagnostic" } },
+    "provenance": { "$ref": "document-bundle.schema.json#/$defs/provenance" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "blockId": { "type": "string", "pattern": "^rb_[a-f0-9]{32}$" },
+    "headingIdentifier": { "type": "string", "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}._:-]{0,127}$" },
+    "documentBlock": {
+      "type": "object",
+      "required": ["id", "kind", "text", "textHash", "headingPath"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "kind": { "enum": ["heading", "paragraph", "list-item", "theorem", "math", "code", "figure", "table", "quote"] },
+        "text": { "type": "string" },
+        "textHash": { "$ref": "document-bundle.schema.json#/$defs/sha256" },
+        "headingPath": { "type": "array", "items": { "$ref": "#/$defs/headingIdentifier" } },
+        "sourceLocation": { "$ref": "document-bundle.schema.json#/$defs/sourceLocation" }
+      },
+      "additionalProperties": false
+    },
+    "page": {
+      "type": "object",
+      "required": ["id", "sourcePath", "fragment", "fragmentFormat", "toc", "dependencyHashes", "blocks"],
+      "properties": {
+        "id": { "$ref": "document-bundle.schema.json#/$defs/pageIdentifier" },
+        "sourcePath": { "$ref": "document-bundle.schema.json#/$defs/canonicalPath" },
+        "title": { "type": "string" },
+        "fragment": { "type": "string" },
+        "fragmentFormat": { "enum": ["html-with-rin-placeholders", "html"] },
+        "toc": { "type": "array", "items": { "$ref": "document-bundle.schema.json#/$defs/tocEntry" } },
+        "dependencyHashes": { "type": "array", "items": { "$ref": "document-bundle.schema.json#/$defs/sha256" }, "uniqueItems": true },
+        "blocks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/documentBlock" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

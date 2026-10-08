@@ -1,0 +1,20 @@
+# Complete Linux/amd64 runtime for local and Control Plane profiles.
+# RENDERER_BASE_IMAGE must be the reviewed
+# digest of Dockerfile.latexml's runtime stage from the same source release.
+ARG NODE_IMAGE=docker.io/library/node@sha256:46e94f8cf91baab69a2deb3153e74eeffd73c20c7cc1d8432f5b96469eaa0322
+ARG RENDERER_BASE_IMAGE
+
+FROM --platform=linux/amd64 ${NODE_IMAGE} AS markdown-build
+WORKDIR /opt/rin-renderer/engines/markdown
+COPY engines/markdown/package.json engines/markdown/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+COPY engines/markdown/*.mjs ./
+
+FROM --platform=linux/amd64 ${RENDERER_BASE_IMAGE}
+COPY --from=markdown-build /usr/local/bin/node /usr/local/bin/node
+COPY --from=markdown-build /opt/rin-renderer/engines/markdown /opt/rin-renderer/engines/markdown
+ENV RIN_RENDERER_MARKDOWN_NODE_BIN=/usr/local/bin/node \
+    RIN_RENDERER_MARKDOWN_SCRIPT=/opt/rin-renderer/engines/markdown/worker.mjs \
+    RIN_RENDERER_MATHJAX_NODE_BIN=/usr/local/bin/node \
+    RIN_RENDERER_KATEX_NODE_BIN=/usr/local/bin/node
+WORKDIR /opt/rin-renderer

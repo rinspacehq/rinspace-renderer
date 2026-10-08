@@ -1,0 +1,9 @@
+[[RIN_MARKDOWN_SOURCE]]
+# Synthetic stored article
+
+The canonical article body keeps Markdown source, not browser-rendered HTML.
+[[/RIN_MARKDOWN_SOURCE]]
+
+[[RIN_MARKDOWN_FILE]]
+{"filename":"synthetic.md","mime":"text/markdown;charset=utf-8","bytes":96,"url":"https://assets.example.test/source/synthetic.md"}
+[[/RIN_MARKDOWN_FILE]]

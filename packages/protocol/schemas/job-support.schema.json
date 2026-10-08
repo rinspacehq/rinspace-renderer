@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/job-support.schema.json",
+  "title": "RinRendererJobSupport",
+  "type": "object",
+  "required": ["job", "attempts", "estimator", "artifacts", "scope", "inspectedAt"],
+  "properties": {
+    "job": {
+      "type": "object",
+      "required": ["jobId", "contentKind", "documentEngine", "resourceClass", "priorityClass", "state", "rendererVersion", "maxAttempts", "attemptCount", "expiresAt", "cancelRequested", "createdAt", "updatedAt"],
+      "properties": {
+        "jobId": { "type": "string", "format": "uuid" },
+        "contentKind": { "enum": ["latex", "markdown"] },
+        "outputKind": { "enum": ["document", "latex-pdf-preview"] },
+        "documentEngine": { "type": "string", "minLength": 1 },
+        "resourceClass": { "type": "string", "minLength": 1 },
+        "priorityClass": { "enum": ["publish", "preview", "rebuild", "migration"] },
+        "state": { "enum": ["queued", "running", "succeeded", "failed", "canceled", "expired"] },
+        "rendererVersion": { "type": "string", "minLength": 1 },
+        "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "attemptCount": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "queuedAt": { "type": "string", "format": "date-time" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "finishedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "cancelRequested": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "attempts": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": ["attemptId", "attemptNo", "state"],
+        "properties": {
+          "attemptId": { "type": "string", "format": "uuid" },
+          "attemptNo": { "type": "integer", "minimum": 1, "maximum": 16 },
+          "state": { "enum": ["leased", "running", "succeeded", "failed", "canceled", "expired"] },
+          "errorCode": { "type": "string", "pattern": "^[a-z0-9_.-]+$", "maxLength": 128 },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "startedAt": { "type": "string", "format": "date-time" },
+          "finishedAt": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "estimator": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["estimatorVersion", "estimatedStartAt", "earliestStartAt", "latestStartAt", "confidence", "sampleCount", "scope", "calculatedAt"],
+          "properties": {
+            "estimatorVersion": { "type": "string", "minLength": 1 },
+            "estimatedStartAt": { "type": "string", "format": "date-time" },
+            "earliestStartAt": { "type": "string", "format": "date-time" },
+            "latestStartAt": { "type": "string", "format": "date-time" },
+            "confidence": { "enum": ["low", "medium", "high"] },
+            "sampleCount": { "type": "integer", "minimum": 20 },
+            "scope": { "enum": ["instance", "cluster"] },
+            "calculatedAt": { "type": "string", "format": "date-time" },
+            "actualStartedAt": { "type": "string", "format": "date-time" },
+            "centralErrorMs": { "type": "integer" },
+            "intervalCovered": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": ["artifactId", "kind", "visibility", "sha256", "byteSize", "mediaType", "createdAt"],
+        "properties": {
+          "artifactId": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "kind": { "enum": ["source", "result", "debug", "pdf", "synctex", "log", "aux", "fls", "bbl", "blg", "toc", "out"] },
+          "visibility": { "const": "private" },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "byteSize": { "type": "integer", "minimum": 0 },
+          "mediaType": { "type": "string", "minLength": 1 },
+          "schemaVersion": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "scope": { "enum": ["instance", "cluster"] },
+    "inspectedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

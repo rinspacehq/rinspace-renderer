@@ -1,0 +1,4 @@
+.git
+**/node_modules
+**/.rin-markdown-corpus
+**/.DS_Store

@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+
+url="${1:-http://127.0.0.1:8090/health}"
+timeout="${RIN_RENDERER_HEALTHCHECK_TIMEOUT_SECONDS:-2}"
+
+case "$timeout" in
+  ''|*[!0-9]*)
+    timeout=2
+    ;;
+esac
+
+if command -v curl >/dev/null 2>&1; then
+  exec curl -fsS --max-time "$timeout" "$url" >/dev/null
+fi
+
+if command -v wget >/dev/null 2>&1; then
+  exec wget -q -T "$timeout" -O /dev/null "$url"
+fi
+
+if command -v perl >/dev/null 2>&1; then
+  exec perl -MHTTP::Tiny -e 'my ($url, $timeout) = @ARGV; my $res = HTTP::Tiny->new(timeout => $timeout)->get($url); exit($res->{success} ? 0 : 1);' "$url" "$timeout"
+fi
+
+echo "No HTTP client found for health check" >&2
+exit 1

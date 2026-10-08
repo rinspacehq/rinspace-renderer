@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/diagram-render-request.schema.json",
+  "title": "RinRendererDiagramRequest",
+  "type": "object",
+  "properties": {
+    "type": { "type": "string" },
+    "options": { "type": "string" },
+    "body": { "type": "string" },
+    "source": { "type": "string" }
+  },
+  "additionalProperties": false
+}

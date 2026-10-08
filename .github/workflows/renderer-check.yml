@@ -1,0 +1,52 @@
+name: Renderer source checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-source-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GOMAXPROCS: "1"
+      GOFLAGS: -p=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache-dependency-path: api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+          cache: npm
+          cache-dependency-path: |
+            engines/markdown/package-lock.json
+            engines/mathjax/package-lock.json
+            engines/katex/package-lock.json
+      - name: Source and protocol checks
+        run: |
+          git diff --check
+          node packages/protocol/validate-protocol.mjs
+          node engines/markdown/verify-isolation.mjs
+          node --test deploy/source-policy.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs
+      - name: Install pinned Node runtimes serially
+        run: |
+          npm --prefix engines/markdown ci --omit=dev --ignore-scripts --no-audit --no-fund
+          npm --prefix engines/mathjax ci --omit=dev --ignore-scripts --no-audit --no-fund
+          npm --prefix engines/katex ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Markdown contract suite
+        working-directory: engines/markdown
+        run: npm run check
+      - name: Go API and TeX SVG suites
+        run: |
+          (cd api && go test ./... -count=1)
+          (cd engines/texsvg && go test ./... -count=1)

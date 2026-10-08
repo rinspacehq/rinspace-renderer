@@ -1,0 +1,14 @@
+{
+  "id": "supported-diagrams",
+  "title": "Supported Diagrams",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["diagrams"],
+  "invariants": {
+    "htmlContains": ["Diagram corpus"],
+    "htmlNotContains": ["/rin/api/diagrams", "RINRENDERERDIAGRAMPLACEHOLDER", "\\begin{tikzcd}"],
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 4,
+    "requireCloudBaseDiagrams": true
+  }
+}

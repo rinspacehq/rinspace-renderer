@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "rin-markdown-article-shadow-manifest/v1",
+  "provenance": {
+    "sourcePolicy": "synthetic-current-behavior-smoke-only",
+    "containsPrivateSource": false
+  },
+  "articles": [
+    { "id": "article-gfm", "title": "GFM shadow smoke", "source": "current-behavior/article-gfm.md", "expectedFeatures": ["tables", "links"] },
+    { "id": "math-code", "title": "Math and code shadow smoke", "source": "current-behavior/math-and-code.md", "expectedFeatures": ["math", "code"] },
+    { "id": "media-links", "title": "Media shadow smoke", "source": "current-behavior/media-links.md", "expectedFeatures": ["images", "links"] },
+    { "id": "quiver-directives", "title": "Directive shadow smoke", "source": "current-behavior/quiver-and-directives.md" },
+    { "id": "raw-html", "title": "Raw HTML shadow smoke", "source": "current-behavior/raw-html.md" }
+  ]
+}

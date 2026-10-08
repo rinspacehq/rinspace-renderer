@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "rin-project-graph/v1",
+  "projectHash": "95bb02a0431c8196d7e61ee26825fe87637415f9627d86f3a8f917355d666a6b",
+  "contentKind": "markdown",
+  "entrypoints": [{ "path": "article.md", "role": "document" }],
+  "files": [
+    {
+      "path": "article.md",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "bytes": 300,
+      "mediaType": "text/markdown",
+      "role": "source"
+    },
+    {
+      "path": "images/vector.png",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "bytes": 2048,
+      "mediaType": "image/png",
+      "role": "asset"
+    }
+  ],
+  "references": [
+    { "from": "article.md", "to": "images/vector.png", "kind": "image", "resolved": true }
+  ],
+  "options": { "documentMode": "article" }
+}

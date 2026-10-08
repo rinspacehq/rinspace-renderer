@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "rin-typst-html-toolchain-lock/v1",
+  "status": "production-candidate",
+  "platform": "linux/amd64",
+  "artifact": {
+    "name": "rin-renderer-typst-html-toolchain",
+    "archive": "rin-renderer-typst-html-toolchain.tar.gz",
+    "archiveRoot": "toolchain",
+    "releaseTagPrefix": "rin-renderer-typst-html-toolchain-",
+    "installRootTemplate": "/var/lib/rin-renderer/artifacts/typst-html-<commit>",
+    "binPathTemplate": "/var/lib/rin-renderer/artifacts/typst-html-<commit>/toolchain/bin/typst",
+    "fontPathTemplate": "/var/lib/rin-renderer/artifacts/typst-html-<commit>/toolchain/fonts/wqy-zenhei.ttc",
+    "packagePathTemplate": "/var/lib/rin-renderer/artifacts/typst-html-<commit>/toolchain/packages"
+  },
+  "compiler": {
+    "engine": "typst",
+    "version": "0.15.1",
+    "release": "https://github.com/typst/typst/releases/tag/v0.15.1",
+    "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+    "assetSha256": "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c",
+    "binarySha256": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
+    "binaryRelativePath": "bin/typst",
+    "license": "Apache-2.0",
+    "linkage": "static-musl"
+  },
+  "font": {
+    "package": "fonts-wqy-zenhei",
+    "packageVersion": "0.9.45-8",
+    "release": "https://deb.debian.org/debian/pool/main/f/fonts-wqy-zenhei/fonts-wqy-zenhei_0.9.45-8_all.deb",
+    "packageSha256": "cfed2c29164ff2f133e40ed2046610b172b8618d174840936ac4ec9b6fd668e7",
+    "debPath": "usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+    "file": "wqy-zenhei.ttc",
+    "sha256": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9",
+    "relativePath": "fonts/wqy-zenhei.ttc",
+    "license": "GPL-2.0-only WITH Font-exception-2.0"
+  },
+  "packages": {
+    "relativePath": "packages",
+    "downloadsAtRuntime": false,
+    "approved": [],
+    "packageSetDigestAlgorithm": "sha256(sorted 'name@version' entries joined with LF, no trailing newline)",
+    "packageSetDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "profile": {
+    "id": "typst-html-081b0530d02f7d29bfb369c7820cd318",
+    "schemaVersion": "rin-typst-html-profile/v2",
+    "compilerVersion": "0.15.1",
+    "compilerHash": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
+    "fontHash": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9",
+    "packageSetDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "adapterVersion": "rin-typst-html-adapter/v1",
+    "finalOutputVersion": "rin-final-output/v1",
+    "mathPresentation": "typst-mathml-native"
+  },
+  "rendererEnvironment": {
+    "required": [
+      "RIN_RENDERER_TYPST_BIN",
+      "RIN_RENDERER_TYPST_BIN_SHA256",
+      "RIN_RENDERER_TYPST_FONT_PATH",
+      "RIN_RENDERER_TYPST_FONT_SHA256",
+      "RIN_RENDERER_TYPST_PACKAGE_SHA256",
+      "RIN_RENDERER_TYPST_VERSION",
+      "RIN_RENDERER_TYPST_TIMEOUT_SECONDS",
+      "RIN_RENDERER_TYPST_MAX_OUTPUT_BYTES"
+    ],
+    "optional": [
+      "RIN_RENDERER_TYPST_MATH_RENDER"
+    ],
+    "mount": {
+      "hostPath": "/var/lib/rin-renderer/artifacts",
+      "containerPath": "/var/lib/rin-renderer/artifacts"
+    },
+    "defaults": {
+      "RIN_RENDERER_TYPST_TIMEOUT_SECONDS": "20",
+      "RIN_RENDERER_TYPST_MAX_OUTPUT_BYTES": "33554432",
+      "RIN_RENDERER_TYPST_MATH_RENDER": "false"
+    }
+  },
+  "acceptance": {
+    "offlineCompile": true,
+    "systemFontsIgnored": true,
+    "requiresNetworkAtRuntime": false
+  }
+}

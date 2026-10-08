@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "rin-typst-candidate-lock/v1",
+  "status": "production-candidate",
+  "platform": "linux/amd64",
+  "compiler": {
+    "version": "0.15.1",
+    "release": "https://github.com/typst/typst/releases/tag/v0.15.1",
+    "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+    "assetSha256": "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c",
+    "binarySha256": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
+    "license": "Apache-2.0",
+    "htmlArguments": [
+      "compile",
+      "--features",
+      "html",
+      "--format",
+      "html"
+    ],
+    "pdfArguments": [
+      "compile",
+      "--format",
+      "pdf"
+    ]
+  },
+  "languageServer": {
+    "extension": "myriad-dreamin.tinymist",
+    "version": "0.15.8",
+    "release": "https://github.com/Myriad-Dreamin/tinymist/releases/tag/v0.15.8",
+    "asset": "tinymist-0.15.8-linux-x64.vsix",
+    "assetSha256": "2dbf85fa0482cbbfc967d1e20efb5f9f8b4cc85caccebd1e3ea649a56c6f2aa9",
+    "bundledServerSha256": "781fcd7ccfa099d886f0a227def422595979febe77cbaf4b42f7c66cb746be1d",
+    "license": "Apache-2.0"
+  },
+  "experimentFont": {
+    "package": "fonts-wqy-zenhei",
+    "packageVersion": "0.9.45-8",
+    "file": "wqy-zenhei.ttc",
+    "sha256": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9"
+  },
+  "packagePolicy": {
+    "downloadsInWorker": false,
+    "externalImports": false,
+    "approvedPackages": [],
+    "packageSetDigestAlgorithm": "sha256(sorted 'name@version' entries joined with LF, no trailing newline)",
+    "packageSetDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "productionProfile": {
+    "id": "typst-html-081b0530d02f7d29bfb369c7820cd318",
+    "schemaVersion": "rin-typst-html-profile/v2",
+    "compilerVersion": "0.15.1",
+    "compilerHash": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
+    "fontHash": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9",
+    "packageSetDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "adapterVersion": "rin-typst-html-adapter/v1",
+    "finalOutputVersion": "rin-final-output/v1",
+    "mathPresentation": "typst-mathml-native"
+  },
+  "managedExtensionPatch": {
+    "patchVersion": "rinspace-tinymist-managed-v1",
+    "sourceTreeHash": "f2f3fc90ff8ea91634242d1907ce0c7aa43a9e10c1cfe7020a6162b65748dde7",
+    "outputTreeHash": "afce0b21837c1c57c1e1b948e714c72ede45f00facd1c7a5ea87b78ae94e4217"
+  },
+  "workerImageDigest": "ghcr.io/rinspacehq/rinspace/rin-renderer-typst-pdf@sha256:4256be396ec9cf3f39ba49c2d5ff379c7f42e4fd52400769417a311d432ba587",
+  "workerImageSourceHash": "f61cd4b1619fcfdbeef88179ea4b62a56a367d9e677d2771671f7c6119b2d6c0"
+}

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "rin-typst-pdf/v1",
+  "jobId": "job-typst-preview-1",
+  "requestId": "request-typst-preview-1",
+  "contentKind": "typst",
+  "outputKind": "typst-pdf-preview",
+  "documentEngine": "typst",
+  "resourceClass": "typst-pdf",
+  "priorityClass": "preview",
+  "idempotencyKey": "5523f0965d5e01c7cb7a0b75635c99909b44fbaf09912868aa530ef1e4c79575",
+  "renderProfileId": "typst-web-v1-pdf",
+  "entrypoint": "main.typ",
+  "workspaceRoot": "/workspace",
+  "snapshotHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "sessionId": "session-018fcafe-typst",
+  "draftRevision": 17,
+  "enginePolicyId": "rinspace-typst-pdf-safe-v1",
+  "imageDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "artifacts": [
+    {
+      "artifactId": "render-jobs/v1/typst/job-typst-preview-1/preview.pdf",
+      "kind": "pdf",
+      "path": ".rinspace/typst/preview.pdf",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "bytes": 4096,
+      "mediaType": "application/pdf",
+      "visibility": "private",
+      "expiresAt": "2026-09-14T00:00:00Z"
+    },
+    {
+      "artifactId": "render-jobs/v1/typst/job-typst-preview-1/preview.log",
+      "kind": "log",
+      "path": ".rinspace/typst/preview.log",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "bytes": 512,
+      "mediaType": "text/plain; charset=utf-8",
+      "visibility": "private",
+      "expiresAt": "2026-09-14T00:00:00Z"
+    }
+  ],
+  "totalArtifactBytes": 4608,
+  "diagnostics": [
+    {
+      "severity": "warning",
+      "code": "typst.deprecated",
+      "message": "Deprecated syntax",
+      "engine": "typst",
+      "source": {
+        "path": "main.typ",
+        "line": "3"
+      }
+    }
+  ],
+  "cache": {
+    "hit": false
+  },
+  "versions": {
+    "rinRenderer": "0.1.0-dev",
+    "typst": "0.15.1",
+    "compilerImage": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  }
+}

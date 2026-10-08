@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "rin-latex-pdf-lock/v1",
+  "policyId": "rinspace-latex-pdf-safe-v1",
+  "platform": "linux/amd64",
+  "baseImage": {
+    "reference": "docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867",
+    "allowedReferences": [
+      "docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867",
+      "mirror.gcr.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867"
+    ],
+    "indexDigest": "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+    "platformDigest": "sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867",
+    "created": "2026-08-24T00:00:00Z"
+  },
+  "packageRepository": {
+    "source": "base-image-debian.sources",
+    "suites": ["bookworm", "bookworm-updates", "bookworm-security"],
+    "integrity": "Debian signed InRelease plus exact direct package versions",
+    "dependencyClosure": "CI dpkg SPDX plus immutable image digest"
+  },
+  "compiler": {
+    "command": "/usr/local/bin/rinspace-latex-compile",
+    "sha256": "23131000332ad9039bce7845c23399ca0bb66cd2d296d7f6de138b1c816e34d4",
+    "engine": "xelatex",
+    "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
+    "latexmkVersion": "4.79",
+    "arguments": [
+      "-norc",
+      "-no-shell-escape",
+      "-pdfxe",
+      "-interaction=nonstopmode",
+      "-halt-on-error",
+      "-file-line-error",
+      "-recorder",
+      "-synctex=1",
+      "-outdir=/output"
+    ]
+  },
+  "texlive": {
+    "distribution": "TeX Live 2022/Debian",
+    "luaEngineVersion": "LuaHBTeX 1.15.0 (TeX Live 2022/Debian)"
+  },
+  "packages": {
+    "ca-certificates": "20250419~deb12u1",
+    "fonts-lmodern": "2.005-1",
+    "fonts-noto-cjk": "1:20220127+repack1-1",
+    "fonts-texgyre": "20180621-6",
+    "ghostscript": "10.0.0~dfsg-11+deb12u8",
+    "latexmk": "1:4.79-1",
+    "texlive-base": "2022.20230122-3",
+    "texlive-binaries": "2022.20220321.62855-5.1+deb12u2",
+    "texlive-fonts-recommended": "2022.20230122-3",
+    "texlive-lang-chinese": "2022.20230122-1",
+    "texlive-latex-base": "2022.20230122-3",
+    "texlive-latex-extra": "2022.20230122-4",
+    "texlive-latex-recommended": "2022.20230122-3",
+    "texlive-luatex": "2022.20230122-3",
+    "texlive-pictures": "2022.20230122-3",
+    "texlive-xetex": "2022.20230122-3"
+  },
+  "runtime": {
+    "uid": 65532,
+    "gid": 65532,
+    "network": "none",
+    "readOnlyRootFilesystem": true,
+    "capDrop": ["ALL"],
+    "noNewPrivileges": true,
+    "workspaceMount": "/workspace:ro",
+    "outputMount": "/output:rw",
+    "tmpfs": "/tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777",
+    "openinAny": "p",
+    "openoutAny": "p",
+    "shellEscape": false,
+    "packageDownloads": false
+  },
+  "limits": {
+    "nanoCpus": 1000000000,
+    "memoryBytes": 1610612736,
+    "memorySwapBytes": 1610612736,
+    "pids": 256,
+    "wallTimeSeconds": 90,
+    "pdfBytes": 33554432,
+    "logBytes": 2097152,
+    "artifactBytes": 50331648
+  }
+}

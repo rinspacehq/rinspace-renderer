@@ -1,0 +1,83 @@
+# Fixed Typst PDF workload image.
+#
+# Built on a bounded isolated runner with a pinned BASE_IMAGE digest; the runtime stage ships no network tooling, so a
+# started container cannot fetch packages or imports. Every value below is
+# mirrored in typst-pdf.lock.json and asserted by typst-pdf-policy.test.mjs.
+ARG BASE_IMAGE=docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867
+
+FROM --platform=linux/amd64 ${BASE_IMAGE} AS typst-builder
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+
+ARG TYPST_VERSION=0.15.1
+ARG TYPST_ASSET=typst-x86_64-unknown-linux-musl.tar.xz
+ARG TYPST_ASSET_SHA256=a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c
+ARG TYPST_BINARY_SHA256=29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates=20250419~deb12u1 \
+      curl=7.88.1-10+deb12u15 \
+      xz-utils=5.4.1-1+deb12u1 \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /root/.cache
+
+RUN set -eu; \
+    curl --fail --location --silent --show-error --proto '=https' --tlsv1.2 \
+      --output "/tmp/${TYPST_ASSET}" \
+      "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/${TYPST_ASSET}"; \
+    printf '%s  /tmp/%s\n' "${TYPST_ASSET_SHA256}" "${TYPST_ASSET}" | sha256sum -c -; \
+    mkdir -p /opt/typst; \
+    tar -xJf "/tmp/${TYPST_ASSET}" -C /opt/typst --strip-components=1 \
+      "typst-x86_64-unknown-linux-musl/typst"; \
+    printf '%s  /opt/typst/typst\n' "${TYPST_BINARY_SHA256}" | sha256sum -c -; \
+    rm -f "/tmp/${TYPST_ASSET}"
+
+FROM --platform=linux/amd64 ${BASE_IMAGE}
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+
+ARG SOURCE_HASH=unresolved
+ARG TYPST_VERSION=0.15.1
+ARG TYPST_BINARY_PATH=/usr/local/bin/typst
+ARG TYPST_BINARY_SHA256=29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237
+ARG TYPST_COMPILER_PATH=/usr/local/bin/rinspace-typst-compile
+ARG TYPST_COMPILER_SHA256=e8b928f29db35c02a7e882ae93dd032ea586cf07efa07d769af6aaab837ee8a6
+ARG TYPST_FONT_PATH=/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc
+ARG TYPST_FONT_SHA256=79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9
+ARG TYPST_PACKAGE_PATH=/opt/rinspace/typst-packages
+ARG TYPST_PACKAGE_CACHE_PATH=/opt/rinspace/typst-package-cache
+ARG TYPST_POLICY_ID=rinspace-typst-pdf-safe-v1
+LABEL com.rinspace.typst-pdf.source-sha256="${SOURCE_HASH}"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SOURCE_DATE_EPOCH=0 \
+    HOME=/tmp/rinspace-home \
+    XDG_CACHE_HOME=/tmp/rinspace-cache \
+    RINSPACE_TYPST_POLICY_ID=rinspace-typst-pdf-safe-v1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates=20250419~deb12u1 \
+      fonts-wqy-zenhei=0.9.45-8 \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /root/.cache
+
+COPY --from=typst-builder /opt/typst/typst /usr/local/bin/typst
+COPY ${RENDERER_SOURCE_ROOT}/deploy/typst-pdf.lock.json /opt/rinspace/typst-pdf.lock.json
+COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/rinspace-typst-compile /usr/local/bin/rinspace-typst-compile
+COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/verify-typst-pdf-runtime.sh /usr/local/bin/verify-typst-pdf-runtime
+
+RUN mkdir -p /workspace /output "${TYPST_PACKAGE_PATH}" "${TYPST_PACKAGE_CACHE_PATH}" \
+    && chown 65532:65532 /workspace /output \
+    && chmod 0555 "${TYPST_PACKAGE_PATH}" "${TYPST_PACKAGE_CACHE_PATH}" \
+    && printf 'version=%s\nbinaryPath=%s\nbinarySha256=%s\ncompilerPath=%s\ncompilerSha256=%s\nfontPath=%s\nfontSha256=%s\npackagePath=%s\npackageCachePath=%s\npolicyId=%s\n' \
+      "${TYPST_VERSION}" "${TYPST_BINARY_PATH}" "${TYPST_BINARY_SHA256}" \
+      "${TYPST_COMPILER_PATH}" "${TYPST_COMPILER_SHA256}" \
+      "${TYPST_FONT_PATH}" "${TYPST_FONT_SHA256}" \
+      "${TYPST_PACKAGE_PATH}" "${TYPST_PACKAGE_CACHE_PATH}" "${TYPST_POLICY_ID}" \
+      > /opt/rinspace/typst-pdf.pins
+
+USER 65532:65532
+WORKDIR /workspace
+ENTRYPOINT ["/usr/local/bin/rinspace-typst-compile"]

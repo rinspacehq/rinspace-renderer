@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "rin-markdown-corpus-fixture/v1",
+  "id": "article-rich",
+  "kind": "article",
+  "language": "zh-CN",
+  "entrypoints": ["article.md"],
+  "features": ["article", "cjk", "gfm", "directives", "footnotes", "links", "images", "code", "math", "diagrams"],
+  "invariants": {
+    "workUnitsAtLeast": {"math": 2, "mathInline": 1, "mathDisplay": 1, "code": 2, "diagram": 1},
+    "classCountsAtLeast": {"rin-admonition": 1, "footnotes": 1, "data-footnote-backref": 1, "rin-markdown-image": 1, "rin-math": 2, "shiki": 1, "rin-reader-diagram": 1},
+    "diagnosticCodesInclude": ["markdown.code.language_unknown"],
+    "assetPaths": ["images/vector.svg"]
+  }
+}

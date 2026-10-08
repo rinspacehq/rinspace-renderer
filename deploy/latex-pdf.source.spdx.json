@@ -1,0 +1,47 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "rinspace-latex-pdf-source-lock",
+  "documentNamespace": "https://rinspace.com/spdx/latex-pdf/rin-latex-pdf-lock-v1-20260824",
+  "creationInfo": {
+    "created": "2026-08-29T00:00:00Z",
+    "creators": ["Tool: rinspace-latex-pdf-lock/v1"]
+  },
+  "documentDescribes": [
+    "SPDXRef-Package-ca-certificates",
+    "SPDXRef-Package-fonts-lmodern",
+    "SPDXRef-Package-fonts-noto-cjk",
+    "SPDXRef-Package-fonts-texgyre",
+    "SPDXRef-Package-ghostscript",
+    "SPDXRef-Package-latexmk",
+    "SPDXRef-Package-texlive-base",
+    "SPDXRef-Package-texlive-binaries",
+    "SPDXRef-Package-texlive-fonts-recommended",
+    "SPDXRef-Package-texlive-lang-chinese",
+    "SPDXRef-Package-texlive-latex-base",
+    "SPDXRef-Package-texlive-latex-extra",
+    "SPDXRef-Package-texlive-latex-recommended",
+    "SPDXRef-Package-texlive-luatex",
+    "SPDXRef-Package-texlive-pictures",
+    "SPDXRef-Package-texlive-xetex"
+  ],
+  "packages": [
+    { "name": "ca-certificates", "SPDXID": "SPDXRef-Package-ca-certificates", "versionInfo": "20250419~deb12u1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "fonts-lmodern", "SPDXID": "SPDXRef-Package-fonts-lmodern", "versionInfo": "2.005-1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "fonts-noto-cjk", "SPDXID": "SPDXRef-Package-fonts-noto-cjk", "versionInfo": "1:20220127+repack1-1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "fonts-texgyre", "SPDXID": "SPDXRef-Package-fonts-texgyre", "versionInfo": "20180621-6", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "ghostscript", "SPDXID": "SPDXRef-Package-ghostscript", "versionInfo": "10.0.0~dfsg-11+deb12u8", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "latexmk", "SPDXID": "SPDXRef-Package-latexmk", "versionInfo": "1:4.79-1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-base", "SPDXID": "SPDXRef-Package-texlive-base", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-binaries", "SPDXID": "SPDXRef-Package-texlive-binaries", "versionInfo": "2022.20220321.62855-5.1+deb12u2", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-fonts-recommended", "SPDXID": "SPDXRef-Package-texlive-fonts-recommended", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-lang-chinese", "SPDXID": "SPDXRef-Package-texlive-lang-chinese", "versionInfo": "2022.20230122-1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-latex-base", "SPDXID": "SPDXRef-Package-texlive-latex-base", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-latex-extra", "SPDXID": "SPDXRef-Package-texlive-latex-extra", "versionInfo": "2022.20230122-4", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-latex-recommended", "SPDXID": "SPDXRef-Package-texlive-latex-recommended", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-luatex", "SPDXID": "SPDXRef-Package-texlive-luatex", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-pictures", "SPDXID": "SPDXRef-Package-texlive-pictures", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "texlive-xetex", "SPDXID": "SPDXRef-Package-texlive-xetex", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" }
+  ]
+}

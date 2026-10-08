@@ -1,0 +1,116 @@
+name: Renderer candidate image
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: Build exactly one candidate component
+        required: true
+        type: choice
+        options:
+          - latexml-base
+          - runtime
+          - latex-pdf
+          - typst-pdf
+      renderer_base_image:
+        description: Exact latexml-base digest, required only for runtime
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: renderer-heavy-image-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.repository == 'rinspacehq/rinspace-renderer' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      GOMAXPROCS: '1'
+      GOFLAGS: -p=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate immutable build inputs
+        id: inputs
+        env:
+          COMPONENT: ${{ inputs.component }}
+          BASE: ${{ inputs.renderer_base_image }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$COMPONENT" in
+            latexml-base) file=deploy/Dockerfile.latexml; target=runtime ;;
+            runtime) file=deploy/Dockerfile.runtime; target= ;;
+            latex-pdf) file=deploy/Dockerfile.latex-pdf; target= ;;
+            typst-pdf) file=deploy/Dockerfile.typst-pdf; target= ;;
+            *) exit 2 ;;
+          esac
+          if [ "$COMPONENT" = runtime ]; then
+            [[ "$BASE" =~ ^ghcr\.io/rinspacehq/rinspace-renderer/latexml-base@sha256:[a-f0-9]{64}$ ]] || exit 2
+          else
+            [ -z "$BASE" ] || exit 2
+          fi
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/rinspacehq/rinspace-renderer/$COMPONENT" >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          source_hash="$(find deploy -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"
+          echo "source_hash=$source_hash" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push candidate by commit tag
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.inputs.outputs.file }}
+          target: ${{ steps.inputs.outputs.target }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.inputs.outputs.image }}:candidate-${{ github.sha }}
+          build-args: |
+            RENDERER_SOURCE_ROOT=.
+            SOURCE_HASH=${{ steps.inputs.outputs.source_hash }}
+            RENDERER_BASE_IMAGE=${{ steps.inputs.outputs.base }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/rinspacehq/rinspace-renderer
+            org.opencontainers.image.revision=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+      - name: Record immutable candidate reference
+        env:
+          COMPONENT: ${{ inputs.component }}
+          IMAGE: ${{ steps.inputs.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          BASE: ${{ steps.inputs.outputs.base }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          if (!/^sha256:[a-f0-9]{64}$/.test(process.env.DIGEST)) throw new Error('missing OCI digest');
+          const result = {
+            schemaVersion: 'rin-renderer-image-candidate/v1',
+            component: process.env.COMPONENT,
+            sourceCommit: process.env.GITHUB_SHA,
+            platform: 'linux/amd64',
+            reference: `${process.env.IMAGE}@${process.env.DIGEST}`,
+            rendererBaseImage: process.env.BASE || null,
+            workflowRun: process.env.GITHUB_RUN_ID,
+            status: 'candidate-only',
+          };
+          writeFileSync('renderer-image-candidate.json', `${JSON.stringify(result, null, 2)}\n`);
+          console.log(result.reference);
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renderer-image-candidate-${{ inputs.component }}-${{ github.sha }}
+          path: renderer-image-candidate.json
+          if-no-files-found: error

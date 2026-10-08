@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/latex-pdf-preview-error.schema.json",
+  "title": "RinLatexPDFPreviewError",
+  "type": "object",
+  "required": ["code", "category", "retryable", "message"],
+  "properties": {
+    "code": {
+      "description": "Bounded failure vocabulary shared by draft previews and committed document jobs. Document jobs classify a rejected project source as source_invalid and a compiler rejection as compile_failed.",
+      "enum": [
+        "snapshot_invalid",
+        "snapshot_hash_mismatch",
+        "entrypoint_invalid",
+        "source_invalid",
+        "idempotency_conflict",
+        "queue_full",
+        "superseded",
+        "compile_failed",
+        "timeout",
+        "resource_exhausted",
+        "artifact_invalid",
+        "canceled",
+        "unavailable"
+      ]
+    },
+    "category": { "enum": ["input", "conflict", "admission", "compile", "limit", "cancel", "internal"] },
+    "retryable": { "type": "boolean" },
+    "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "exitCode": { "type": "integer", "minimum": 0, "maximum": 255 }
+  },
+  "additionalProperties": false
+}

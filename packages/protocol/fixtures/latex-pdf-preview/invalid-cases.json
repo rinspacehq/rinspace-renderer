@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "rin-latex-pdf-preview-invalid-fixtures/v1",
+  "base": "result.json",
+  "cases": [
+    {
+      "name": "unknown artifact kind",
+      "path": ["artifacts", 0, "kind"],
+      "value": "zip",
+      "expectedError": "artifact_kind"
+    },
+    {
+      "name": "artifact output traversal",
+      "path": ["artifacts", 0, "path"],
+      "value": "../.rinspace/main.pdf",
+      "expectedError": "artifact_path"
+    },
+    {
+      "name": "PDF exceeds 32 MiB",
+      "path": ["artifacts", 0, "bytes"],
+      "value": 33554433,
+      "expectedError": "artifact_size"
+    },
+    {
+      "name": "log exceeds 2 MiB",
+      "path": ["artifacts", 2, "bytes"],
+      "value": 2097153,
+      "expectedError": "artifact_size"
+    },
+    {
+      "name": "declared total does not equal artifact sum",
+      "path": ["totalArtifactBytes"],
+      "value": 1371577,
+      "expectedError": "artifact_total"
+    }
+  ]
+}

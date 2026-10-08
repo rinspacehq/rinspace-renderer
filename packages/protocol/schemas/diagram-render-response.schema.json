@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/diagram-render-response.schema.json",
+  "title": "RinRendererDiagramResponse",
+  "type": "object",
+  "required": ["requestId", "id", "type", "svgHash", "objectId", "cloudbaseUrl", "url", "uploaded", "engine", "versions", "diagnostics"],
+  "properties": {
+    "requestId": { "type": "string" },
+    "id": { "type": "string" },
+    "type": { "type": "string" },
+    "svgHash": { "type": "string" },
+    "svgBytes": { "type": "integer", "minimum": 1 },
+    "objectId": { "type": "string" },
+    "cloudbaseUrl": { "type": "string" },
+    "url": { "type": "string" },
+    "uploaded": { "type": "boolean" },
+    "engine": { "type": "string" },
+    "versions": { "type": "object" },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "./diagnostic.schema.json" }
+    },
+    "cached": { "type": "boolean" },
+    "renderUrl": { "type": "string" }
+  },
+  "additionalProperties": false
+}

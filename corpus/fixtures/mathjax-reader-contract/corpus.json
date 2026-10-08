@@ -1,0 +1,40 @@
+{
+  "id": "mathjax-reader-contract",
+  "title": "MathJax Reader Contract",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["article", "equations", "mathjax-reader-contract"],
+  "invariants": {
+    "htmlContains": [
+      "MathJax reader contract",
+      "rin-math-mathjax",
+      "rin-mathjax-chtml-style",
+      "data-rin-math-source=\"\\not\\exists k\\in\\mathbb{R}\"",
+      "mjx-c.mjx-c2204",
+      "∄",
+      "data-rin-math-source=\"\\mathbf{x}=\\begin{bmatrix}",
+      "mjx-stretchy-v"
+    ],
+    "htmlNotContains": [
+      "<math",
+      "katex-error",
+      "RINRENDERERMATHPLACEHOLDER",
+      "RINRENDERERSHAREDMATH",
+      "{{\\begin{bmatrix}",
+      "{{{bmatrix}}}"
+    ],
+    "htmlContainsCountAtLeast": {
+      "rin-math-mathjax": 4,
+      "rin-mathjax-chtml-style": 1
+    },
+    "noLateXMLMathML": true,
+    "noLateXMLEquationTables": true,
+    "noKatexErrors": true,
+    "minMathCount": 4,
+    "minMathJaxCount": 4,
+    "maxMathFailedCount": 0,
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 0,
+    "maxDiagramCount": 0
+  }
+}

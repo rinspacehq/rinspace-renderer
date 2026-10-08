@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "rin-final-output-fixtures/v1",
+  "validatorVersion": "rin-final-output/v1",
+  "cases": [
+    {
+      "name": "safe_mathjax_chtml",
+      "fragment": "<style class=\"rin-mathjax-chtml-style\">mjx-container{display:inline-block}</style><span id=\"math-1\" class=\"rin-math\"><mjx-container><mjx-math><mjx-mi>x</mjx-mi></mjx-math></mjx-container></span>"
+    },
+    {
+      "name": "safe_public_artifact",
+      "fragment": "<figure><img src=\"https://cdn.example/diagram.svg\" data-rin-diagram-object-id=\"diagrams/v1/svg-sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.svg\"></figure>",
+      "requiredArtifacts": [
+        {
+          "artifactId": "diagrams/v1/svg-sha256/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.svg",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 128,
+          "mediaType": "image/svg+xml; charset=utf-8",
+          "visibility": "public"
+        }
+      ]
+    },
+    {
+      "name": "safe_client_owned_asset",
+      "fragment": "<img src=\"images/a.png\" data-rin-asset-path=\"images/a.png\">",
+      "clientOwnedAssets": [
+        "images/a.png"
+      ]
+    },
+    {
+      "name": "reject_script",
+      "fragment": "<p>before</p><script>alert(1)</script>",
+      "wantCode": "final_output.executable_element"
+    },
+    {
+      "name": "reject_event_handler",
+      "fragment": "<img src=\"https://cdn.example/a.png\" oNerror=\"alert(1)\">",
+      "wantCode": "final_output.event_handler"
+    },
+    {
+      "name": "reject_encoded_javascript_url",
+      "fragment": "<a href=\"java&#x73;cript:alert(1)\">bad</a>",
+      "wantCode": "final_output.unsafe_url"
+    },
+    {
+      "name": "reject_data_url",
+      "fragment": "<img src=\"data:image/svg+xml,%3Csvg%3E%3C/svg%3E\">",
+      "wantCode": "final_output.unsafe_url"
+    },
+    {
+      "name": "reject_renderer_local_file",
+      "fragment": "<img src=\"file:///tmp/rin-renderer/output.svg\">",
+      "wantCode": "final_output.renderer_local_path"
+    },
+    {
+      "name": "reject_renderer_local_host",
+      "fragment": "<img src=\"http://127.0.0.1:8090/output.svg\">",
+      "wantCode": "final_output.renderer_local_path"
+    },
+    {
+      "name": "reject_renderer_local_metadata_path",
+      "fragment": "<figure data-source-file=\"/tmp/rin-renderer/project/main.tex\"></figure>",
+      "wantCode": "final_output.renderer_local_path"
+    },
+    {
+      "name": "reject_reserved_element",
+      "fragment": "<rin-work data-id=\"rw_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"></rin-work>",
+      "wantCode": "final_output.unknown_placeholder"
+    },
+    {
+      "name": "reject_reserved_text_token",
+      "fragment": "<p>RINRENDERERDIAGRAMPLACEHOLDER0001</p>",
+      "wantCode": "final_output.unknown_placeholder"
+    },
+    {
+      "name": "reject_dom_clobbering_name",
+      "fragment": "<form name=\"window\"></form>",
+      "wantCode": "final_output.dom_clobbering_identifier"
+    },
+    {
+      "name": "reject_duplicate_id",
+      "fragment": "<h2 id=\"intro\">A</h2><p id=\"intro\">B</p>",
+      "wantCode": "final_output.dom_clobbering_identifier"
+    },
+    {
+      "name": "reject_unsafe_style_attribute",
+      "fragment": "<p style=\"background:url(javascript:alert(1))\">bad</p>",
+      "wantCode": "final_output.unsafe_style"
+    },
+    {
+      "name": "reject_unsafe_style_element",
+      "fragment": "<style>@import 'https://evil.example/style.css';</style>",
+      "wantCode": "final_output.unsafe_style"
+    },
+    {
+      "name": "reject_oversized_fragment",
+      "fragment": "<p>123456789</p>",
+      "maxFragmentBytes": 8,
+      "wantCode": "final_output.too_large"
+    },
+    {
+      "name": "reject_missing_required_artifact",
+      "fragment": "<img src=\"https://cdn.example/missing.svg\" data-rin-math-object-id=\"diagrams/v1/svg-sha256/bb/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.svg\">",
+      "wantCode": "final_output.artifact_missing"
+    },
+    {
+      "name": "reject_unreferenced_required_artifact",
+      "fragment": "<p>no artifact</p>",
+      "requiredArtifacts": [
+        {
+          "artifactId": "diagrams/v1/svg-sha256/cc/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.svg",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "bytes": 64,
+          "mediaType": "image/svg+xml; charset=utf-8",
+          "visibility": "public"
+        }
+      ],
+      "wantCode": "final_output.artifact_unreferenced"
+    },
+    {
+      "name": "reject_missing_client_manifest_asset",
+      "fragment": "<img src=\"images/missing.png\" data-rin-asset-path=\"images/missing.png\">",
+      "wantCode": "final_output.client_asset_missing"
+    },
+    {
+      "name": "reject_undeclared_relative_resource",
+      "fragment": "<img src=\"images/missing.png\">",
+      "wantCode": "final_output.artifact_missing"
+    },
+    {
+      "name": "reject_native_latexml_error",
+      "fragment": "<p>before</p><span class=\"ltx_ERROR undefined\">\\\\Needspace</span>",
+      "wantCode": "final_output.render_error"
+    },
+    {
+      "name": "reject_mathml_error",
+      "fragment": "<math><merror><mtext>bad input</mtext></merror></math>",
+      "wantCode": "final_output.render_error"
+    },
+    {
+      "name": "reject_mathjax_error_element",
+      "fragment": "<mjx-container><mjx-merror>bad input</mjx-merror></mjx-container>",
+      "wantCode": "final_output.render_error"
+    },
+    {
+      "name": "reject_mathjax_error_class",
+      "fragment": "<span class=\"rin-math mjx-merror\">bad input</span>",
+      "wantCode": "final_output.render_error"
+    },
+    {
+      "name": "reject_katex_error",
+      "fragment": "<span class=\"katex-error\">bad input</span>",
+      "wantCode": "final_output.render_error"
+    },
+    {
+      "name": "allow_escaped_error_example",
+      "fragment": "<pre><code>&lt;span class=\"ltx_ERROR\"&gt;example&lt;/span&gt;</code></pre>"
+    },
+    {
+      "name": "allow_error_class_prefix",
+      "fragment": "<p class=\"ltx_ERROR-example\">documentation</p>"
+    },
+    {
+      "name": "reject_unrendered_math_source",
+      "fragment": "<div class=\"rin-math rin-math-fallback\"><code class=\"rin-math-source-fallback\">\\bad{x}</code></div>",
+      "wantCode": "final_output.render_error"
+    },
+    {
+      "name": "allow_authored_tex_example",
+      "fragment": "<pre><code>\\newtheorem{theorem}{Theorem}</code></pre>"
+    }
+  ]
+}

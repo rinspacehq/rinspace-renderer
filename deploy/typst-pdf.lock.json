@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "rin-typst-pdf-lock/v1",
+  "policyId": "rinspace-typst-pdf-safe-v1",
+  "platform": "linux/amd64",
+  "baseImage": {
+    "reference": "docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867",
+    "allowedReferences": [
+      "docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867",
+      "mirror.gcr.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867"
+    ],
+    "indexDigest": "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+    "platformDigest": "sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867",
+    "created": "2026-08-24T00:00:00Z"
+  },
+  "packageRepository": {
+    "source": "base-image-debian.sources",
+    "suites": [
+      "bookworm",
+      "bookworm-updates",
+      "bookworm-security"
+    ],
+    "integrity": "Debian signed InRelease plus exact direct package versions",
+    "dependencyClosure": "CI dpkg SPDX plus immutable image digest"
+  },
+  "compiler": {
+    "command": "/usr/local/bin/rinspace-typst-compile",
+    "sha256": "e8b928f29db35c02a7e882ae93dd032ea586cf07efa07d769af6aaab837ee8a6",
+    "engine": "typst",
+    "version": "0.15.1",
+    "release": "https://github.com/typst/typst/releases/tag/v0.15.1",
+    "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+    "assetSha256": "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c",
+    "binaryPath": "/usr/local/bin/typst",
+    "binarySha256": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
+    "license": "Apache-2.0",
+    "linkage": "static-musl",
+    "arguments": [
+      "compile",
+      "--root=/workspace",
+      "--font-path=/usr/share/fonts/truetype/wqy",
+      "--ignore-system-fonts",
+      "--package-path=/opt/rinspace/typst-packages",
+      "--package-cache-path=/opt/rinspace/typst-package-cache",
+      "--format=pdf"
+    ]
+  },
+  "fonts": [
+    {
+      "package": "fonts-wqy-zenhei",
+      "packageVersion": "0.9.45-8",
+      "file": "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+      "sha256": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9"
+    }
+  ],
+  "packagePath": "/opt/rinspace/typst-packages",
+  "packages": {
+    "ca-certificates": "20250419~deb12u1",
+    "fonts-wqy-zenhei": "0.9.45-8"
+  },
+  "runtime": {
+    "uid": 65532,
+    "gid": 65532,
+    "network": "none",
+    "readOnlyRootFilesystem": true,
+    "capDrop": [
+      "ALL"
+    ],
+    "noNewPrivileges": true,
+    "workspaceMount": "/workspace:ro",
+    "outputMount": "/output:rw",
+    "tmpfs": "/tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777",
+    "systemFonts": false,
+    "packageDownloads": false
+  },
+  "limits": {
+    "nanoCpus": 1000000000,
+    "memoryBytes": 536870912,
+    "memorySwapBytes": 536870912,
+    "pids": 128,
+    "wallTimeSeconds": 30,
+    "pdfBytes": 33554432,
+    "logBytes": 2097152,
+    "artifactBytes": 50331648
+  },
+  "packageCachePath": "/opt/rinspace/typst-package-cache"
+}

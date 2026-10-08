@@ -1,0 +1,19 @@
+{
+  "id": "basic-article",
+  "title": "Basic Article",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["article", "references"],
+  "invariants": {
+    "htmlContains": ["Rin Renderer", "Introduction", "equation", "rin-math", "rin-math-mathjax"],
+    "htmlNotContains": ["RINRENDERERDIAGRAMPLACEHOLDER", "RINRENDERERMATHPLACEHOLDER", "/rin/api/diagrams", "rin-latexml-katex"],
+    "noLateXMLMathML": true,
+    "noKatexErrors": true,
+    "minMathCount": 1,
+    "minMathJaxCount": 1,
+    "maxMathFailedCount": 0,
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 0,
+    "maxDiagramCount": 0
+  }
+}

@@ -1,0 +1,106 @@
+ARG GO_BASE_IMAGE=docker.io/library/golang@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437
+ARG PERL_BASE_IMAGE=docker.io/library/perl@sha256:37564cce911eab690ff139b6941bb5b72a13ef7331fc97363aa5f64bf54fa13e
+ARG LATEXML_REPO=https://github.com/brucemiller/LaTeXML.git
+ARG LATEXML_COMMIT=ae2c8b266d1aa04af4350a64c79215bbe4b7c482
+
+FROM ${GO_BASE_IMAGE} AS api-build
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+WORKDIR /src/rin-renderer/api
+COPY ${RENDERER_SOURCE_ROOT}/api/go.mod ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+COPY ${RENDERER_SOURCE_ROOT}/api/ ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/rin-renderer-api .
+
+FROM ${GO_BASE_IMAGE} AS texsvg-build
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+WORKDIR /src/rin-renderer/engines/texsvg
+COPY ${RENDERER_SOURCE_ROOT}/engines/texsvg/go.mod ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+COPY ${RENDERER_SOURCE_ROOT}/engines/texsvg/ ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/rin-renderer-texsvg .
+
+FROM ${PERL_BASE_IMAGE} AS latexml-base
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+ARG LATEXML_REPO
+ARG LATEXML_COMMIT
+
+ENV RIN_RENDERER_LATEXML_BIN=/usr/local/bin/latexmlc \
+    RIN_RENDERER_LATEXML_VERSION=${LATEXML_COMMIT}
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+	    && apt-get update \
+	    && apt-get install -y --no-install-recommends \
+	      ca-certificates \
+	      cpanminus \
+	      dvisvgm \
+	      gcc \
+      ghostscript \
+      git \
+      libc6-dev \
+      libxml2-dev \
+      libxslt1-dev \
+      make \
+      nodejs \
+      npm \
+      texlive-base \
+      texlive-fonts-recommended \
+      texlive-lang-chinese \
+      texlive-latex-base \
+      texlive-latex-extra \
+      texlive-latex-recommended \
+      texlive-pictures \
+      texlive-xetex \
+      zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt
+RUN --mount=type=cache,target=/root/.cpanm \
+    git clone "${LATEXML_REPO}" LaTeXML \
+    && cd LaTeXML \
+    && git checkout "${LATEXML_COMMIT}" \
+    && cpanm --notest --installdeps . \
+    && perl Makefile.PL NOMKTEXLSR \
+    && make \
+    && make install
+
+COPY ${RENDERER_SOURCE_ROOT}/engines/latexml/latexml.lock /opt/rin-renderer/engines/latexml/latexml.lock
+
+FROM latexml-base AS runtime
+ARG RENDERER_SOURCE_ROOT=rin-renderer
+
+ENV RIN_RENDERER_ADDR=:8090 \
+    RIN_RENDERER_MATH_PRIMARY_ENGINE=mathjax-chtml \
+    RIN_RENDERER_MATHJAX_NODE_BIN=/usr/bin/node \
+    RIN_RENDERER_MATHJAX_SCRIPT=/opt/rin-renderer/engines/mathjax/render-mathjax.mjs \
+    RIN_RENDERER_MATHJAX_VERSION=4.1.3 \
+    RIN_RENDERER_MATHJAX_OUTPUT=chtml \
+    RIN_RENDERER_MATHJAX_FONT_VERSION=mathjax-newcm-4.1.3 \
+    RIN_RENDERER_KATEX_NODE_BIN=/usr/bin/node \
+    RIN_RENDERER_KATEX_SCRIPT=/opt/rin-renderer/engines/katex/render-katex.mjs
+
+WORKDIR /opt/rin-renderer/engines/katex
+COPY ${RENDERER_SOURCE_ROOT}/engines/katex/package.json ${RENDERER_SOURCE_ROOT}/engines/katex/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --ignore-scripts
+COPY ${RENDERER_SOURCE_ROOT}/engines/katex/render-katex.mjs ./
+
+WORKDIR /opt/rin-renderer/engines/mathjax
+COPY ${RENDERER_SOURCE_ROOT}/engines/mathjax/package.json ${RENDERER_SOURCE_ROOT}/engines/mathjax/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --ignore-scripts
+COPY ${RENDERER_SOURCE_ROOT}/engines/mathjax/render-mathjax.mjs ./
+
+COPY --from=api-build /out/rin-renderer-api /usr/local/bin/rin-renderer-api
+COPY --from=texsvg-build /out/rin-renderer-texsvg /usr/local/bin/rin-renderer-texsvg
+COPY ${RENDERER_SOURCE_ROOT}/deploy/verify-latexml-runtime.sh /usr/local/bin/verify-latexml-runtime
+COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/rin-renderer-healthcheck /usr/local/bin/rin-renderer-healthcheck
+
+EXPOSE 8090
+CMD ["rin-renderer-api"]

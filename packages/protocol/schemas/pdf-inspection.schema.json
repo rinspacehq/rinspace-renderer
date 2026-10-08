@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://renderer.rinspace.com/schemas/pdf-inspection.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "contentKind", "engine", "sourceSha256", "sourceBytes", "pdfVersion", "pageCount", "toc", "derivatives", "originalReencoded"],
+  "properties": {
+    "schemaVersion": { "const": "rin-pdf-inspection/v1" },
+    "contentKind": { "const": "pdf" },
+    "engine": { "const": "pdf-inspect" },
+    "sourceSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sourceBytes": { "type": "integer", "minimum": 1, "maximum": 83886080 },
+    "pdfVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "pageCount": { "type": "integer", "minimum": 1 },
+    "toc": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "page": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "derivatives": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourcePage", "mediaType", "purpose"],
+        "properties": {
+          "sourcePage": { "type": "integer", "minimum": 1 },
+          "mediaType": { "const": "image/webp" },
+          "purpose": { "type": "string", "pattern": "^(cover|preview-[1-3])$" }
+        }
+      }
+    },
+    "originalReencoded": { "const": false }
+  }
+}

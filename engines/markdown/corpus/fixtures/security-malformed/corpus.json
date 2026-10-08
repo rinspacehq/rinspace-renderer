@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "rin-markdown-corpus-fixture/v1",
+  "id": "security-malformed",
+  "kind": "article",
+  "language": "zh-CN",
+  "entrypoints": ["attacks.md"],
+  "features": ["article", "malformed-input", "security", "directives", "links", "images", "code"],
+  "invariants": {
+    "workUnitsAtLeast": {"code": 1},
+    "classCountsAtLeast": {},
+    "diagnosticCodesInclude": ["markdown.raw_html.disabled", "markdown.url.disallowed", "markdown.directive.unsupported", "markdown.code.language_unknown"],
+    "assetPaths": []
+  }
+}

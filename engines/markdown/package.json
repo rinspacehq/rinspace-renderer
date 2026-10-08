@@ -1,0 +1,40 @@
+{
+  "name": "@rinspace/rin-renderer-markdown-engine",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0 <23"
+  },
+  "packageManager": "npm@10.9.8",
+  "scripts": {
+    "start": "node worker.mjs --ndjson-worker",
+    "smoke": "node smoke.mjs",
+    "compile-draft:test": "node compile-draft.test.mjs",
+    "book:test": "node book.test.mjs",
+    "finalize:test": "node finalizer.test.mjs",
+    "corpus:test": "node corpus/run-corpus.mjs --out .rin-markdown-corpus/report.json --deltas-out .rin-markdown-corpus/deltas.json",
+    "corpus:gate:test": "node corpus/check-upgrade-gate.test.mjs",
+    "shadow:test": "node corpus/run-article-shadow.test.mjs && node corpus/run-book-shadow.test.mjs && node corpus/run-article-shadow.mjs --manifest fixtures/article-shadow-synthetic.json --validate-only && node corpus/run-book-shadow.mjs --manifest fixtures/book-shadow-synthetic.json --validate-only",
+    "shiki:test": "node shiki.test.mjs",
+    "fixtures:validate": "node validate-current-behavior-fixtures.mjs",
+    "verify:isolation": "node verify-isolation.mjs",
+    "check": "npm run fixtures:validate && npm run compile-draft:test && npm run book:test && npm run shiki:test && npm run finalize:test && npm run corpus:test && npm run corpus:gate:test && npm run shadow:test && npm run smoke && npm run verify:isolation"
+  },
+  "dependencies": {
+    "mdast-util-to-string": "4.0.0",
+    "rehype-parse": "9.0.1",
+    "rehype-sanitize": "6.0.0",
+    "rehype-stringify": "10.0.1",
+    "remark-directive": "4.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
+    "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
+    "shiki": "4.4.2",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.1.0",
+    "unist-util-visit-parents": "6.0.2",
+    "vfile": "6.0.3"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "large-boundary",
+  "title": "Large Boundary",
+  "mainFile": "main.tex",
+  "engines": ["latexml"],
+  "features": ["article", "references", "large-boundary"],
+  "invariants": {
+    "htmlContains": ["Boundary chapter 01", "Boundary chapter 12", "Final cross reference"],
+    "htmlNotContains": ["../", "RINRENDERERDIAGRAMPLACEHOLDER", "/rin/api/diagrams"],
+    "diagnosticMaxSeverity": "warning",
+    "minDiagramCount": 0
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "rin-document-bundle/v1",
+  "projectHash": "2222222222222222222222222222222222222222222222222222222222222222",
+  "bundleHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "state": "draft",
+  "contentKind": "markdown",
+  "documentEngine": "rin-markdown",
+  "title": "Renderer Notes",
+  "pages": [
+    {
+      "id": "md-001-可爱捏",
+      "sourcePath": "README.md",
+      "fragment": "<article><pre><rin-work data-id=\"rw_33333333333333333333333333333333\"></rin-work></pre></article>",
+      "fragmentFormat": "html-with-rin-placeholders",
+      "toc": [],
+      "dependencyHashes": ["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]
+    }
+  ],
+  "workUnits": [
+    {
+      "kind": "code",
+      "id": "rw_33333333333333333333333333333333",
+      "source": "const renderer = 'rin';",
+      "language": "typescript",
+      "meta": "title=renderer.ts",
+      "sourceLocation": { "path": "README.md", "start": { "line": 4, "column": 1 }, "end": { "line": 6, "column": 4 } }
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-highlight-css",
+      "kind": "generated",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "bytes": 512,
+      "mediaType": "text/css",
+      "artifactKey": "public/code/ff/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.css"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "markdown.directive.unsupported",
+      "severity": "warning",
+      "message": "Unsupported directive was preserved as text.",
+      "stage": "compile",
+      "sourceLocation": { "path": "README.md", "start": { "line": 9, "column": 1 } }
+    }
+  ],
+  "provenance": {
+    "adapter": "rin-markdown",
+    "adapterVersion": "0.1.0",
+    "engineVersion": "unified-pinned",
+    "projectGraphSchemaVersion": "rin-project-graph/v1"
+  }
+}

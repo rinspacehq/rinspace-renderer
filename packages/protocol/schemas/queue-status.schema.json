@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/queue-status.schema.json",
+  "title": "RinRendererQueueStatus",
+  "type": "object",
+  "required": ["queuedProjects", "activeProjects", "estimate", "scope", "calculatedAt"],
+  "properties": {
+    "jobsAheadEstimate": { "type": "integer", "minimum": 0 },
+    "queuedProjects": { "type": "integer", "minimum": 0 },
+    "activeProjects": { "type": "integer", "minimum": 0 },
+    "estimate": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["estimatedStartAt", "estimatedStartRange", "confidence", "sampleCount", "estimatorVersion", "scope", "calculatedAt"],
+          "properties": {
+            "estimatedStartAt": { "type": "string", "format": "date-time" },
+            "estimatedStartRange": {
+              "type": "object",
+              "required": ["earliest", "latest"],
+              "properties": {
+                "earliest": { "type": "string", "format": "date-time" },
+                "latest": { "type": "string", "format": "date-time" }
+              },
+              "additionalProperties": false
+            },
+            "confidence": { "enum": ["low", "medium", "high"] },
+            "sampleCount": { "type": "integer", "minimum": 20 },
+            "estimatorVersion": { "type": "string", "minLength": 1 },
+            "scope": { "enum": ["instance", "cluster"] },
+            "calculatedAt": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "scope": { "enum": ["instance", "cluster"] },
+    "calculatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

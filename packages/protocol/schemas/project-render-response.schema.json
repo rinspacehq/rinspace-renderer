@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/project-render-response.schema.json",
+  "title": "RinRendererProjectResponse",
+  "type": "object",
+  "required": ["requestId", "title", "html", "engine", "fallback", "mainFile", "diagrams", "assets", "reader", "math", "versions", "diagnostics"],
+  "properties": {
+    "requestId": { "type": "string" },
+    "title": { "type": "string" },
+    "html": { "type": "string" },
+    "engine": { "type": "string" },
+    "fallback": { "type": "boolean" },
+    "primaryEngine": { "type": "string" },
+    "fallbackEngine": { "type": "string" },
+    "mainFile": { "type": "string" },
+    "diagrams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "objectId", "cloudbaseUrl"],
+        "properties": {
+          "type": { "type": "string" },
+          "objectId": { "type": "string" },
+          "cloudbaseUrl": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "generatedArtifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifactId", "sha256", "bytes", "mediaType", "visibility"],
+        "properties": {
+          "artifactId": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0 },
+          "mediaType": { "type": "string", "minLength": 1 },
+          "visibility": { "enum": ["private", "public"] },
+          "expiresAt": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "assetFiles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assetFile" }
+    },
+    "assetManifest": { "$ref": "#/$defs/assetManifest" },
+    "reader": { "type": "object" },
+    "math": { "$ref": "#/$defs/mathSummary" },
+    "versions": { "type": "object" },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "./diagnostic.schema.json" }
+    },
+    "texSource": { "type": "string" },
+    "source": { "type": "string" },
+    "analysisSource": { "type": "string" },
+    "resolvedSource": { "type": "string" },
+    "assetInventory": { "$ref": "#/$defs/assetInventory" },
+    "project": { "$ref": "#/$defs/projectPayload" }
+  },
+  "$defs": {
+    "projectFile": {
+      "type": "object",
+      "required": ["path", "kind", "bytes"],
+      "properties": {
+        "path": { "type": "string" },
+        "kind": { "type": "string" },
+        "encoding": { "type": "string" },
+        "mime": { "type": "string" },
+        "body": { "type": "string" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "mathSummary": {
+      "type": "object",
+      "required": ["count", "mathJaxCount", "katexCount", "svgFallbackCount", "failedCount"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "mathJaxCount": { "type": "integer", "minimum": 0 },
+        "katexCount": { "type": "integer", "minimum": 0 },
+        "svgFallbackCount": { "type": "integer", "minimum": 0 },
+        "failedCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "assetFile": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "filename": { "type": "string" },
+        "mime": { "type": "string" },
+        "encoding": { "type": "string" },
+        "body": { "type": "string" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "referenced": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "projectManifest": {
+      "type": "object",
+      "required": ["version", "title", "mainFile", "files", "fileCount", "diagramPlaceholders", "assetInventory", "bibliography", "generatedLists"],
+      "properties": {
+        "version": { "type": "string" },
+        "title": { "type": "string" },
+        "mainFile": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectFile" }
+        },
+        "fileCount": { "type": "integer", "minimum": 0 },
+        "source": { "type": "string" },
+        "analysisSource": { "type": "string" },
+        "resolvedSource": { "type": "string" },
+        "includes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "diagramPlaceholders": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagramPlaceholder" }
+        },
+        "assetInventory": { "$ref": "#/$defs/assetInventory" },
+        "bibliography": { "$ref": "#/$defs/bibliographyInventory" },
+        "generatedLists": { "$ref": "#/$defs/generatedListInventory" },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "./diagnostic.schema.json" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "diagramPlaceholder": {
+      "type": "object",
+      "required": ["id", "type", "body", "source", "sourceFile", "sourceLine", "sourceColumn", "placeholder", "layout"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "options": { "type": "string" },
+        "body": { "type": "string" },
+        "source": { "type": "string" },
+        "sourceFile": { "type": "string" },
+        "sourceLine": { "type": "integer", "minimum": 1 },
+        "sourceColumn": { "type": "integer", "minimum": 1 },
+        "placeholder": { "type": "string" },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "alignment": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "projectPayload": {
+      "type": "object",
+      "required": ["title", "status", "mode", "mainFile", "activePath", "files", "manifest"],
+      "properties": {
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "mode": { "type": "string" },
+        "mainFile": { "type": "string" },
+        "activePath": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectFile" }
+        },
+        "manifest": { "$ref": "#/$defs/projectManifest" }
+      },
+      "additionalProperties": true
+    },
+    "projectReference": {
+      "type": "object",
+      "required": ["kind", "command", "rawRef", "sourceFile", "line", "resolved"],
+      "properties": {
+        "kind": { "type": "string" },
+        "command": { "type": "string" },
+        "rawRef": { "type": "string" },
+        "path": { "type": "string" },
+        "sourceFile": { "type": "string" },
+        "line": { "type": "integer", "minimum": 0 },
+        "resolved": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "required": ["path", "referenced"],
+      "properties": {
+        "path": { "type": "string" },
+        "mime": { "type": "string" },
+        "encoding": { "type": "string" },
+        "referenced": { "type": "boolean" },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "assetInventory": {
+      "type": "object",
+      "required": ["references", "assets", "missing", "unused", "graphicsPaths", "graphicsExtensions"],
+      "properties": {
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "assets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/asset" }
+        },
+        "missing": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "unused": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/asset" }
+        },
+        "graphicsPaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "graphicsExtensions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "assetManifest": {
+      "type": "object",
+      "required": ["version", "files", "references", "assets", "missing", "unused", "graphicsPaths", "graphicsExtensions"],
+      "properties": {
+        "version": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/assetFile" }
+        },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "assets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/asset" }
+        },
+        "missing": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "unused": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/asset" }
+        },
+        "graphicsPaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "graphicsExtensions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bibliographyInventory": {
+      "type": "object",
+      "required": ["references", "missing", "bibPaths", "styles", "missingStyles"],
+      "properties": {
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "missing": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "bibPaths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "styles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        },
+        "missingStyles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/projectReference" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "generatedListInventory": {
+      "type": "object",
+      "required": ["references", "missing"],
+      "properties": {
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/generatedListReference" }
+        },
+        "missing": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/generatedListReference" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "generatedListReference": {
+      "type": "object",
+      "required": ["kind", "listType", "command", "label", "resolved", "expectedExtensions", "sourceFile", "line"],
+      "properties": {
+        "kind": { "type": "string" },
+        "listType": { "type": "string" },
+        "command": { "type": "string" },
+        "label": { "type": "string" },
+        "path": { "type": "string" },
+        "resolved": { "type": "boolean" },
+        "expectedExtensions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "fallbackExtensions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sourceFile": { "type": "string" },
+        "line": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,24 @@
+\documentclass{article}
+\usepackage{graphicx}
+\begin{document}
+\section{Figures and Tables}
+\begin{figure}
+\centering
+\includegraphics[width=0.4\linewidth]{figures/sample.svg}
+\caption{Sample figure}
+\label{fig:sample}
+\end{figure}
+
+\begin{table}
+\centering
+\begin{tabular}{ll}
+Parameter & Value \\
+alpha & 1 \\
+beta & 2
+\end{tabular}
+\caption{Sample table}
+\label{tab:sample}
+\end{table}
+
+Figure~\ref{fig:sample} and Table~\ref{tab:sample} should retain captions and labels.
+\end{document}

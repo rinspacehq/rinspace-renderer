@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "rin-latex-pdf-preview/v1",
+  "jobId": "job-preview-1",
+  "requestId": "request-preview-1",
+  "contentKind": "latex",
+  "outputKind": "latex-pdf-preview",
+  "documentEngine": "latexmk",
+  "resourceClass": "latex-pdf",
+  "priorityClass": "preview",
+  "snapshotHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sessionId": "session-018fcafe",
+  "draftRevision": 42,
+  "enginePolicyId": "rinspace-latex-pdf-safe-v1",
+  "imageDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "idempotencyKey": "bc230c8d895a1f415cb6a3f73bca5fed09650ed0eee722cfc37e3b3cc0341a5f",
+  "entrypoint": "main.tex",
+  "workspaceRoot": "/workspace",
+  "artifacts": [
+    {
+      "artifactId": "private/pdf-preview/job-preview-1/main.pdf",
+      "kind": "pdf",
+      "path": ".rinspace/main.pdf",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "bytes": 1048576,
+      "mediaType": "application/pdf",
+      "visibility": "private",
+      "expiresAt": "2026-08-30T04:00:00Z"
+    },
+    {
+      "artifactId": "private/pdf-preview/job-preview-1/main.synctex.gz",
+      "kind": "synctex",
+      "path": ".rinspace/main.synctex.gz",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "bytes": 200000,
+      "mediaType": "application/gzip",
+      "visibility": "private",
+      "expiresAt": "2026-08-30T04:00:00Z"
+    },
+    {
+      "artifactId": "private/pdf-preview/job-preview-1/main.log",
+      "kind": "log",
+      "path": ".rinspace/main.log",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "bytes": 120000,
+      "mediaType": "text/plain; charset=utf-8",
+      "visibility": "private",
+      "expiresAt": "2026-08-30T04:00:00Z"
+    },
+    {
+      "artifactId": "private/pdf-preview/job-preview-1/main.aux",
+      "kind": "aux",
+      "path": ".rinspace/main.aux",
+      "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "bytes": 1000,
+      "mediaType": "text/plain; charset=utf-8",
+      "visibility": "private",
+      "expiresAt": "2026-08-30T04:00:00Z"
+    },
+    {
+      "artifactId": "private/pdf-preview/job-preview-1/main.fls",
+      "kind": "fls",
+      "path": ".rinspace/main.fls",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "bytes": 2000,
+      "mediaType": "text/plain; charset=utf-8",
+      "visibility": "private",
+      "expiresAt": "2026-08-30T04:00:00Z"
+    }
+  ],
+  "totalArtifactBytes": 1371576,
+  "diagnostics": [],
+  "cache": { "hit": false },
+  "versions": {
+    "rinRenderer": "0.1.0-dev",
+    "latexmk": "4.86a",
+    "texlive": "2026",
+    "compilerImage": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "repo": "https://github.com/brucemiller/LaTeXML",
+  "commit": "ae2c8b266d1aa04af4350a64c79215bbe4b7c482",
+  "tag": "v0.8.8",
+  "texlive": "TeX Live 2022/Debian",
+  "perl": "5.40",
+  "adapterVersion": "0.1.0",
+  "corpusVersion": "0.1.0",
+  "notes": "Rolled back from master (0d02309d, then HEAD 0db6f47e) to the v0.8.8 release commit. master carries a regression from 6167612e \"Expansions (#2421)\": State::lookupExpandable now defaults $toplevel=1, so \\expandafter executes \\protected macros and l3kernel's \\prg_new_protected_conditional body runs \\msg_error:nnx before that message is declared. With the Debian bookworm kernel (l3kernel 2023-01-16) this aborts expl3 loading for any document that loads expl3. v0.8.8 predates 6167612e and converts the same minimal document cleanly (Status:conversion:1). Upstream report tracks: minimal \\usepackage{expl3} document + git bisect first-bad 6167612e. Dockerfile.latexml uses perl:5.40-bookworm and Debian bookworm TeXLive packages, verified by deploy/verify-latexml-runtime.sh."
+}

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "rin-typst-pdf-invalid-fixtures/v1",
+  "base": "result-preview.json",
+  "cases": [
+    {
+      "name": "unknown artifact kind",
+      "path": ["artifacts", 0, "kind"],
+      "value": "zip",
+      "expectedError": "artifact_kind"
+    },
+    {
+      "name": "artifact output traversal",
+      "path": ["artifacts", 0, "path"],
+      "value": "../.rinspace/typst/preview.pdf",
+      "expectedError": "artifact_path"
+    },
+    {
+      "name": "artifact path outside typst scratch",
+      "path": ["artifacts", 1, "path"],
+      "value": ".rinspace/latex/preview.log",
+      "expectedError": "artifact_path"
+    },
+    {
+      "name": "PDF exceeds 32 MiB",
+      "path": ["artifacts", 0, "bytes"],
+      "value": 33554433,
+      "expectedError": "artifact_size"
+    },
+    {
+      "name": "log exceeds 2 MiB",
+      "path": ["artifacts", 1, "bytes"],
+      "value": 2097153,
+      "expectedError": "artifact_size"
+    },
+    {
+      "name": "artifact media type does not match kind",
+      "path": ["artifacts", 0, "mediaType"],
+      "value": "text/plain; charset=utf-8",
+      "expectedError": "artifact_media"
+    },
+    {
+      "name": "declared total does not equal artifact sum",
+      "path": ["totalArtifactBytes"],
+      "value": 1371577,
+      "expectedError": "artifact_total"
+    },
+    {
+      "name": "empty artifact list",
+      "path": ["artifacts"],
+      "value": [],
+      "expectedError": "artifact_count"
+    },
+    {
+      "name": "invalid render profile id",
+      "path": ["renderProfileId"],
+      "value": "",
+      "expectedError": "result_identity"
+    },
+    {
+      "name": "preview carries a project commit identity",
+      "path": ["sourceCommit"],
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expectedError": "result_identity"
+    },
+    {
+      "name": "preview idempotency key mismatch",
+      "path": ["idempotencyKey"],
+      "value": "9999999999999999999999999999999999999999999999999999999999999999",
+      "expectedError": "idempotency_key"
+    },
+    {
+      "name": "compiler image is not a digest",
+      "path": ["versions", "compilerImage"],
+      "value": "0.15.1",
+      "expectedError": "result_shape"
+    }
+  ]
+}

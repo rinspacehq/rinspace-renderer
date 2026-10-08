@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/contracts/rin-control-plane/v1/renderer-completion.schema.json",
+  "title": "Rin Renderer durable completion event v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "event_id", "type", "occurred_at", "producer", "correlation_id", "subject", "data"],
+  "properties": {
+    "schema": { "const": "rin-control-event/v1" },
+    "event_id": { "type": "string", "pattern": "^renderer:[0-9a-f-]{36}:completed:[1-9][0-9]*$", "maxLength": 80 },
+    "type": { "const": "renderer.job.completed" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "producer": { "const": "rin-renderer" },
+    "correlation_id": { "type": "string", "pattern": "^render-[0-9a-f]{32}$", "maxLength": 39 },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rendererJobId"],
+      "properties": {
+        "rendererJobId": { "type": "string", "format": "uuid" }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "protocolVersion",
+        "terminalVersion",
+        "rendererJobId",
+        "requestId",
+        "controlProjectId",
+        "sourceCommit",
+        "controlProjectHash",
+        "rendererProjectHash",
+        "terminalState"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "rin-renderer-completion/v2" },
+        "protocolVersion": { "const": "v2" },
+        "terminalVersion": { "type": "integer", "minimum": 1 },
+        "rendererJobId": { "type": "string", "format": "uuid" },
+        "requestId": { "type": "string", "pattern": "^render-[0-9a-f]{32}$", "maxLength": 39 },
+        "controlProjectId": { "type": "string", "pattern": "^(article|book|tag-wiki|pdf):[1-9][0-9]*$", "maxLength": 120 },
+        "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}([0-9a-f]{24})?$", "not": { "enum": ["0000000000000000000000000000000000000000", "0000000000000000000000000000000000000000000000000000000000000000"] } },
+        "controlProjectHash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "not": { "const": "0000000000000000000000000000000000000000000000000000000000000000" } },
+        "rendererProjectHash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "not": { "const": "0000000000000000000000000000000000000000000000000000000000000000" } },
+        "terminalState": { "enum": ["succeeded", "failed", "canceled"] },
+        "resultHash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "not": { "const": "0000000000000000000000000000000000000000000000000000000000000000" } },
+        "failureCode": {
+          "enum": [
+            "document_invalid",
+            "document_render_failed",
+            "document_render_timeout",
+            "invalid_book_manifest",
+            "invalid_compatibility_result",
+            "invalid_project_source",
+            "invalid_render_result",
+            "invalid_request_metadata",
+            "job_canceled",
+            "result_storage_failed",
+            "source_artifact_unavailable",
+            "worker_lease_expired",
+            "worker_shutting_down"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "terminalState": { "const": "succeeded" } }, "required": ["terminalState"] },
+          "then": { "required": ["resultHash"], "not": { "required": ["failureCode"] } }
+        },
+        {
+          "if": { "properties": { "terminalState": { "enum": ["failed", "canceled"] } }, "required": ["terminalState"] },
+          "then": { "required": ["failureCode"], "not": { "required": ["resultHash"] } }
+        }
+      ]
+    }
+  }
+}

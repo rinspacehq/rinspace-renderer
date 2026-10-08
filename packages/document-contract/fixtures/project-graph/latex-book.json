@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "rin-project-graph/v1",
+  "projectHash": "4b56f0eff54950d9f88f79f4cf73b347f1f77cc0fb40cbfb083b625608dec70a",
+  "contentKind": "latex",
+  "entrypoints": [{ "path": "book.tex", "role": "document" }],
+  "files": [
+    {
+      "path": "book.tex",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "bytes": 256,
+      "mediaType": "application/x-tex",
+      "role": "source"
+    },
+    {
+      "path": "chapters/one.tex",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "bytes": 512,
+      "mediaType": "application/x-tex",
+      "role": "source"
+    },
+    {
+      "path": "figures/plot.svg",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "bytes": 1024,
+      "mediaType": "image/svg+xml",
+      "role": "asset"
+    }
+  ],
+  "references": [
+    { "from": "book.tex", "to": "chapters/one.tex", "kind": "include", "resolved": true },
+    { "from": "chapters/one.tex", "to": "figures/plot.svg", "kind": "asset", "resolved": true }
+  ],
+  "options": { "documentMode": "book" }
+}

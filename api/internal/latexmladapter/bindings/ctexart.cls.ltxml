@@ -1,0 +1,19 @@
+# CTeX article binding for the pinned LaTeXML runtime.
+# Preserve article structure and Chinese labels without executing the XeTeX
+# font backend (ctexart -> expl3), which cannot run in the HTML converter.
+# The author's source, theorem declarations and mathematical content stay intact.
+package LaTeXML::Package::Pool;
+use strict;
+use warnings;
+use utf8;
+use LaTeXML::Package;
+
+LoadClass('article');
+DefMacro('\abstractname', '摘要');
+DefMacro('\refname', '参考文献');
+DefMacro('\contentsname', '目录');
+DefMacro('\figurename', '图');
+DefMacro('\tablename', '表');
+DefMacro('\appendixname', '附录');
+
+1;

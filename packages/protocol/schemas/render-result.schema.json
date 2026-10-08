@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rinspace.com/schemas/rin-renderer/rin-render-result-v1.schema.json",
+  "title": "RinRenderResultV1",
+  "type": "object",
+  "required": ["schemaVersion", "jobId", "requestId", "projectHash", "resultHash", "contentKind", "engine", "assets", "diagnostics", "versions", "cache"],
+  "properties": {
+    "schemaVersion": { "const": "rin-render-result/v1" },
+    "jobId": { "$ref": "#/$defs/nonEmptyString" },
+    "requestId": { "$ref": "#/$defs/nonEmptyString" },
+    "projectHash": { "$ref": "#/$defs/sha256" },
+    "resultHash": { "$ref": "#/$defs/sha256" },
+    "contentKind": { "enum": ["latex", "markdown", "typst", "pdf"] },
+    "engine": { "$ref": "#/$defs/nonEmptyString" },
+    "inline": {
+      "oneOf": [
+        { "$ref": "../../document-contract/schemas/document-bundle.schema.json" },
+        { "$ref": "../../document-contract/schemas/document-bundle-v2.schema.json" }
+      ]
+    },
+    "resultArtifact": { "$ref": "#/$defs/privateResultArtifact" },
+    "assets": { "type": "array", "items": { "$ref": "#/$defs/artifact" } },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "../../document-contract/schemas/document-bundle.schema.json#/$defs/diagnostic" }
+    },
+    "versions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/nonEmptyString" }
+    },
+    "cache": { "$ref": "#/$defs/cache" }
+  },
+  "oneOf": [
+    { "required": ["inline"], "not": { "required": ["resultArtifact"] } },
+    { "required": ["resultArtifact"], "not": { "required": ["inline"] } }
+  ],
+  "allOf": [
+    {
+      "if": { "properties": { "contentKind": { "const": "pdf" } }, "required": ["contentKind"] },
+      "then": { "required": ["resultArtifact"], "not": { "required": ["inline"] } }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object",
+      "required": ["artifactId", "sha256", "bytes", "mediaType", "visibility"],
+      "properties": {
+        "artifactId": { "$ref": "#/$defs/nonEmptyString" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "mediaType": { "$ref": "#/$defs/nonEmptyString" },
+        "visibility": { "enum": ["private", "public"] },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "privateResultArtifact": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "required": ["expiresAt"],
+          "properties": { "visibility": { "const": "private" } }
+        }
+      ]
+    },
+    "cache": {
+      "type": "object",
+      "required": ["hit", "reusedStages"],
+      "properties": {
+        "hit": { "type": "boolean" },
+        "reusedStages": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" }, "uniqueItems": true }
+      },
+      "additionalProperties": false
+    }
+  }
+}

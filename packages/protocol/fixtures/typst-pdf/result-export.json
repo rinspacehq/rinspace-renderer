@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "rin-typst-pdf/v1",
+  "jobId": "job-typst-export-1",
+  "requestId": "request-typst-export-1",
+  "contentKind": "typst",
+  "outputKind": "typst-pdf-export",
+  "documentEngine": "typst",
+  "resourceClass": "typst-pdf",
+  "priorityClass": "rebuild",
+  "idempotencyKey": "0069c41dd667eb76ef7ebc36ad8b04dac170a5373a66097128f4d6a631f932ef",
+  "renderProfileId": "typst-web-v1-pdf",
+  "entrypoint": "main.typ",
+  "workspaceRoot": "/workspace",
+  "enginePolicyId": "rinspace-typst-pdf-safe-v1",
+  "imageDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "controlProjectId": "book:361",
+  "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "controlProjectHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "artifacts": [
+    {
+      "artifactId": "render-jobs/v1/typst/job-typst-export-1/export.pdf",
+      "kind": "pdf",
+      "path": ".rinspace/typst/export.pdf",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "bytes": 8192,
+      "mediaType": "application/pdf",
+      "visibility": "private",
+      "expiresAt": "2026-09-14T00:00:00Z"
+    }
+  ],
+  "totalArtifactBytes": 8192,
+  "diagnostics": [],
+  "cache": {
+    "hit": false
+  },
+  "versions": {
+    "rinRenderer": "0.1.0-dev",
+    "typst": "0.15.1",
+    "compilerImage": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+  }
+}

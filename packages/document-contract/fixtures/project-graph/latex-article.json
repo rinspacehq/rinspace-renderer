@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "rin-project-graph/v1",
+  "projectHash": "cc5439028b7ada0e5a7699537d72c177697b47917bdfc3fad6c271cf01d313cc",
+  "contentKind": "latex",
+  "entrypoints": [{ "path": "main.tex", "role": "document" }],
+  "files": [
+    {
+      "path": "main.tex",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "bytes": 128,
+      "mediaType": "application/x-tex",
+      "role": "source"
+    }
+  ],
+  "references": [],
+  "options": { "documentMode": "article" }
+}

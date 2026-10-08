@@ -1,0 +1,13 @@
+{
+  "name": "@rinspace/rin-renderer-katex-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render-katex.mjs",
+    "smoke": "printf '%s\\n' '{\"source\":\"\\\\not\\\\exists x\",\"displayMode\":true}' | node render-katex.mjs"
+  },
+  "dependencies": {
+    "katex": "0.16.22"
+  }
+}

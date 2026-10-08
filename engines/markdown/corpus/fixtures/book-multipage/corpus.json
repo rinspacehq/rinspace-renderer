@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "rin-markdown-corpus-fixture/v1",
+  "id": "book-multipage",
+  "kind": "book",
+  "language": "zh-CN",
+  "entrypoints": ["README.md", "chapters/linear.md", "chapters/code.md"],
+  "features": ["book", "multi-page", "cjk", "gfm", "footnotes", "links", "code", "math"],
+  "invariants": {
+    "workUnitsAtLeast": {"math": 2, "mathInline": 1, "mathDisplay": 1, "code": 1},
+    "classCountsAtLeast": {"footnotes": 1, "rin-math": 2, "shiki": 1},
+    "diagnosticCodesInclude": [],
+    "assetPaths": []
+  }
+}

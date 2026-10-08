@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "rin-document-bundle/v2",
+  "projectHash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "state": "final",
+  "contentKind": "markdown",
+  "documentEngine": "rin-markdown",
+  "title": "Reader Notes",
+  "pages": [
+    {
+      "id": "page-main",
+      "sourcePath": "main.md",
+      "fragment": "<p data-rin-block-id=\"rb_ffcd19d25d0fb0cfb18c592414b84c9f\" data-rin-block-kind=\"paragraph\">Hello world</p>",
+      "fragmentFormat": "html",
+      "toc": [],
+      "dependencyHashes": ["2222222222222222222222222222222222222222222222222222222222222222"],
+      "blocks": [
+        {
+          "id": "rb_ffcd19d25d0fb0cfb18c592414b84c9f",
+          "kind": "paragraph",
+          "text": "Hello world",
+          "textHash": "64ec88ca00b268e5ba1a35678a1b5316d212f4f366b2477232534a8aeca37f3c",
+          "headingPath": [],
+          "sourceLocation": { "path": "main.md", "start": { "line": 3, "column": 1 }, "end": { "line": 3, "column": 12 } }
+        }
+      ]
+    }
+  ],
+  "workUnits": [],
+  "assets": [],
+  "diagnostics": [],
+  "provenance": {
+    "adapter": "rin-markdown",
+    "adapterVersion": "0.2.0",
+    "engineVersion": "unified-pinned",
+    "projectGraphSchemaVersion": "rin-project-graph/v1"
+  }
+}

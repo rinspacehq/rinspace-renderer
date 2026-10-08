@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "rin-markdown-corpus-manifest/v1",
+  "fixtureSchemaVersion": "rin-markdown-corpus-fixture/v1",
+  "reportSchemaVersion": "rin-markdown-corpus-report/v1",
+  "baselineSchemaVersion": "rin-markdown-corpus-baseline/v1",
+  "deltaSchemaVersion": "rin-markdown-corpus-deltas/v1",
+  "requiredFeatures": [
+    "article",
+    "book",
+    "multi-page",
+    "cjk",
+    "gfm",
+    "directives",
+    "footnotes",
+    "links",
+    "images",
+    "code",
+    "math",
+    "diagrams",
+    "malformed-input",
+    "security"
+  ],
+  "resolution": {
+    "code": "pinned-shiki-live",
+    "math": "shared-math-wrapper-contract-fixture",
+    "diagram": "shared-diagram-artifact-contract-fixture"
+  },
+  "bookScope": "multi-entrypoint page pipeline only until Book Project Graph task 7.1"
+}

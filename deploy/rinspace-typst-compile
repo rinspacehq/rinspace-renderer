@@ -1,0 +1,76 @@
+#!/bin/sh
+set -eu
+
+fail() {
+  printf '%s\n' "rinspace-typst-compile: $*" >&2
+  exit 64
+}
+
+# Every path below is pinned by typst-pdf.lock.json and re-checked at image
+# build time by verify-typst-pdf-runtime.sh. Keep the three in sync.
+typst_bin="/usr/local/bin/typst"
+font_path="/usr/share/fonts/truetype/wqy"
+package_path="/opt/rinspace/typst-packages"
+package_cache_path="/opt/rinspace/typst-package-cache"
+
+[ "$#" -eq 1 ] || fail "exactly one relative .typ entrypoint is required"
+entrypoint="$1"
+case "$entrypoint" in
+  ''|/*|-*|*\\*|*..*|*//*|*/.|*.|*~|*.typ/) fail "unsafe entrypoint" ;;
+  *.typ) ;;
+  *) fail "entrypoint must end in .typ" ;;
+esac
+
+workspace="$(realpath -e /workspace)" || fail "workspace is unavailable"
+output="$(realpath -e /output)" || fail "output is unavailable"
+source_file="$(realpath -e "/workspace/$entrypoint")" || fail "entrypoint does not exist"
+case "$source_file" in
+  "$workspace"/*) ;;
+  *) fail "entrypoint escapes /workspace" ;;
+esac
+[ -f "$source_file" ] || fail "entrypoint is not a regular file"
+[ -r "$source_file" ] || fail "entrypoint is not readable"
+[ -w "$output" ] || fail "output is not writable"
+[ -x "$typst_bin" ] || fail "pinned Typst compiler is missing"
+[ -d "$font_path" ] || fail "pinned font directory is missing"
+[ -d "$package_path" ] || fail "pinned package path is missing"
+[ -d "$package_cache_path" ] || fail "pinned package cache path is missing"
+
+export HOME=/tmp/rinspace-home
+export XDG_CACHE_HOME=/tmp/rinspace-cache
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
+mkdir -p "$HOME" "$XDG_CACHE_HOME"
+
+stem="$(basename "$entrypoint" .typ)"
+pdf="$output/$stem.pdf"
+compile_log="$output/compile.log"
+
+set +e
+(
+  cd "$workspace"
+  "$typst_bin" compile \
+    --root /workspace \
+    --font-path "$font_path" \
+    --ignore-system-fonts \
+    --package-path "$package_path" \
+    --package-cache-path "$package_cache_path" \
+    --format pdf \
+    "/workspace/$entrypoint" \
+    "$pdf"
+) >"$compile_log" 2>&1
+status=$?
+set -e
+
+log_limit=2097152
+if [ "$(wc -c < "$compile_log")" -gt "$log_limit" ]; then
+  head -c "$log_limit" "$compile_log" > "$output/.compile.log.limited"
+  mv "$output/.compile.log.limited" "$compile_log"
+fi
+
+[ "$status" -eq 0 ] || exit "$status"
+
+[ -f "$pdf" ] || fail "compiler completed without the expected PDF"
+pdf_bytes="$(wc -c < "$pdf")"
+[ "$pdf_bytes" -le 33554432 ] || fail "PDF exceeds 32 MiB"
+artifact_bytes="$(find "$output" -xdev -type f -printf '%s\n' | awk '{ total += $1 } END { print total + 0 }')"
+[ "$artifact_bytes" -le 50331648 ] || fail "artifacts exceed 48 MiB"

@@ -1,0 +1,580 @@
+{
+  "schemaVersion": "rin-markdown-corpus-baseline/v1",
+  "acceptedAt": "2026-10-02",
+  "acceptedBy": "markdown-publication-incident-2026-10-02",
+  "reason": "Article 582 publication review: admit inert data-* metadata on pinned MathJax custom elements and parse semantic block markers as HTML so comparison operators inside formula attributes cannot truncate tag matching; corpus semantics, coverage, and safety invariants remain unchanged.",
+  "accepted": {
+    "profile": {
+      "pipelineVersion": "rin-markdown-pipeline/v2+deps.sha256.ad00f08b5cb246f9c3e4ffb17a9ebdd542605525c53f957c3a8e38091a9546a2",
+      "adapterVersion": "0.6.0",
+      "sanitizerVersion": "rin-markdown-final-sanitizer/v2",
+      "plugins": [
+        "stable-heading-ids",
+        "safe-directives-admonitions",
+        "safe-links-images-figures",
+        "footnote-prefixing",
+        "exact-math-code-diagram-work-units",
+        "raw-html-compatibility",
+        "stable-semantic-blocks"
+      ],
+      "shiki": {
+        "version": "4.4.2",
+        "theme": "github-light"
+      },
+      "sharedMath": {
+        "engineVersion": "4.1.3",
+        "fontContract": "mathjax-newcm-4.1.3",
+        "fontURL": "/fonts/mathjax-newcm/woff2"
+      },
+      "contractHashes": {
+        "compiler.mjs": "f22c8c864d00db3d29b5b04ca60c8feabb7da66be26e68fc7453905868adaee8",
+        "finalizer.mjs": "e0ab9782ac176bc3ef1a39823bd2640a5d5ede5738b66f8b90ea797e472b2bd1",
+        "pipeline.mjs": "befcc19bb344a8d46eb11e4cb84cd02fddcf1a77058d6d60690b155062750a45",
+        "shiki.mjs": "a305c287179cd05f53d2a4bd0b258a882659a202bafe3ec2380a0d30c9175e37",
+        "package-lock.json": "5ec500d26c072f6ddf000d786009d3d128446c4f27e47222548c951b9a17856b",
+        "corpus/run-corpus.mjs": "1a81c2d1de9d8392532679966d6435982356d26fc7458026e54c54e70a18ccac",
+        "corpus/check-upgrade-gate.mjs": "48381542dbf83bb0a5d2962e3cd52d96dffee5fb8747afeba8998b42dd77be26",
+        "corpus/manifest.json": "f13250c0e704eb009fd18f23c0b149d5c4d2bcb6c42ec03f261f18a33c5c41f5",
+        "../mathjax/package.json": "a4f287ebf9f7c6986d7b78709441bc02cc86037c1d16dd495139bf078202ae6e",
+        "../mathjax/package-lock.json": "446aa7b33192f78535b16ebe5c8ced24f40da3753c5026c5230473f4017abd4e",
+        "../mathjax/render-mathjax.mjs": "3cdf873dcf3918b0ed7a4efc7e00ee7aa0abae3d8dad9eb310f7c58ec8a9cb2c",
+        "../../deploy/Dockerfile.latexml": "31bb37639c1696d9b5b2723c6c361847afe421c68bbec02813aec90c07be2e00",
+        "../../deploy/rin-renderer.env.example": "df4753bf1a9a0a6984da9a9436840cad8a6e1a0f889c63acbc5ce5d18700376e"
+      },
+      "sharedServiceHashes": {
+        "../../api/internal/mathservice/service.go": "a4dc14c841eb375e20d3a65b8d881c8b48276c5f5ce40a03b089f21ee3b3a6b9",
+        "../../api/internal/diagramservice/directive.go": "b8f6db1e24be0cc5bfcd0dda2fe59ae1991967fa9361da4068be2e12065bc6f4",
+        "../../api/internal/diagramservice/service.go": "b51a673945f2a1e287be82dad7a84695ce654b73054a2fd8c5df13c1619802a5",
+        "../../api/internal/diagramservice/types.go": "407b830551270a150944e82cc907fe59d7dd11adc38fa1e678f482259a45cd47",
+        "../../api/internal/codeservice/service.go": "b18bc17be07b8a0fa6044323a2d6364c5d116de90c4251de4307e4a77eb6b640",
+        "../../api/internal/codeservice/warm_shiki.go": "68e80214ca9c614098af8943a47729f7699b2f1ed19f0e2cf24c137381d81039",
+        "../../api/internal/orchestration/math.go": "36d9686f05722dbb3ddf6d7b8ef0b6659e2a25888f2816bbf5c6dcfe2758dd7a",
+        "../../api/internal/orchestration/diagram.go": "d3084709baba657a217dfb40f5699a8b391c0364b1a82455da37a922735c0553",
+        "../../api/internal/orchestration/code.go": "68212597e9ef0cf110b2f74c75f518786c70991bd92420110e29fd7d7e97c012",
+        "../../api/internal/orchestration/work_resolver.go": "0e24d4f6b2537a63614c7bac228e23fd435f0ab233280b3f3e65ea68c2f70073"
+      }
+    },
+    "coverage": {
+      "required": [
+        "article",
+        "book",
+        "multi-page",
+        "cjk",
+        "gfm",
+        "directives",
+        "footnotes",
+        "links",
+        "images",
+        "code",
+        "math",
+        "diagrams",
+        "malformed-input",
+        "security"
+      ],
+      "covered": [
+        "article",
+        "book",
+        "cjk",
+        "code",
+        "diagrams",
+        "directives",
+        "footnotes",
+        "gfm",
+        "images",
+        "links",
+        "malformed-input",
+        "math",
+        "multi-page",
+        "security"
+      ],
+      "missing": []
+    },
+    "fixtures": [
+      {
+        "id": "article-rich",
+        "kind": "article",
+        "features": [
+          "article",
+          "cjk",
+          "gfm",
+          "directives",
+          "footnotes",
+          "links",
+          "images",
+          "code",
+          "math",
+          "diagrams"
+        ],
+        "status": "passed",
+        "invariantErrors": [],
+        "semantic": {
+          "pageCount": 1,
+          "pages": [
+            {
+              "sourcePath": "article.md",
+              "htmlSha256": "45fdd6a6c5d9a739cb07d4a8ebd04c25c4219b0f31d7c95a497b12132e67b592",
+              "htmlBytes": 5250,
+              "bundleHash": "22f169e2067bc600d14e148584cc95dbdda044c42b6a1c8cf43f5392340b632e",
+              "toc": [
+                {
+                  "id": "rin-md-section-2ac4d839749b",
+                  "depth": 1,
+                  "text": "向量空间"
+                }
+              ],
+              "workUnits": {
+                "counts": {
+                  "math": 2,
+                  "diagram": 1,
+                  "code": 2,
+                  "mathInline": 1,
+                  "mathDisplay": 1
+                },
+                "codeLanguages": [
+                  "javascript",
+                  "mystery"
+                ],
+                "diagramTypes": [
+                  "tikzpicture"
+                ],
+                "mathSourceHashes": [
+                  "44d97f14b56562cdc4e482dd41e283ac6e04cbc7cec8b07abd6fe52bde87036c",
+                  "77f2aa60eee8c35384d266d154247975cef1025f0eefd8cc9be33cf9a2982bd7"
+                ]
+              },
+              "diagnostics": [
+                "warning:code:code.language.unknown",
+                "warning:compile:markdown.code.language_unknown"
+              ],
+              "assets": [
+                {
+                  "projectPath": "images/vector.svg",
+                  "sha256": "608622c3c78aa44720a11c769206ca75c4738b5e5c7acf78bf2fe6d2047f0add",
+                  "bytes": 168,
+                  "mediaType": "image/svg+xml"
+                }
+              ],
+              "artifacts": [
+                {
+                  "artifactId": "diagrams/v1/svg-sha256/a9/a9360f2648ff9a391a5c72d38b84b3f48ba982639c2ff880f1b9bda4a44bdc0a.svg",
+                  "sha256": "a9360f2648ff9a391a5c72d38b84b3f48ba982639c2ff880f1b9bda4a44bdc0a",
+                  "bytes": 256,
+                  "mediaType": "image/svg+xml; charset=utf-8",
+                  "visibility": "public"
+                }
+              ],
+              "elementCounts": {
+                "a": 6,
+                "article": 1,
+                "aside": 1,
+                "code": 2,
+                "del": 1,
+                "div": 1,
+                "figcaption": 1,
+                "figure": 2,
+                "h1": 1,
+                "h2": 1,
+                "img": 2,
+                "input": 2,
+                "li": 3,
+                "mjx-c": 2,
+                "mjx-container": 2,
+                "mjx-math": 2,
+                "mjx-mi": 2,
+                "ol": 1,
+                "p": 6,
+                "pre": 2,
+                "section": 1,
+                "span": 13,
+                "style": 1,
+                "sup": 3,
+                "table": 1,
+                "tbody": 1,
+                "td": 2,
+                "th": 2,
+                "thead": 1,
+                "tr": 2,
+                "ul": 1
+              },
+              "classCounts": {
+                "contains-task-list": 1,
+                "data-footnote-backref": 2,
+                "footnotes": 1,
+                "rin-admonition": 1,
+                "rin-markdown-caption": 1,
+                "rin-markdown-figure": 1,
+                "rin-markdown-image": 1,
+                "rin-math": 2,
+                "rin-math-display": 1,
+                "rin-math-inline": 1,
+                "rin-reader-diagram": 1,
+                "shiki": 1,
+                "task-list-item": 2
+              },
+              "dataAttributeCounts": {
+                "dataDiagramId": 1,
+                "dataFootnoteBackref": 2,
+                "dataFootnoteRef": 2,
+                "dataFootnotes": 1,
+                "dataLatex": 2,
+                "dataRinAdmonition": 1,
+                "dataRinAlign": 1,
+                "dataRinAssetPath": 1,
+                "dataRinBlockId": 15,
+                "dataRinBlockKind": 15,
+                "dataRinCodeLanguage": 1,
+                "dataRinDiagramObjectId": 1,
+                "dataRinMathEngine": 3,
+                "dataRinMathSource": 2,
+                "dataRinMathVersion": 2
+              },
+              "ids": [
+                "rin-md-fn-note",
+                "rin-md-fnref-note",
+                "rin-md-fnref-note-2",
+                "rin-md-footnote-label",
+                "rin-md-section-2ac4d839749b"
+              ],
+              "internalReferences": [
+                "#rin-md-fn-note",
+                "#rin-md-fn-note",
+                "#rin-md-fnref-note",
+                "#rin-md-fnref-note-2",
+                "#rin-md-section-2ac4d839749b"
+              ],
+              "safety": {
+                "scripts": false,
+                "handlers": false,
+                "unsafeURLs": false,
+                "placeholders": false
+              }
+            }
+          ],
+          "projectAssets": [
+            {
+              "projectPath": "images/vector.svg",
+              "sha256": "608622c3c78aa44720a11c769206ca75c4738b5e5c7acf78bf2fe6d2047f0add",
+              "bytes": 168,
+              "mediaType": "image/svg+xml"
+            }
+          ]
+        }
+      },
+      {
+        "id": "book-multipage",
+        "kind": "book",
+        "features": [
+          "book",
+          "multi-page",
+          "cjk",
+          "gfm",
+          "footnotes",
+          "links",
+          "code",
+          "math"
+        ],
+        "status": "passed",
+        "invariantErrors": [],
+        "semantic": {
+          "pageCount": 3,
+          "pages": [
+            {
+              "sourcePath": "README.md",
+              "htmlSha256": "6694b0353f26f4d71061cef53c7390690d9d9a530a85b4b5cd165ec7efca1edf",
+              "htmlBytes": 1234,
+              "bundleHash": "5c3626e34a0caea886a3042c54b3dfb1c2b5ffd4b90f2f67f75bd14009977a80",
+              "toc": [
+                {
+                  "id": "rin-md-section-12286b96f75f",
+                  "depth": 1,
+                  "text": "线性代数讲义"
+                }
+              ],
+              "workUnits": {
+                "counts": {
+                  "math": 1,
+                  "diagram": 0,
+                  "code": 0,
+                  "mathInline": 1,
+                  "mathDisplay": 0
+                },
+                "codeLanguages": [],
+                "diagramTypes": [],
+                "mathSourceHashes": [
+                  "da4e336227c95e8637314e6f701e326aae2775e73f9fdaf9f6240cba4e919616"
+                ]
+              },
+              "diagnostics": [],
+              "assets": [],
+              "artifacts": [],
+              "elementCounts": {
+                "a": 2,
+                "article": 1,
+                "h1": 1,
+                "li": 2,
+                "mjx-c": 1,
+                "mjx-container": 1,
+                "mjx-math": 1,
+                "mjx-mi": 1,
+                "p": 2,
+                "span": 1,
+                "style": 1,
+                "ul": 1
+              },
+              "classCounts": {
+                "rin-math": 1,
+                "rin-math-inline": 1
+              },
+              "dataAttributeCounts": {
+                "dataLatex": 1,
+                "dataRinBlockId": 5,
+                "dataRinBlockKind": 5,
+                "dataRinMathEngine": 2,
+                "dataRinMathSource": 1,
+                "dataRinMathVersion": 1
+              },
+              "ids": [
+                "rin-md-section-12286b96f75f"
+              ],
+              "internalReferences": [],
+              "safety": {
+                "scripts": false,
+                "handlers": false,
+                "unsafeURLs": false,
+                "placeholders": false
+              }
+            },
+            {
+              "sourcePath": "chapters/linear.md",
+              "htmlSha256": "54d58729f72416101a9a31fb678d0d6f11f549d6d24d6cddfb41ed4cca2b1871",
+              "htmlBytes": 1939,
+              "bundleHash": "d5ba958ee1c50e902c91a9e553246c2e8cc39cabd906eb354bd74563c4bb1670",
+              "toc": [
+                {
+                  "id": "rin-md-basis",
+                  "depth": 1,
+                  "text": "Basis"
+                }
+              ],
+              "workUnits": {
+                "counts": {
+                  "math": 2,
+                  "diagram": 0,
+                  "code": 0,
+                  "mathInline": 1,
+                  "mathDisplay": 1
+                },
+                "codeLanguages": [],
+                "diagramTypes": [],
+                "mathSourceHashes": [
+                  "3344eec8c2e937492f3b0eab7e27aa0a3a9a7c984eeba99ed9c3c76c1d576ccf",
+                  "7c9c12825b0c70c79991a453e5369994d5e588325bf3f3ecb39c585498b8106a"
+                ]
+              },
+              "diagnostics": [],
+              "assets": [],
+              "artifacts": [],
+              "elementCounts": {
+                "a": 2,
+                "article": 1,
+                "h1": 1,
+                "h2": 1,
+                "li": 1,
+                "mjx-c": 2,
+                "mjx-container": 2,
+                "mjx-math": 2,
+                "mjx-mi": 2,
+                "ol": 1,
+                "p": 3,
+                "section": 1,
+                "span": 2,
+                "style": 1,
+                "sup": 1
+              },
+              "classCounts": {
+                "data-footnote-backref": 1,
+                "footnotes": 1,
+                "rin-math": 2,
+                "rin-math-display": 1,
+                "rin-math-inline": 1
+              },
+              "dataAttributeCounts": {
+                "dataFootnoteBackref": 1,
+                "dataFootnoteRef": 1,
+                "dataFootnotes": 1,
+                "dataLatex": 2,
+                "dataRinBlockId": 5,
+                "dataRinBlockKind": 5,
+                "dataRinMathEngine": 3,
+                "dataRinMathSource": 2,
+                "dataRinMathVersion": 2
+              },
+              "ids": [
+                "rin-md-basis",
+                "rin-md-fn-basis",
+                "rin-md-fnref-basis",
+                "rin-md-footnote-label"
+              ],
+              "internalReferences": [
+                "#rin-md-fn-basis",
+                "#rin-md-fnref-basis"
+              ],
+              "safety": {
+                "scripts": false,
+                "handlers": false,
+                "unsafeURLs": false,
+                "placeholders": false
+              }
+            },
+            {
+              "sourcePath": "chapters/code.md",
+              "htmlSha256": "cf4afa7058124efbf9968287d6e98694a86ef0ecd3cd0c280c0e4e8cc34e338a",
+              "htmlBytes": 918,
+              "bundleHash": "359a4ce2096f9124c715698191f3497a11e70c4662218d0203e3af013850583a",
+              "toc": [
+                {
+                  "id": "rin-md-section-3adf635491e7",
+                  "depth": 1,
+                  "text": "代码附录"
+                }
+              ],
+              "workUnits": {
+                "counts": {
+                  "math": 0,
+                  "diagram": 0,
+                  "code": 1,
+                  "mathInline": 0,
+                  "mathDisplay": 0
+                },
+                "codeLanguages": [
+                  "yaml"
+                ],
+                "diagramTypes": [],
+                "mathSourceHashes": []
+              },
+              "diagnostics": [],
+              "assets": [],
+              "artifacts": [],
+              "elementCounts": {
+                "a": 1,
+                "article": 1,
+                "code": 1,
+                "h1": 1,
+                "p": 1,
+                "pre": 1,
+                "span": 11
+              },
+              "classCounts": {
+                "shiki": 1
+              },
+              "dataAttributeCounts": {
+                "dataRinBlockId": 3,
+                "dataRinBlockKind": 3
+              },
+              "ids": [
+                "rin-md-section-3adf635491e7"
+              ],
+              "internalReferences": [],
+              "safety": {
+                "scripts": false,
+                "handlers": false,
+                "unsafeURLs": false,
+                "placeholders": false
+              }
+            }
+          ],
+          "projectAssets": []
+        }
+      },
+      {
+        "id": "security-malformed",
+        "kind": "article",
+        "features": [
+          "article",
+          "malformed-input",
+          "security",
+          "directives",
+          "links",
+          "images",
+          "code"
+        ],
+        "status": "passed",
+        "invariantErrors": [],
+        "semantic": {
+          "pageCount": 1,
+          "pages": [
+            {
+              "sourcePath": "attacks.md",
+              "htmlSha256": "f44835eca4c2af9cbf0386731608fb3021f6fc8981afb7e2e3caf93534911392",
+              "htmlBytes": 1199,
+              "bundleHash": "bdcef5531da4ed5e425f0b2a8190f421f08b0af6341654e390519afdface10ff",
+              "toc": [
+                {
+                  "id": "rin-md-section-13527e1b3be2",
+                  "depth": 1,
+                  "text": "安全边界"
+                }
+              ],
+              "workUnits": {
+                "counts": {
+                  "math": 0,
+                  "diagram": 0,
+                  "code": 1,
+                  "mathInline": 0,
+                  "mathDisplay": 0
+                },
+                "codeLanguages": [
+                  "unknown-runtime"
+                ],
+                "diagramTypes": [],
+                "mathSourceHashes": []
+              },
+              "diagnostics": [
+                "warning:code:code.language.unknown",
+                "warning:compile:markdown.code.language_unknown",
+                "warning:compile:markdown.directive.unsupported",
+                "warning:compile:markdown.directive.unsupported",
+                "warning:compile:markdown.raw_html.disabled",
+                "warning:compile:markdown.raw_html.disabled",
+                "warning:compile:markdown.raw_html.disabled",
+                "warning:compile:markdown.raw_html.disabled",
+                "warning:compile:markdown.raw_html.disabled",
+                "warning:compile:markdown.raw_html.disabled",
+                "warning:compile:markdown.url.disallowed"
+              ],
+              "assets": [],
+              "artifacts": [],
+              "elementCounts": {
+                "a": 1,
+                "article": 1,
+                "code": 1,
+                "h1": 1,
+                "p": 4,
+                "pre": 1
+              },
+              "classCounts": {},
+              "dataAttributeCounts": {
+                "dataRinBlockId": 6,
+                "dataRinBlockKind": 6,
+                "dataRinCodeLanguage": 1
+              },
+              "ids": [
+                "rin-md-section-13527e1b3be2"
+              ],
+              "internalReferences": [
+                "#"
+              ],
+              "safety": {
+                "scripts": false,
+                "handlers": false,
+                "unsafeURLs": false,
+                "placeholders": false
+              }
+            }
+          ],
+          "projectAssets": []
+        }
+      }
+    ]
+  }
+}
