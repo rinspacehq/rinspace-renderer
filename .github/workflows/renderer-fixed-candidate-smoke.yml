@@ -1,0 +1,153 @@
+name: Renderer fixed candidate smoke
+
+on:
+  push:
+    branches:
+      - verify/renderer-candidate-3f103ca
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOMAXPROCS: '1'
+      RUNTIME_REF: ghcr.io/rinspacehq/rinspace-renderer/runtime@sha256:485a98cd20afc969c9c45135458633d2a8423605876a271ea388b9a817bed3be
+      LATEX_PDF_REF: ghcr.io/rinspacehq/rinspace-renderer/latex-pdf@sha256:6651e41330e9d84ab381685493bef813bf949b207cf79f71e7f6eaf6fbb2733c
+      TYPST_PDF_REF: ghcr.io/rinspacehq/rinspace-renderer/typst-pdf@sha256:128cbbf4fbba291e89a945d7994c2ab66ba64da354436649a59a6bad4ed32f75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3f103ca758753110f135b55f77618eb0a2459cf1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start exact runtime in bounded local profile
+        run: |
+          set -euo pipefail
+          node deploy/start-local.mjs --image "$RUNTIME_REF"
+          mkdir -p "$RUNNER_TEMP/renderer-smoke"
+          docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$RUNTIME_REF" \
+            | tee "$RUNNER_TEMP/renderer-smoke/runtime-source.txt"
+          test "$(cat "$RUNNER_TEMP/renderer-smoke/runtime-source.txt")" = 3f103ca758753110f135b55f77618eb0a2459cf1
+      - name: Run LaTeXML article, citations and CJK corpus
+        run: |
+          set -euo pipefail
+          token="$(sed -n 's/^RIN_RENDERER_LOCAL_SERVICE_TOKEN=//p' deploy/.local.env)"
+          test "${#token}" -eq 64
+          export RIN_RENDERER_CORPUS_TOKEN="$token"
+          mkdir -p "$RUNNER_TEMP/renderer-smoke/fixtures"
+          cp -a corpus/fixtures/basic-article corpus/fixtures/references-bibliography \
+            corpus/fixtures/cjk-theorem-equations "$RUNNER_TEMP/renderer-smoke/fixtures/"
+          timeout 240 node corpus/run-corpus.mjs --mode render \
+            --fixtures "$RUNNER_TEMP/renderer-smoke/fixtures" \
+            --endpoint http://127.0.0.1:8090 \
+            --out "$RUNNER_TEMP/renderer-smoke/corpus-report.json"
+          node -e "const r=require(process.argv[1]);if(r.summary.passed!==3||r.summary.failed)process.exit(1);console.log('Three fixed-image corpus cases passed')" \
+            "$RUNNER_TEMP/renderer-smoke/corpus-report.json"
+      - name: Verify durable Markdown, idempotency and scope isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(sed -n 's/^RIN_RENDERER_LOCAL_SERVICE_TOKEN=//p' deploy/.local.env)"
+          export RIN_RENDERER_SMOKE_TOKEN="$token"
+          printf '# Smoke Markdown\n\nA durable **result** with $x^2$.\n' > "$RUNNER_TEMP/article.md"
+          (cd "$RUNNER_TEMP" && python3 -m zipfile -c article.zip article.md)
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const token = process.env.RIN_RENDERER_SMOKE_TOKEN;
+          const root = 'http://127.0.0.1:8090';
+          const source = readFileSync(`${process.env.RUNNER_TEMP}/article.zip`);
+          const headers = scope => ({ Authorization: `Bearer ${token}`, 'X-Rin-Renderer-Token': token,
+            'X-Rin-Renderer-Owner-Scope': scope, 'Idempotency-Key': 'fixed-oci-markdown-smoke-v1' });
+          async function submit() {
+            const form = new FormData();
+            form.set('source', new Blob([source], { type: 'application/zip' }), 'article.zip');
+            for (const [key, value] of Object.entries({ contentKind: 'markdown', documentEngine: 'unified',
+              priorityIntent: 'publish', entrypoint: 'article.md' })) form.set(key, value);
+            const response = await fetch(`${root}/api/render/jobs`, { method: 'POST', headers: headers('smoke:one'), body: form });
+            const body = await response.json();
+            if (response.status !== 202) throw new Error(`submit ${response.status}: ${JSON.stringify(body)}`);
+            return body;
+          }
+          const first = await submit(), again = await submit();
+          if (first.reused || !again.reused || first.job.jobId !== again.job.jobId) throw new Error('idempotency differs');
+          const id = first.job.jobId;
+          let state = '';
+          for (let attempt = 0; attempt < 90; attempt++) {
+            const response = await fetch(`${root}/api/render/jobs/${id}`, { headers: headers('smoke:one') });
+            const body = await response.json();
+            state = body.state;
+            if (state === 'succeeded') break;
+            if (['failed', 'canceled', 'expired'].includes(state)) throw new Error(`durable job ${state}: ${JSON.stringify(body.error)}`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          if (state !== 'succeeded') throw new Error(`durable job timed out: ${state}`);
+          const resultResponse = await fetch(`${root}/api/render/jobs/${id}/result`, { headers: headers('smoke:one') });
+          const result = await resultResponse.json();
+          if (!resultResponse.ok || result.schemaVersion !== 'rin-render-result/v1' ||
+              result.contentKind !== 'markdown' || !JSON.stringify(result).includes('Smoke Markdown')) {
+            throw new Error(`durable Markdown result differs: ${resultResponse.status}`);
+          }
+          const other = await fetch(`${root}/api/render/jobs/${id}/result`, { headers: headers('smoke:other') });
+          if (other.status !== 404) throw new Error(`cross-owner read returned ${other.status}`);
+          writeFileSync(`${process.env.RUNNER_TEMP}/renderer-smoke/durable-result.json`,
+            JSON.stringify({ jobId: id, resultHash: result.resultHash, state, ownerIsolationStatus: other.status }) + '\n');
+          console.log('Durable Markdown, idempotency and owner isolation passed');
+          NODE
+      - name: Confirm result survives API and worker restart
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose --project-name rin-renderer-local --env-file deploy/.local.env \
+            --file deploy/local.compose.yml restart api worker
+          token="$(sed -n 's/^RIN_RENDERER_LOCAL_SERVICE_TOKEN=//p' deploy/.local.env)"
+          export RIN_RENDERER_SMOKE_TOKEN="$token"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const saved = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/renderer-smoke/durable-result.json`));
+          const headers = { Authorization: `Bearer ${process.env.RIN_RENDERER_SMOKE_TOKEN}`,
+            'X-Rin-Renderer-Token': process.env.RIN_RENDERER_SMOKE_TOKEN,
+            'X-Rin-Renderer-Owner-Scope': 'smoke:one' };
+          let result;
+          for (let attempt = 0; attempt < 30; attempt++) {
+            try {
+              const response = await fetch(`http://127.0.0.1:8090/api/render/jobs/${saved.jobId}/result`, { headers });
+              if (response.ok) { result = await response.json(); break; }
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          if (result?.resultHash !== saved.resultHash) throw new Error('durable result changed after restart');
+          console.log('Durable result survived API and worker restart');
+          NODE
+      - name: Verify fixed PDF compilers with no network
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 1536m --pids-limit 256 \
+            --entrypoint /usr/local/bin/verify-latex-pdf-runtime "$LATEX_PDF_REF"
+          docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 512m --pids-limit 128 \
+            --entrypoint /usr/local/bin/verify-typst-pdf-runtime "$TYPST_PDF_REF"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renderer-fixed-oci-smoke-3f103ca
+          path: ${{ runner.temp }}/renderer-smoke/
+          if-no-files-found: warn
+      - name: Remove disposable local services and volumes
+        if: always()
+        run: |
+          if [ -f deploy/.local.env ]; then
+            docker compose --project-name rin-renderer-local --env-file deploy/.local.env \
+              --file deploy/local.compose.yml down --volumes --remove-orphans
+          fi
