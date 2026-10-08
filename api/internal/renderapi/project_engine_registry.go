@@ -156,7 +156,7 @@ func (s *Server) validateAndRecoverProjectOutcome(ctx context.Context, engine st
 	if err := finaloutput.Validate(finaloutput.Input{
 		Adapter: outcome.Response.Engine, Fragment: outcome.Response.HTML,
 		MaxFragmentBytes: finalOutputLimit(s.cfg), RequiredArtifacts: outcome.Response.GeneratedArtifacts,
-		ClientOwnedAssets: assetPaths,
+		ClientOwnedAssets: assetPaths, LocalAssetBaseURL: localAssetBaseURL(s.cfg),
 	}); err != nil {
 		diagnostic := Diagnostic{
 			Severity: "error", Code: finaloutput.Code(err), Message: err.Error(), Engine: outcome.Response.Engine,
@@ -173,6 +173,13 @@ func (s *Server) validateAndRecoverProjectOutcome(ctx context.Context, engine st
 		outcome.Response.GeneratedArtifacts = uniqueArtifactReferences(outcome.Response.GeneratedArtifacts)
 	}
 	return outcome
+}
+
+func localAssetBaseURL(config Config) string {
+	if config.StorageProvider == "local" {
+		return config.LocalPublicBaseURL
+	}
+	return ""
 }
 
 func finalOutputLimit(config Config) int64 {

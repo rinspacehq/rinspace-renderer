@@ -121,6 +121,24 @@ func TestCanonicalResultPreservesVerifiedGeneratedArtifacts(t *testing.T) {
 	}
 }
 
+func TestCanonicalResultAcceptsLocalDiagramOnlyWithProfileOrigin(t *testing.T) {
+	hash := strings.Repeat("b", 64)
+	id := "diagrams/v1/svg-sha256/bb/" + hash + ".svg"
+	base := "http://127.0.0.1:8090"
+	response := ProjectRenderResponse{
+		RequestID: "request-local", Engine: "latexml", MainFile: "main.tex",
+		HTML:               `<img src="` + base + `/local-assets/` + id + `" data-rin-diagram-object-id="` + id + `">`,
+		GeneratedArtifacts: []contracts.ArtifactReference{{ArtifactID: id, SHA256: hash, Bytes: 128, MediaType: "image/svg+xml; charset=utf-8", Visibility: "public"}},
+		Versions:           Versions{RinRenderer: "test"},
+	}
+	if _, err := CanonicalResult("job-local", strings.Repeat("a", 64), "latex", response); err == nil {
+		t.Fatal("product-profile canonical result accepted loopback URL")
+	}
+	if _, err := CanonicalResult("job-local", strings.Repeat("a", 64), "latex", response, base); err != nil {
+		t.Fatalf("local-profile canonical result rejected diagram: %v", err)
+	}
+}
+
 func TestCanonicalResultBindsKnowledgeIndexIntoHashedBundle(t *testing.T) {
 	projectHash := strings.Repeat("a", 64)
 	index := &contracts.KnowledgeIndex{

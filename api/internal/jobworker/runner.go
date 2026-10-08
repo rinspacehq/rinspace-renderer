@@ -421,7 +421,7 @@ func (runner *Runner) storeResult(ctx context.Context, lease scheduler.Lease, ex
 	if execution.Canonical != nil {
 		canonical = *execution.Canonical
 	} else {
-		canonical, err = renderapi.CanonicalResult(lease.Job.ID, canonicalProjectHash(lease.Job), lease.Job.ContentKind, execution.Response)
+		canonical, err = renderapi.CanonicalResult(lease.Job.ID, canonicalProjectHash(lease.Job), lease.Job.ContentKind, execution.Response, execution.LocalAssetBaseURL)
 	}
 	if err == nil {
 		if canonical.JobID != lease.Job.ID || canonical.RequestID != expectedRequestID ||

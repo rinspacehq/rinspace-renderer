@@ -42,12 +42,13 @@ type ProjectExecutionRequest struct {
 }
 
 type ProjectExecutionResult struct {
-	Response    ProjectRenderResponse
-	Canonical   *contracts.RenderResult
-	Status      int
-	Message     string
-	Diagnostics []Diagnostic
-	Err         error
+	Response          ProjectRenderResponse
+	Canonical         *contracts.RenderResult
+	LocalAssetBaseURL string
+	Status            int
+	Message           string
+	Diagnostics       []Diagnostic
+	Err               error
 }
 
 type ProjectExecutor struct {
@@ -97,7 +98,7 @@ func (executor *ProjectExecutor) Execute(ctx context.Context, request ProjectExe
 		return ProjectExecutionResult{Status: preparationErr.Status, Message: preparationErr.Message, Err: preparationErr.Cause}
 	}
 	outcome.Response.DocumentMode = request.DocumentMode
-	return ProjectExecutionResult{Response: outcome.Response, Status: outcome.Status, Diagnostics: outcome.Diagnostics, Err: outcome.Err}
+	return ProjectExecutionResult{Response: outcome.Response, LocalAssetBaseURL: localAssetBaseURL(executor.server.cfg), Status: outcome.Status, Diagnostics: outcome.Diagnostics, Err: outcome.Err}
 }
 
 func (executor *ProjectExecutor) Close() error {
@@ -115,7 +116,7 @@ func (executor *ProjectExecutor) Close() error {
 	return serverErr
 }
 
-func CanonicalResult(jobID string, projectHash string, contentKind string, response ProjectRenderResponse) (contracts.RenderResult, error) {
+func CanonicalResult(jobID string, projectHash string, contentKind string, response ProjectRenderResponse, localAssetOrigin ...string) (contracts.RenderResult, error) {
 	kind := contracts.ContentKind(contentKind)
 	if !kind.Valid() || strings.TrimSpace(jobID) == "" || strings.TrimSpace(response.RequestID) == "" {
 		return contracts.RenderResult{}, errors.New("canonical project result identity is invalid")
@@ -128,9 +129,13 @@ func CanonicalResult(jobID string, projectHash string, contentKind string, respo
 	for _, asset := range response.AssetFiles {
 		assetPaths = append(assetPaths, asset.Path)
 	}
+	localAssetBaseURL := ""
+	if len(localAssetOrigin) > 0 {
+		localAssetBaseURL = localAssetOrigin[0]
+	}
 	if err := finaloutput.Validate(finaloutput.Input{
 		Adapter: response.Engine, Fragment: response.HTML, RequiredArtifacts: response.GeneratedArtifacts,
-		ClientOwnedAssets: assetPaths,
+		ClientOwnedAssets: assetPaths, LocalAssetBaseURL: localAssetBaseURL,
 	}); err != nil {
 		return contracts.RenderResult{}, fmt.Errorf("canonical final output: %w", err)
 	}
