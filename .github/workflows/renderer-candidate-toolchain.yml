@@ -77,6 +77,7 @@ jobs:
           copyright and license notice is in `licenses/fonts-wqy-zenhei-copyright`.
           Their exact versions and file hashes are in `typst-html-toolchain.lock.json`.
           NOTICE
+          chmod 0555 candidate/toolchain/packages
           deploy/verify-typst-html-toolchain.sh --root candidate
           node deploy/generate-typst-html-toolchain-sbom.mjs \
             --lock deploy/typst-html-toolchain.lock.json --artifact-root candidate \
