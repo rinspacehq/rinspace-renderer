@@ -163,16 +163,16 @@ jobs:
             -W '-f=${binary:Package}\t${Version}\n' > evidence/dpkg-packages.tsv
           docker run --rm --network none --read-only --user 0 --cap-drop ALL \
             --entrypoint /bin/sh "$REFERENCE" -c \
-            'find -L /usr/share/doc /usr/share/common-licenses -type f \( -iname "copyright*" -o -iname "LICENSE*" -o -iname "COPYING*" -o -iname "NOTICE*" -o -path "/usr/share/common-licenses/*" \) -print0 | tar --dereference --null -T - -cf -' \
+            'find /usr/share/doc /usr/share/common-licenses \( -type f -o -type l \) \( -iname "copyright*" -o -iname "LICENSE*" -o -iname "COPYING*" -o -iname "NOTICE*" -o -path "/usr/share/common-licenses/*" \) -print0 | tar --dereference --null -T - -cf -' \
             > evidence/system-notices.tar
           tar -xf evidence/system-notices.tar -C evidence/notices/system
           if [ "$COMPONENT" = runtime ]; then
             docker run --rm --network none --read-only --user 0 --cap-drop ALL \
               --entrypoint /bin/sh "$REFERENCE" -c \
-              'find -L /opt/rin-renderer/engines -type f \( -iname "LICENSE*" -o -iname "NOTICE*" -o -name package.json \) -print0 | tar --dereference --null -T - -cf -' \
+              'find /opt/rin-renderer/engines \( -type f -o -type l \) \( -iname "LICENSE*" -o -iname "NOTICE*" -o -name package.json \) -print0 | tar --dereference --null -T - -cf -' \
               > evidence/node-notices.tar
             tar -xf evidence/node-notices.tar -C evidence/notices/image
-            (cd api && go mod download && go list -m -f '{{.Path}}@{{.Version}}|{{.Dir}}' all) > evidence/go-modules.tsv
+            (cd api && go mod download all && go list -m -f '{{.Path}}@{{.Version}}|{{.Dir}}' all) > evidence/go-modules.tsv
             node deploy/collect-go-notices.mjs evidence/go-modules.tsv evidence/notices/go
           fi
           cp LICENSE THIRD_PARTY_NOTICES.md evidence/notices/renderer-source/
