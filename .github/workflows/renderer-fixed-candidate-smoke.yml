@@ -39,20 +39,33 @@ jobs:
           docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$RUNTIME_REF" \
             | tee "$RUNNER_TEMP/renderer-smoke/runtime-source.txt"
           test "$(cat "$RUNNER_TEMP/renderer-smoke/runtime-source.txt")" = 3f103ca758753110f135b55f77618eb0a2459cf1
-      - name: Run LaTeXML article, citations and CJK corpus
+      - name: Run complete synthetic LaTeXML corpus
         run: |
           set -euo pipefail
           token="$(sed -n 's/^RIN_RENDERER_LOCAL_SERVICE_TOKEN=//p' deploy/.local.env)"
           test "${#token}" -eq 64
           export RIN_RENDERER_CORPUS_TOKEN="$token"
           mkdir -p "$RUNNER_TEMP/renderer-smoke/fixtures"
-          cp -a corpus/fixtures/basic-article corpus/fixtures/references-bibliography \
-            corpus/fixtures/cjk-theorem-equations "$RUNNER_TEMP/renderer-smoke/fixtures/"
-          timeout 240 node corpus/run-corpus.mjs --mode render \
+          cp -a corpus/fixtures/. "$RUNNER_TEMP/renderer-smoke/fixtures/"
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const root = `${process.env.RUNNER_TEMP}/renderer-smoke/fixtures`;
+          for (const entry of readdirSync(root)) {
+            const path = join(root, entry, 'corpus.json');
+            let fixture;
+            try { fixture = JSON.parse(readFileSync(path, 'utf8')); }
+            catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+            fixture.invariants ??= {};
+            fixture.invariants.noLocalDiagramUrls = false; // local storage intentionally uses loopback assets
+            writeFileSync(path, JSON.stringify(fixture, null, 2) + '\n');
+          }
+          NODE
+          timeout 360 node corpus/run-corpus.mjs --mode render \
             --fixtures "$RUNNER_TEMP/renderer-smoke/fixtures" \
             --endpoint http://127.0.0.1:8090 \
             --out "$RUNNER_TEMP/renderer-smoke/corpus-report.json"
-          node -e "const r=require(process.argv[1]);if(r.summary.passed!==3||r.summary.failed)process.exit(1);console.log('Three fixed-image corpus cases passed')" \
+          node -e "const r=require(process.argv[1]);if(r.summary.passed!==8||r.summary.failed||r.coverage.missing.length)process.exit(1);console.log('Eight fixed-image corpus cases passed')" \
             "$RUNNER_TEMP/renderer-smoke/corpus-report.json"
       - name: Verify durable Markdown, idempotency and scope isolation
         shell: bash
