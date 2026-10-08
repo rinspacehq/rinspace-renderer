@@ -37,7 +37,7 @@ jobs:
           git diff --check
           node packages/protocol/validate-protocol.mjs
           node engines/markdown/verify-isolation.mjs
-          node --test deploy/source-policy.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs
+          node --test deploy/source-policy.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs deploy/release-evidence.test.mjs
       - name: Install pinned Node runtimes serially
         run: |
           npm --prefix engines/markdown ci --omit=dev --ignore-scripts --no-audit --no-fund
