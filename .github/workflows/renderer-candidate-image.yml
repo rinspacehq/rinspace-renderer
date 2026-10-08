@@ -30,6 +30,8 @@ jobs:
     if: github.repository == 'rinspacehq/rinspace-renderer' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    outputs:
+      reference: ${{ steps.inputs.outputs.image }}@${{ steps.build.outputs.digest }}
     env:
       GOMAXPROCS: '1'
       GOFLAGS: -p=1
@@ -67,6 +69,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify runtime base came from this exact source
+        if: inputs.component == 'runtime'
+        env:
+          BASE: ${{ steps.inputs.outputs.base }}
+        run: |
+          docker pull "$BASE"
+          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$BASE")"
+          test "$revision" = "$GITHUB_SHA"
       - name: Build and push candidate by commit tag
         id: build
         uses: docker/build-push-action@v6
@@ -113,4 +123,97 @@ jobs:
         with:
           name: renderer-image-candidate-${{ inputs.component }}-${{ github.sha }}
           path: renderer-image-candidate.json
+          if-no-files-found: error
+
+  evidence:
+    needs: candidate
+    if: inputs.component != 'latexml-base'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      COMPONENT: ${{ inputs.component }}
+      REFERENCE: ${{ needs.candidate.outputs.reference }}
+      GOMAXPROCS: '1'
+      GOFLAGS: -p=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache-dependency-path: api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Inspect the exact built image and capture installed package notices
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$REFERENCE" =~ ^ghcr\.io/rinspacehq/rinspace-renderer/${COMPONENT}@sha256:[a-f0-9]{64}$ ]]
+          mkdir -p evidence/notices/system evidence/notices/image evidence/notices/renderer-source
+          docker pull "$REFERENCE"
+          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$REFERENCE")"
+          test "$revision" = "$GITHUB_SHA"
+          docker run --rm --network none --read-only --user 0 --cap-drop ALL \
+            --entrypoint /usr/bin/dpkg-query "$REFERENCE" \
+            -W '-f=${binary:Package}\t${Version}\n' > evidence/dpkg-packages.tsv
+          docker run --rm --network none --read-only --user 0 --cap-drop ALL \
+            --entrypoint /bin/sh "$REFERENCE" -c \
+            'find -L /usr/share/doc /usr/share/common-licenses -type f \( -iname "copyright*" -o -iname "LICENSE*" -o -iname "COPYING*" -o -iname "NOTICE*" -o -path "/usr/share/common-licenses/*" \) -print0 | tar --dereference --null -T - -cf -' \
+            > evidence/system-notices.tar
+          tar -xf evidence/system-notices.tar -C evidence/notices/system
+          if [ "$COMPONENT" = runtime ]; then
+            docker run --rm --network none --read-only --user 0 --cap-drop ALL \
+              --entrypoint /bin/sh "$REFERENCE" -c \
+              'find -L /opt/rin-renderer/engines -type f \( -iname "LICENSE*" -o -iname "NOTICE*" -o -name package.json \) -print0 | tar --dereference --null -T - -cf -' \
+              > evidence/node-notices.tar
+            tar -xf evidence/node-notices.tar -C evidence/notices/image
+            (cd api && go mod download && go list -m -f '{{.Path}}@{{.Version}}|{{.Dir}}' all) > evidence/go-modules.tsv
+            node deploy/collect-go-notices.mjs evidence/go-modules.tsv evidence/notices/go
+          fi
+          cp LICENSE THIRD_PARTY_NOTICES.md evidence/notices/renderer-source/
+          if [ "$COMPONENT" = runtime ]; then
+            cp engines/latexml/latexml.lock deploy/Dockerfile.runtime evidence/notices/renderer-source/
+          else
+            cp "deploy/${COMPONENT}.lock.json" evidence/notices/renderer-source/
+          fi
+          node deploy/fetch-notice-sources.mjs deploy/notice-sources.lock.json evidence/notices/upstream
+      - name: Seal SPDX and the full notice bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--component "$COMPONENT" --reference "$REFERENCE" --dpkg evidence/dpkg-packages.tsv \
+            --output "evidence/${COMPONENT}.spdx.json")
+          if [ "$COMPONENT" = runtime ]; then args+=(--go-modules evidence/go-modules.tsv); fi
+          node deploy/generate-image-sbom.mjs "${args[@]}"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -C evidence/notices -czf "evidence/${COMPONENT}.NOTICES.tar.gz" .
+          COMPONENT="$COMPONENT" REFERENCE="$REFERENCE" node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const sha256 = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+          const component = process.env.COMPONENT;
+          const result = {
+            schemaVersion: 'rin-renderer-image-evidence/v1',
+            sourceCommit: process.env.GITHUB_SHA,
+            component,
+            reference: process.env.REFERENCE,
+            sbomSha256: sha256(`evidence/${component}.spdx.json`),
+            noticeSha256: sha256(`evidence/${component}.NOTICES.tar.gz`),
+            status: 'candidate-only',
+          };
+          writeFileSync('evidence/image-evidence.json', JSON.stringify(result, null, 2) + '\n');
+          console.log(JSON.stringify(result));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renderer-image-evidence-${{ inputs.component }}-${{ github.sha }}
+          path: |
+            evidence/*.spdx.json
+            evidence/*.NOTICES.tar.gz
+            evidence/image-evidence.json
           if-no-files-found: error

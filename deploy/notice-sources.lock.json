@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "rin-renderer-notice-sources/v1",
+  "sources": [
+    {
+      "name": "latexml-LICENSE",
+      "url": "https://raw.githubusercontent.com/brucemiller/LaTeXML/ae2c8b266d1aa04af4350a64c79215bbe4b7c482/LICENSE",
+      "sha256": "f856925cca60fce156b93545442dc874de55ac40edeeb3a1005521abb13c44b3"
+    },
+    {
+      "name": "node-LICENSE",
+      "url": "https://raw.githubusercontent.com/nodejs/node/v22.22.3/LICENSE",
+      "sha256": "c738ae413cf561f174e34f6961f8ca458aae2369a73640dda6234c629b98bcc4"
+    },
+    {
+      "name": "remark-math-LICENSE",
+      "url": "https://raw.githubusercontent.com/remarkjs/remark-math/6.0.0/license",
+      "sha256": "cb992262f361a5359e6771c28740d33c7041e15332ae8537fae40538992591a9"
+    },
+    {
+      "name": "mathjax-font-LICENSE",
+      "url": "https://raw.githubusercontent.com/mathjax/MathJax-src/4.1.3/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "name": "typst-LICENSE",
+      "url": "https://raw.githubusercontent.com/typst/typst/v0.15.1/LICENSE",
+      "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"
+    }
+  ]
+}

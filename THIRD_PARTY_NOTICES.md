@@ -15,4 +15,14 @@ This is the source-level dependency review for the initial Renderer candidate. I
 | MathJax Node graph | `engines/mathjax/package-lock.json` | 17 pinned packages: 5 Apache-2.0, 5 MIT, 7 BlueOak-1.0.0 according to lock metadata. `@mathjax/src` is Apache-2.0. |
 | KaTeX Node graph | `engines/katex/package-lock.json` | 2 pinned packages, both MIT according to lock metadata. KaTeX's checked package `LICENSE` contains the MIT copyright and permission notice. |
 
+At the locked versions, the installed `remark-math@6.0.0` and
+`@mathjax/mathjax-newcm-font@4.1.3` package archives omit a separate license
+file. `deploy/notice-sources.lock.json` pins the full upstream license files by
+URL and SHA-256, alongside exact LaTeXML, Node.js, and Typst license sources.
+The image candidate evidence job verifies those bytes, inventories the actual
+Debian closure, and retains Debian copyright/common-license files, installed
+Node package notices and metadata, and all 28 pinned Go module license files.
+This source review still does not certify an image until its exact digest and
+generated evidence pass separate inspection.
+
 No production secrets, user works, bundled extension fonts, or third-party binaries are part of the reviewed source candidate. Public CI must build from this source and preserve licenses/notice files from installed packages; Rinspace product integration must consume the exact reviewed artifact digests rather than rebuilding an altered private copy.
