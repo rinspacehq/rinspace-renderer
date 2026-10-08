@@ -6,14 +6,39 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectcore"
 )
 
 type fakeProjectEngineAdapter struct {
 	engine string
 	render func(context.Context, projectEngineRequest) projectEngineOutcome
+}
+
+func TestProjectEngineLocalDiagramPassesOnlyLocalProfile(t *testing.T) {
+	hash := strings.Repeat("c", 64)
+	id := "diagrams/v1/svg-sha256/cc/" + hash + ".svg"
+	response := ProjectRenderResponse{
+		Engine: "latexml", HTML: `<img src="http://127.0.0.1:8090/local-assets/` + id + `" data-rin-diagram-object-id="` + id + `">`,
+		GeneratedArtifacts: []contracts.ArtifactReference{{ArtifactID: id, SHA256: hash, Bytes: 128, MediaType: "image/svg+xml; charset=utf-8", Visibility: "public"}},
+	}
+	local := testConfig()
+	local.StorageProvider = "local"
+	local.LocalPublicBaseURL = "http://127.0.0.1:8090"
+	for name, cfg := range map[string]Config{"local": local, "product": testConfig()} {
+		t.Run(name, func(t *testing.T) {
+			outcome := (&Server{cfg: cfg}).validateAndRecoverProjectOutcome(t.Context(), "latexml", projectRenderContext{}, projectEngineOutcome{Status: http.StatusOK, Response: response})
+			if name == "local" && (outcome.Err != nil || outcome.Status != http.StatusOK) {
+				t.Fatalf("local diagram rejected: %#v", outcome)
+			}
+			if name == "product" && (outcome.Err == nil || outcome.Status != http.StatusBadGateway) {
+				t.Fatalf("product profile accepted loopback diagram: %#v", outcome)
+			}
+		})
+	}
 }
 
 func TestProjectEngineRegistryPreservesDirectLateXMLResponses(t *testing.T) {

@@ -17,6 +17,7 @@ import (
 	"golang.org/x/net/html"
 
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/renderstorage"
 )
 
 const (
@@ -30,6 +31,9 @@ type Input struct {
 	MaxFragmentBytes  int64
 	RequiredArtifacts []contracts.ArtifactReference
 	ClientOwnedAssets []string
+	// LocalAssetBaseURL is set only by the local storage profile. It permits
+	// exact, declared, content-addressed SVG URLs served by this renderer.
+	LocalAssetBaseURL string
 }
 
 type Error struct {
@@ -87,6 +91,9 @@ func Validate(input Input) error {
 	if err != nil {
 		return err
 	}
+	if err := validateLocalAssetBaseURL(input.LocalAssetBaseURL); err != nil {
+		return err
+	}
 	seenArtifacts := map[string]struct{}{}
 	seenClientAssets := map[string]struct{}{}
 	seenIDs := map[string]struct{}{}
@@ -127,7 +134,7 @@ func Validate(input Input) error {
 			if tag == "style" && tokenType == html.StartTagToken {
 				styleDepth++
 			}
-			if err := validateAttributes(tag, token.Attr, artifacts, clientAssets, seenArtifacts, seenClientAssets, seenIDs); err != nil {
+			if err := validateAttributes(tag, token.Attr, artifacts, clientAssets, seenArtifacts, seenClientAssets, seenIDs, input.LocalAssetBaseURL); err != nil {
 				return err
 			}
 		case html.EndTagToken:
@@ -220,7 +227,7 @@ func clientAssetMap(items []string) (map[string]struct{}, error) {
 	return result, nil
 }
 
-func validateAttributes(tag string, attrs []html.Attribute, artifacts map[string]contracts.ArtifactReference, clientAssets map[string]struct{}, seenArtifacts, seenClientAssets, seenIDs map[string]struct{}) error {
+func validateAttributes(tag string, attrs []html.Attribute, artifacts map[string]contracts.ArtifactReference, clientAssets map[string]struct{}, seenArtifacts, seenClientAssets, seenIDs map[string]struct{}, localAssetBaseURL string) error {
 	values := make(map[string]string, len(attrs))
 	for _, attr := range attrs {
 		name := strings.ToLower(attr.Key)
@@ -234,11 +241,6 @@ func validateAttributes(tag string, attrs []html.Attribute, artifacts map[string
 		values[name] = value
 		if strings.HasPrefix(name, "on") {
 			return reject("final_output.event_handler", "final HTML contains event handler attribute %q", name)
-		}
-		if _, ok := URLAttributes[name]; ok {
-			if err := validateURL(value, tag, name); err != nil {
-				return err
-			}
 		}
 		if (strings.Contains(name, "path") || strings.Contains(name, "file")) && rendererLocalPath(value) {
 			return reject("final_output.renderer_local_path", "final HTML <%s> exposes a renderer-local path in %s", tag, name)
@@ -263,6 +265,15 @@ func validateAttributes(tag string, attrs []html.Attribute, artifacts map[string
 					return reject("final_output.dom_clobbering_identifier", "final HTML contains duplicate id %q", value)
 				}
 				seenIDs[value] = struct{}{}
+			}
+		}
+	}
+	for name, value := range values {
+		if _, ok := URLAttributes[name]; ok {
+			if !declaredLocalSVGURL(tag, name, value, values, artifacts, localAssetBaseURL) {
+				if err := validateURL(value, tag, name); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -291,6 +302,38 @@ func validateAttributes(tag string, attrs []html.Attribute, artifacts map[string
 		return reject("final_output.artifact_missing", "final HTML <%s> has an undeclared relative %s resource %q", tag, attribute, raw)
 	}
 	return nil
+}
+
+func validateLocalAssetBaseURL(value string) error {
+	if value == "" {
+		return nil
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme != "http" || parsed.User != nil || parsed.Host == "" ||
+		parsed.Port() == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+		!loopbackHost(parsed.Hostname()) || strings.HasSuffix(value, "/") {
+		return reject("final_output.local_asset_origin_invalid", "local asset origin must be a loopback HTTP origin with an explicit port")
+	}
+	return nil
+}
+
+func loopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+func declaredLocalSVGURL(tag, attribute, value string, attrs map[string]string, artifacts map[string]contracts.ArtifactReference, baseURL string) bool {
+	if baseURL == "" || tag != "img" || attribute != "src" {
+		return false
+	}
+	id := attrs["data-rin-diagram-object-id"]
+	artifact, ok := artifacts[id]
+	return ok && strings.HasPrefix(id, "diagrams/v1/svg-sha256/") &&
+		artifact.MediaType == "image/svg+xml; charset=utf-8" &&
+		value == baseURL+renderstorage.LocalAssetPath+id
 }
 
 func relativeResourceReference(tag string, values map[string]string) (string, string, bool) {
