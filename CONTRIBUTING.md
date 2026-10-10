@@ -12,3 +12,8 @@ private product. The maintainer reviews the public change and separately decides
 immutable reviewed artifact should be tested and adopted by the product.
 
 Report vulnerabilities privately as described in [`SECURITY.md`](SECURITY.md).
+
+Pull requests report source/protocol validation, the Markdown contract suite,
+Go API tests, and TeX SVG tests separately. Open the named failed check for its
+focused log. The required `source` status is their aggregate merge gate; it
+does not hide or replace the individual results.

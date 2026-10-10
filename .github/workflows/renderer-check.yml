@@ -2,6 +2,8 @@ name: Renderer source checks
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
@@ -12,7 +14,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  source:
+  source_policy:
+    name: Source and protocol checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+      - name: Source and protocol checks
+        run: |
+          git diff --check
+          node packages/protocol/validate-protocol.mjs
+          node engines/markdown/verify-isolation.mjs
+          node --test deploy/source-policy.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs deploy/release-evidence.test.mjs
+
+  markdown:
+    name: Markdown contract suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+          cache: npm
+          cache-dependency-path: engines/markdown/package-lock.json
+      - name: Install pinned Markdown runtime
+        run: npm --prefix engines/markdown ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Markdown contract suite
+        working-directory: engines/markdown
+        run: npm run check
+
+  api:
+    name: Go API tests
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -32,21 +68,50 @@ jobs:
             engines/markdown/package-lock.json
             engines/mathjax/package-lock.json
             engines/katex/package-lock.json
-      - name: Source and protocol checks
-        run: |
-          git diff --check
-          node packages/protocol/validate-protocol.mjs
-          node engines/markdown/verify-isolation.mjs
-          node --test deploy/source-policy.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs deploy/release-evidence.test.mjs
       - name: Install pinned Node runtimes serially
         run: |
           npm --prefix engines/markdown ci --omit=dev --ignore-scripts --no-audit --no-fund
           npm --prefix engines/mathjax ci --omit=dev --ignore-scripts --no-audit --no-fund
           npm --prefix engines/katex ci --omit=dev --ignore-scripts --no-audit --no-fund
-      - name: Markdown contract suite
-        working-directory: engines/markdown
-        run: npm run check
-      - name: Go API and TeX SVG suites
+      - name: Go API tests
+        working-directory: api
+        run: go test ./... -count=1
+
+  tex_svg:
+    name: TeX SVG tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GOMAXPROCS: "1"
+      GOFLAGS: -p=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: engines/texsvg/go.sum
+      - name: TeX SVG tests
+        working-directory: engines/texsvg
+        run: go test ./... -count=1
+
+  source:
+    name: source
+    if: ${{ always() }}
+    needs: [source_policy, markdown, api, tex_svg]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every named source check
+        env:
+          SOURCE_POLICY_RESULT: ${{ needs.source_policy.result }}
+          MARKDOWN_RESULT: ${{ needs.markdown.result }}
+          API_RESULT: ${{ needs.api.result }}
+          TEX_SVG_RESULT: ${{ needs.tex_svg.result }}
         run: |
-          (cd api && go test ./... -count=1)
-          (cd engines/texsvg && go test ./... -count=1)
+          for result in "${SOURCE_POLICY_RESULT}" "${MARKDOWN_RESULT}" "${API_RESULT}" "${TEX_SVG_RESULT}"; do
+            if [ "${result}" != 'success' ]; then
+              echo '::error title=Renderer checks failed::Open the named failed check above for its focused log.'
+              exit 1
+            fi
+          done
+          echo 'All Renderer source checks passed.'
