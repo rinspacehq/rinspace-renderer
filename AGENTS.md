@@ -1,10 +1,12 @@
 # Renderer repository rules
 
-This repository is the standalone source for Rinspace Renderer after the
-maintainer accepts its public-source cutover. Until that acceptance, the
-authoritative implementation remains in the private `rinspace/rin-renderer/`
-tree. A public commit or tag alone does not change the product's source or
-deployed artifact.
+The maintainer accepted the coordinated source cutover on 2026-10-11. At the
+accepted policy merge recorded by the private product's workspace authority, this repository
+is the sole editable Renderer implementation and build source. The historical
+private `rinspace/rin-renderer/` implementation is frozen; the private product
+retains requirements, authoritative Control Plane and CloudBase contracts,
+exact consumer locks, integration, deployment and runtime data. A public
+commit or tag alone does not change the deployed artifact.
 
 Keep local rendering usable without a Rinspace account or CloudBase. Keep the
 Control Plane profile compatible with the versioned protocol snapshots and

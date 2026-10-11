@@ -4,7 +4,7 @@ ARG LATEXML_REPO=https://github.com/brucemiller/LaTeXML.git
 ARG LATEXML_COMMIT=ae2c8b266d1aa04af4350a64c79215bbe4b7c482
 
 FROM ${GO_BASE_IMAGE} AS api-build
-ARG RENDERER_SOURCE_ROOT=rin-renderer
+ARG RENDERER_SOURCE_ROOT=.
 WORKDIR /src/rin-renderer/api
 COPY ${RENDERER_SOURCE_ROOT}/api/go.mod ./
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/rin-renderer-api .
 
 FROM ${GO_BASE_IMAGE} AS texsvg-build
-ARG RENDERER_SOURCE_ROOT=rin-renderer
+ARG RENDERER_SOURCE_ROOT=.
 WORKDIR /src/rin-renderer/engines/texsvg
 COPY ${RENDERER_SOURCE_ROOT}/engines/texsvg/go.mod ./
 RUN --mount=type=cache,target=/go/pkg/mod \
@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/rin-renderer-texsvg .
 
 FROM ${PERL_BASE_IMAGE} AS latexml-base
-ARG RENDERER_SOURCE_ROOT=rin-renderer
+ARG RENDERER_SOURCE_ROOT=.
 ARG LATEXML_REPO
 ARG LATEXML_COMMIT
 
@@ -73,7 +73,7 @@ RUN --mount=type=cache,target=/root/.cpanm \
 COPY ${RENDERER_SOURCE_ROOT}/engines/latexml/latexml.lock /opt/rin-renderer/engines/latexml/latexml.lock
 
 FROM latexml-base AS runtime
-ARG RENDERER_SOURCE_ROOT=rin-renderer
+ARG RENDERER_SOURCE_ROOT=.
 
 ENV RIN_RENDERER_ADDR=:8090 \
     RIN_RENDERER_MATH_PRIMARY_ENGINE=mathjax-chtml \
