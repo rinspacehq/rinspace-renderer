@@ -16,7 +16,7 @@ A service token authenticates each caller. `X-Rin-Renderer-Owner-Scope` is the s
 | `deploy/` | Engine Dockerfiles, version locks, compiler wrappers, and source policy checks |
 | `corpus/` | Synthetic article, book, diagram, Typst, and PDF editor cases |
 
-The Go module paths are `github.com/rinspacehq/rinspace-renderer/api` and `github.com/rinspacehq/rinspace-renderer/engines/texsvg`. The Dockerfiles accept `RENDERER_SOURCE_ROOT=.` when built from this repository root. The default `rin-renderer` source root keeps reviewed private builds compatible during the transition.
+The Go module paths are `github.com/rinspacehq/rinspace-renderer/api` and `github.com/rinspacehq/rinspace-renderer/engines/texsvg`. Build Renderer releases only from a clean checkout of this repository. The Dockerfiles default `RENDERER_SOURCE_ROOT=.` to this repository root; an override is not an authorization to build new releases from the frozen private implementation.
 
 ## Configuration boundary
 

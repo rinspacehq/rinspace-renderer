@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867
 FROM --platform=linux/amd64 ${BASE_IMAGE}
-ARG RENDERER_SOURCE_ROOT=rin-renderer
+ARG RENDERER_SOURCE_ROOT=.
 
 ARG SOURCE_HASH=unresolved
 LABEL com.rinspace.latex-pdf.source-sha256="${SOURCE_HASH}"

@@ -19,11 +19,11 @@ test('compiler wrappers match their source locks', () => {
   }
 });
 
-test('image sources build from either reviewed private subtree or public repository root', () => {
+test('image sources default to the sole public repository root', () => {
   for (const name of ['latexml', 'latex-pdf', 'typst-pdf']) {
     const dockerfile = read(`Dockerfile.${name}`).toString('utf8');
     const stages = [...dockerfile.matchAll(/^FROM\s.+$/gm)].length;
-    const sourceArgs = [...dockerfile.matchAll(/^ARG RENDERER_SOURCE_ROOT=rin-renderer$/gm)].length;
+    const sourceArgs = [...dockerfile.matchAll(/^ARG RENDERER_SOURCE_ROOT=\.$/gm)].length;
     assert.equal(sourceArgs, stages, `${name} has a stage without a source-root build argument`);
     for (const line of dockerfile.split('\n').filter(line => line.startsWith('COPY ') && !line.includes('--from='))) {
       assert.match(line, /\$\{RENDERER_SOURCE_ROOT\}\//, `${name} has a nonportable local COPY`);
