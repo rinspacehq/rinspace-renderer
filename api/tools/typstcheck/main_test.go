@@ -12,7 +12,7 @@ func TestPublicationProbeUsesCanonicalIdentityAndNormalCompilerBudget(t *testing
 	}
 	t.Setenv("RIN_RENDERER_TYPST_TIMEOUT_SECONDS", "120")
 	for _, source := range []string{"= Synthetic local publication\n", "= Official HTML loss\n$ cancel(x) $\n"} {
-		result, err := checkPublication(map[string][]byte{"main.typ": []byte(source)}, "main.typ", "article", binary, font, "", "")
+		result, err := checkPublication(map[string][]byte{"main.typ": []byte(source)}, "main.typ", "article", binary, font, "", "", "")
 		if err != nil {
 			t.Fatal(err)
 		}

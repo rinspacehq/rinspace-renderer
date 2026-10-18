@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "rin-document-bundle/v3",
+  "projectHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "bundleHash": "d9c0472869a84e85009babc5979d191b50e98a8e0171dfb7f2cc8f1ff4328af4",
+  "state": "final", "contentKind": "typst", "documentEngine": "typst",
+  "title": "Images 图像 & <proof>",
+  "pages": [{"id":"page-main","sourcePath":"main.typ","fragment":"<img src=\"typst-assets/900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601.svg\" data-rin-asset-path=\"typst-assets/900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601.svg\"/>","fragmentFormat":"html","toc":[],"dependencyHashes":[]}],
+  "workUnits": [],
+  "assets": [{"id":"asset-1","kind":"embedded","sha256":"900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601","bytes":41,"mediaType":"image/svg+xml","projectPath":"typst-assets/900fbe934249ad120004bd24adf66aad8817d89586273c0cc50e187bddebb601.svg","bodyBase64":"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4="}],
+  "diagnostics": [],
+  "provenance": {"adapter":"typst","adapterVersion":"rin-typst-html-adapter/v3","engineVersion":"0.15.1","projectGraphSchemaVersion":"rin-project-graph/v1"}
+}

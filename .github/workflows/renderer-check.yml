@@ -27,6 +27,7 @@ jobs:
         run: |
           git diff --check
           node packages/protocol/validate-protocol.mjs
+          node --test packages/document-contract/embedded-assets.test.mjs
           node engines/markdown/verify-isolation.mjs
           node --test deploy/source-policy.test.mjs deploy/typst-packages.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs deploy/release-evidence.test.mjs
 

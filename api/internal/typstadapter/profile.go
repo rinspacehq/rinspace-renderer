@@ -12,7 +12,7 @@ const ProfileSchemaVersion = "rin-typst-html-profile/v2"
 // AdapterVersion is the semantic version of the Go HTML adapter and sanitizer.
 // Bump it whenever the accepted element/attribute/URL policy changes so a new
 // renderProfileId is produced and stale cached results are not reused.
-const AdapterVersion = "rin-typst-html-adapter/v2"
+const AdapterVersion = "rin-typst-html-adapter/v3"
 
 // MathPresentation values recorded in a profile.
 const (

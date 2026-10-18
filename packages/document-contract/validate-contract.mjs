@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const schemaVersion = 'rin-project-graph/v1';
-const bundleSchemaVersions = new Set(['rin-document-bundle/v1', 'rin-document-bundle/v2']);
+const bundleSchemaVersions = new Set(['rin-document-bundle/v1', 'rin-document-bundle/v2', 'rin-document-bundle/v3']);
 const validContentKinds = new Set(['latex', 'markdown', 'typst']);
 const validEntrypointRoles = new Set(['document', 'book-page']);
 const validFileRoles = new Set(['source', 'asset', 'bibliography', 'generated']);
@@ -17,6 +17,7 @@ export function validateDocumentContract() {
     'package.json',
     'schemas/document-bundle.schema.json',
     'schemas/document-bundle-v2.schema.json',
+    'schemas/document-bundle-v3.schema.json',
     'schemas/project-graph.schema.json',
     'src/index.ts',
   ];
@@ -66,9 +67,13 @@ export function validateDocumentContract() {
   if (!bundleV2Schema.$defs?.page?.required?.includes('blocks')) {
     throw new Error('Document Bundle v2 pages must require semantic blocks');
   }
+  const resourceSchema = readJSON(path.join(root, 'schemas/document-bundle-v3.schema.json'));
+  if (resourceSchema.properties?.schemaVersion?.const !== 'rin-document-bundle/v3'
+    || resourceSchema.properties?.contentKind?.const !== 'typst'
+    || !resourceSchema.$defs?.embeddedImage?.required?.includes('bodyBase64')) throw new Error('Resource-bearing bundle schema is incomplete');
   const bundleFixtureDir = path.join(root, 'fixtures/document-bundle');
   const bundleFixtureFiles = fs.readdirSync(bundleFixtureDir).filter((name) => name.endsWith('.json')).sort();
-  const expectedBundleFixtures = ['latex-draft.json', 'markdown-draft.json', 'markdown-final-v2.json', 'typst-final.json'];
+  const expectedBundleFixtures = ['latex-draft.json', 'markdown-draft.json', 'markdown-final-v2.json', 'typst-final-images-v3.json', 'typst-final.json'];
   if (JSON.stringify(bundleFixtureFiles) !== JSON.stringify(expectedBundleFixtures)) {
     throw new Error(`Unexpected Document Bundle fixtures: ${bundleFixtureFiles.join(', ')}`);
   }
@@ -77,7 +82,7 @@ export function validateDocumentContract() {
   }
 
   const ts = fs.readFileSync(path.join(root, 'src/index.ts'), 'utf8');
-  for (const symbol of ['RinProjectGraphV1', 'RinProjectEntrypoint', 'RinProjectGraphFile', 'RinProjectReference', 'RinDocumentBundleV1', 'RinDocumentBundleV2', 'RinPage', 'RinPageV2', 'RinDocumentBlock', 'RinMathUnit', 'RinDiagramUnit', 'RinCodeUnit', 'RinAssetReference', 'RinDiagnostic', 'RinProvenance']) {
+  for (const symbol of ['RinProjectGraphV1', 'RinProjectEntrypoint', 'RinProjectGraphFile', 'RinProjectReference', 'RinDocumentBundleV1', 'RinDocumentBundleV2', 'RinDocumentBundleV3', 'RinEmbeddedImage', 'RinPage', 'RinPageV2', 'RinDocumentBlock', 'RinMathUnit', 'RinDiagramUnit', 'RinCodeUnit', 'RinAssetReference', 'RinDiagnostic', 'RinProvenance']) {
     if (!ts.includes(`interface ${symbol}`)) {
       throw new Error(`Document contract TypeScript is missing ${symbol}`);
     }
@@ -100,6 +105,8 @@ export function validateDocumentBundle(bundle, label) {
   }
 
   const workIDs = new Set();
+  const embedded = bundle.schemaVersion === 'rin-document-bundle/v3';
+  if (embedded && (bundle.contentKind !== 'typst' || bundle.documentEngine !== 'typst' || bundle.state !== 'final' || bundle.workUnits.length || !bundle.assets.length || bundle.assets.length > 4096)) throw new Error(`${label}: invalid resource-bearing Typst bundle`);
   for (const unit of bundle.workUnits) {
     validateWorkUnit(unit, label);
     if (workIDs.has(unit.id)) throw new Error(`${label}: duplicate work id ${unit.id}`);
@@ -124,7 +131,7 @@ export function validateDocumentBundle(bundle, label) {
       }
     }
     for (const dependency of page.dependencyHashes) assertSHA256(dependency, `${label}: dependency hash`);
-    if (bundle.schemaVersion === 'rin-document-bundle/v1') {
+    if (bundle.schemaVersion === 'rin-document-bundle/v1' || embedded) {
       if (page.blocks !== undefined) throw new Error(`${label}: v1 page cannot contain blocks`);
     } else {
       validateDocumentBlocks(page, bundle.state, label);
@@ -147,6 +154,8 @@ export function validateDocumentBundle(bundle, label) {
   }
 
   const assetIDs = new Set();
+  const embeddedPaths = new Set(), embeddedHashes = new Set();
+  let embeddedBytes = 0;
   for (const asset of bundle.assets) {
     assertIdentifier(asset.id, `${label}: asset id`);
     if (assetIDs.has(asset.id)) throw new Error(`${label}: duplicate asset id ${asset.id}`);
@@ -154,13 +163,35 @@ export function validateDocumentBundle(bundle, label) {
     assertSHA256(asset.sha256, `${label}: asset sha256`);
     if (!Number.isSafeInteger(asset.bytes) || asset.bytes < 0) throw new Error(`${label}: invalid asset bytes`);
     assertNonEmpty(asset.mediaType, `${label}: asset mediaType`);
-    if (asset.kind === 'project-file') {
+    if (embedded !== (asset.kind === 'embedded') || (!embedded && asset.bodyBase64 !== undefined)) throw new Error(`${label}: resource contract version mismatch`);
+    if (asset.kind === 'embedded') {
+      assertCanonicalPath(asset.projectPath, `${label}: embedded image path`);
+      const media = { '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' }[path.extname(asset.projectPath)];
+      if (asset.artifactKey !== undefined || asset.bytes < 1 || asset.bytes > 16*1024*1024 || media !== asset.mediaType || !media || typeof asset.bodyBase64 !== 'string' || asset.bodyBase64.length !== 4*Math.ceil(asset.bytes/3)) throw new Error(`${label}: invalid embedded image metadata`);
+      if (asset.projectPath !== `typst-assets/${asset.sha256}${path.extname(asset.projectPath)}`) throw new Error(`${label}: image path is not content-addressed`);
+      const body = Buffer.from(asset.bodyBase64, 'base64');
+      if (body.length !== asset.bytes || body.toString('base64') !== asset.bodyBase64 || crypto.createHash('sha256').update(body).digest('hex') !== asset.sha256) throw new Error(`${label}: embedded image integrity failed`);
+      if (embeddedPaths.has(asset.projectPath) || embeddedHashes.has(asset.sha256)) throw new Error(`${label}: duplicate embedded resource`);
+      embeddedPaths.add(asset.projectPath); embeddedHashes.add(asset.sha256);
+      embeddedBytes += body.length;
+      if (embeddedBytes > 32*1024*1024) throw new Error(`${label}: embedded resource byte budget exceeded`);
+    } else if (asset.kind === 'project-file') {
       assertCanonicalPath(asset.projectPath, `${label}: project asset path`);
       if (asset.artifactKey !== undefined) throw new Error(`${label}: project asset has artifactKey`);
     } else if (asset.kind === 'generated') {
       assertCanonicalPath(asset.artifactKey, `${label}: generated artifact key`);
       if (asset.projectPath !== undefined) throw new Error(`${label}: generated asset has projectPath`);
     } else throw new Error(`${label}: invalid asset kind`);
+  }
+  if (embedded && embeddedBundleHash(bundle) !== bundle.bundleHash) throw new Error(`${label}: resource bundle hash mismatch`);
+  if (embedded) {
+    const seen = new Set();
+    for (const page of bundle.pages) for (const match of page.fragment.matchAll(/<img\b[^>]*>/gi)) {
+      const sources = [...match[0].matchAll(/\bsrc="([^"]*)"/g)], markers = [...match[0].matchAll(/\bdata-rin-asset-path="([^"]*)"/g)];
+      if (sources.length !== 1 || markers.length !== 1 || sources[0][1] !== markers[0][1] || !embeddedPaths.has(markers[0][1])) throw new Error(`${label}: embedded image reference mismatch`);
+      seen.add(markers[0][1]);
+    }
+    if (seen.size !== embeddedPaths.size) throw new Error(`${label}: unreferenced embedded image`);
   }
   for (const diagnostic of bundle.diagnostics) {
     assertNonEmpty(diagnostic.code, `${label}: diagnostic code`);
@@ -175,6 +206,13 @@ export function validateDocumentBundle(bundle, label) {
     throw new Error(`${label}: invalid provenance`);
   }
   for (const field of ['adapter', 'adapterVersion', 'engineVersion']) assertNonEmpty(provenance[field], `${label}: provenance ${field}`);
+}
+
+export function embeddedBundleHash(bundle) {
+  const sorted = value => Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])])) : value;
+  const json = JSON.stringify(sorted({ ...bundle, bundleHash: '' })).replace(/[<>&\u2028\u2029]/g, char => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  return crypto.createHash('sha256').update(json).digest('hex');
 }
 
 function validateDocumentBlocks(page, bundleState, label) {

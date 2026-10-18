@@ -17,8 +17,8 @@ func TestDocumentBundleFixturesValidateAndRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fixtures) != 4 {
-		t.Fatalf("expected four document bundle fixtures, got %d", len(fixtures))
+	if len(fixtures) != 5 {
+		t.Fatalf("expected five document bundle fixtures including embedded resources, got %d", len(fixtures))
 	}
 	for _, fixture := range fixtures {
 		t.Run(filepath.Base(fixture), func(t *testing.T) {

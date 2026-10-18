@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +14,9 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 )
 
 const fakeTypstMarker = "RIN_TYPST_STUB_EOF"
@@ -125,7 +127,7 @@ func TestTypstProjectExecutorBuildsBookBundleWithProfile(t *testing.T) {
 	if canonical.ContentKind != "typst" || canonical.Engine != "typst" {
 		t.Fatalf("canonical identity = %s/%s", canonical.ContentKind, canonical.Engine)
 	}
-	if canonical.Inline.SchemaVersion != "rin-document-bundle/v1" {
+	if canonical.Inline.SchemaVersion != "rin-document-bundle/v3" {
 		t.Fatalf("bundle schema = %s", canonical.Inline.SchemaVersion)
 	}
 	if got := canonical.Versions["typst"]; got != "0.15.1" {
@@ -152,6 +154,9 @@ func TestTypstProjectExecutorBuildsBookBundleWithProfile(t *testing.T) {
 	}
 	if len(canonical.Inline.Assets) != 1 {
 		t.Fatalf("declared assets = %#v", canonical.Inline.Assets)
+	}
+	if _, err := contracts.DecodeEmbeddedAsset(canonical.Inline.Assets[0]); err != nil {
+		t.Fatalf("drawing is not durably carried in the canonical result: %v", err)
 	}
 }
 

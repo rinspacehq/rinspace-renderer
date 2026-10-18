@@ -15,7 +15,8 @@
     "inline": {
       "oneOf": [
         { "$ref": "../../document-contract/schemas/document-bundle.schema.json" },
-        { "$ref": "../../document-contract/schemas/document-bundle-v2.schema.json" }
+        { "$ref": "../../document-contract/schemas/document-bundle-v2.schema.json" },
+        { "$ref": "../../document-contract/schemas/document-bundle-v3.schema.json" }
       ]
     },
     "resultArtifact": { "$ref": "#/$defs/privateResultArtifact" },

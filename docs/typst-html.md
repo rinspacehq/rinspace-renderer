@@ -30,10 +30,23 @@ Typst itself supplies SVG export and `html.frame`. CeTZ is a drawing package,
 not a TeX-to-SVG service. The compiler's local/embedded graphics enter the same
 validated asset pipeline as other renderer resources.
 
+Resource-bearing results use `rin-document-bundle/v3`: the canonical response
+contains each sanitized image once with its exact Base64 bytes, SHA-256, length,
+type and content-addressed path. Persist the complete result before publication;
+the compatibility payload and temporary job artifacts are not image storage.
+Consumers serve those bytes under their document's current read permissions and
+map the declared image paths in the reading projection, without altering the
+stored bundle. v3 retains non-annotation page semantics; it does not claim v2
+semantic blocks. Native output without images and inspected PDF fallback do not
+need this resource-carrying contract.
+
 For local regression, run `go run ./tools/typstcheck` from `api/` with an
 absolute `-root`, `-mode article|book`, pinned `-binary` and `-font`. Optional
 `-package-root`/`-package-hash`, `-mathjax`, `-pdf` and exclusive `-report` flags
 exercise real source without connecting to or publishing an account.
+`-canonical-output /absolute/private/result.json` with `-publication` writes the
+complete canonical result exclusively (mode 0600); it never prints source/image
+bytes in the short report. Keep real-work outputs outside the source tree.
 Use `-publication` to exercise the actual publication executor (including the
 HTML-versus-PDF decision and canonical result validation), not just the native
 HTML adapter. This is still a local check: it does not submit a job or publish.
