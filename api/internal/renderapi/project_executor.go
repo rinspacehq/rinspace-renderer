@@ -150,12 +150,22 @@ func CanonicalResult(jobID string, projectHash string, contentKind string, respo
 	if response.Engine == "latexml" {
 		bundleSchemaVersion = contracts.DocumentBundleSchemaVersionV2
 	}
+	var assets []contracts.AssetReference
+	if response.Engine == "typst" && len(response.AssetFiles) > 0 {
+		bundleSchemaVersion = contracts.DocumentBundleSchemaVersionV3
+		assets, err = canonicalEmbeddedImages(response.AssetFiles)
+		if err != nil {
+			return contracts.RenderResult{}, err
+		}
+	} else {
+		assets = canonicalProjectAssets(response.AssetFiles)
+	}
 	bundle := contracts.DocumentBundle{
 		SchemaVersion: bundleSchemaVersion, ProjectHash: projectHash,
 		State: contracts.DocumentBundleStateFinal, ContentKind: kind, DocumentEngine: response.Engine,
 		Title:     response.Title,
 		Pages:     pages,
-		WorkUnits: []contracts.WorkUnit{}, Assets: canonicalProjectAssets(response.AssetFiles),
+		WorkUnits: []contracts.WorkUnit{}, Assets: assets,
 		Diagnostics: diagnostics,
 		Provenance: contracts.Provenance{
 			Adapter: response.Engine, AdapterVersion: response.Versions.RinRenderer,
@@ -163,12 +173,21 @@ func CanonicalResult(jobID string, projectHash string, contentKind string, respo
 		},
 		KnowledgeIndex: response.KnowledgeIndex,
 	}
+	if response.Engine == "typst" {
+		bundle.Provenance.AdapterVersion = typstadapter.AdapterVersion
+	}
 	encoded, err := json.Marshal(bundle)
 	if err != nil {
 		return contracts.RenderResult{}, err
 	}
 	digest := sha256.Sum256(encoded)
 	bundle.BundleHash = hex.EncodeToString(digest[:])
+	if bundleSchemaVersion == contracts.DocumentBundleSchemaVersionV3 {
+		bundle.BundleHash, err = contracts.EmbeddedBundleHash(bundle)
+		if err != nil {
+			return contracts.RenderResult{}, err
+		}
+	}
 	versions := canonicalVersions(response.Versions)
 	versions["finalOutput"] = finaloutput.ContractVersion
 	result := contracts.RenderResult{
@@ -183,8 +202,8 @@ func CanonicalResult(jobID string, projectHash string, contentKind string, respo
 	return result, nil
 }
 
-// TypstHTMLResult turns one verified compiler output into a v1 semantic reader
-// bundle. It has no TeX aux files and claims no v2 annotation blocks.
+// TypstHTMLResult turns verified compiler output into a reader bundle, using
+// v3 when it carries generated images. It claims no v2 annotation blocks.
 func TypstHTMLResult(jobID, requestID, projectHash, entrypoint, title, mode, rendererVersion, compilerVersion string, nativeHTML []byte, projectFiles map[string][]byte) (ProjectExecutionResult, error) {
 	if rendererVersion == "" || compilerVersion == "" || entrypoint == "" || requestID == "" {
 		return ProjectExecutionResult{}, errors.New("Typst render provenance is incomplete")

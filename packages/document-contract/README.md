@@ -10,6 +10,12 @@ Current contracts:
   Math/Diagram/Code work units.
 - `rin-document-bundle/v2`: the v1 publication model plus a strict semantic block manifest whose
   IDs occur exactly once in each final page fragment.
+- `rin-document-bundle/v3`: final Typst pages with self-contained, deduplicated image bytes.
+  Pages retain v1's non-annotation semantics; v2 producers and hashes are unchanged. Embedded
+  images carry canonical Base64, exact SHA-256/length/media type/path, with a 16MiB individual,
+  32MiB aggregate and 4096-resource limit. The sorted-key Go JSON bundle (bundleHash="") is
+  hashed including those bytes. Consumers must verify and persist the complete result before
+  publication; temporary jobs and compatibility payloads are not a durable image store.
 
 Consumers accept v1 and v2. Renderer producers remain pinned to v1 until both Markdown and LaTeX
 block emitters pass their compatibility gates; changing a bundle to v2 changes its canonical JSON

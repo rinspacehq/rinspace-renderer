@@ -39,7 +39,11 @@ func run() error {
 	mathjax := flag.Bool("mathjax", false, "present MathML using the shared pinned MathJax engine")
 	publication := flag.Bool("publication", false, "exercise the actual publication executor and canonical result validation without publishing")
 	report := flag.String("report", "", "write an exclusive local JSON evidence file")
+	canonicalOutput := flag.String("canonical-output", "", "write canonical publication JSON exclusively to an absolute private file")
 	flag.Parse()
+	if *canonicalOutput != "" && (!*publication || !filepath.IsAbs(*canonicalOutput)) {
+		return fmt.Errorf("-canonical-output requires -publication and an absolute output path")
+	}
 	if *root == "" || !filepath.IsAbs(*root) || (*mode != "article" && *mode != "book") {
 		return fmt.Errorf("absolute -root and valid -mode are required")
 	}
@@ -73,7 +77,7 @@ func run() error {
 		return err
 	}
 	if *publication {
-		result, err := checkPublication(files, *entry, *mode, *binary, *font, *packages, *packageHash)
+		result, err := checkPublication(files, *entry, *mode, *binary, *font, *packages, *packageHash, *canonicalOutput)
 		if err != nil {
 			return err
 		}
@@ -138,7 +142,7 @@ func writeReport(result map[string]any, report string) error {
 	return json.NewEncoder(os.Stdout).Encode(result)
 }
 
-func checkPublication(files map[string][]byte, entry, mode, binary, font, packages, packageHash string) (map[string]any, error) {
+func checkPublication(files map[string][]byte, entry, mode, binary, font, packages, packageHash, canonicalOutput string) (map[string]any, error) {
 	var archive bytes.Buffer
 	writer := zip.NewWriter(&archive)
 	names := make([]string, 0, len(files))
@@ -177,7 +181,7 @@ func checkPublication(files map[string][]byte, entry, mode, binary, font, packag
 	start := time.Now()
 	// A valid synthetic identity exercises the canonical publication contract;
 	// it is never submitted to a queue or associated with a remote project.
-	result := executor.Execute(ctx, renderapi.ProjectExecutionRequest{ContentKind: "typst", JobID: "job-local-publication-check", RequestID: "request-local-publication-check", ArchiveName: "project.zip", Archive: archive.Bytes(), Title: "Local publication check", ExplicitMainFile: entry, DocumentMode: mode, ProjectID: mode + ":1", SourceCommit: strings.Repeat("a", 40), ControlProjectHash: strings.Repeat("b", 64)})
+	result := executor.Execute(ctx, renderapi.ProjectExecutionRequest{ContentKind: "typst", JobID: "00000000-0000-4000-8000-000000000001", RequestID: "render-" + strings.Repeat("c", 32), ArchiveName: "project.zip", Archive: archive.Bytes(), Title: "Local publication check", ExplicitMainFile: entry, DocumentMode: mode, ProjectID: mode + ":1", SourceCommit: strings.Repeat("a", 40), ControlProjectHash: strings.Repeat("b", 64)})
 	if result.Err != nil {
 		return nil, fmt.Errorf("publication executor: %w (%s)", result.Err, result.Message)
 	}
@@ -187,12 +191,37 @@ func checkPublication(files map[string][]byte, entry, mode, binary, font, packag
 	if err := result.Canonical.Validate(); err != nil {
 		return nil, err
 	}
+	if canonicalOutput != "" {
+		if !filepath.IsAbs(canonicalOutput) {
+			return nil, fmt.Errorf("canonical output must be absolute")
+		}
+		file, err := os.OpenFile(canonicalOutput, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err != nil {
+			return nil, err
+		}
+		encodeErr := json.NewEncoder(file).Encode(result.Canonical)
+		closeErr := file.Close()
+		if encodeErr != nil {
+			return nil, encodeErr
+		}
+		if closeErr != nil {
+			return nil, closeErr
+		}
+	}
 	mathCount, pageCount := 0, 0
+	imageCount := 0
+	var imageBytes int64
 	if result.Canonical.Inline != nil {
+		for _, asset := range result.Canonical.Inline.Assets {
+			if asset.Kind == "embedded" {
+				imageCount++
+				imageBytes += asset.Bytes
+			}
+		}
 		for _, page := range result.Canonical.Inline.Pages {
 			pageCount++
 			mathCount += strings.Count(page.Fragment, "<mjx-container")
 		}
 	}
-	return map[string]any{"passed": true, "publicationExecutor": true, "mode": mode, "fallback": result.Response.Fallback, "pages": pageCount, "mathjaxContainers": mathCount, "diagnostics": result.Diagnostics, "profile": renderapi.TypstHTMLProfileID(cfg), "compileTimeoutSeconds": cfg.TypstTimeout.Seconds(), "totalMilliseconds": time.Since(start).Milliseconds()}, nil
+	return map[string]any{"passed": true, "publicationExecutor": true, "mode": mode, "fallback": result.Response.Fallback, "pages": pageCount, "mathjaxContainers": mathCount, "embeddedImages": imageCount, "embeddedImageBytes": imageBytes, "diagnostics": result.Diagnostics, "profile": renderapi.TypstHTMLProfileID(cfg), "compileTimeoutSeconds": cfg.TypstTimeout.Seconds(), "totalMilliseconds": time.Since(start).Milliseconds()}, nil
 }

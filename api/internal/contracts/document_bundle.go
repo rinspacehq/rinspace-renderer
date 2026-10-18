@@ -145,6 +145,7 @@ type AssetReference struct {
 	MediaType   string `json:"mediaType"`
 	ProjectPath string `json:"projectPath,omitempty"`
 	ArtifactKey string `json:"artifactKey,omitempty"`
+	BodyBase64  string `json:"bodyBase64,omitempty"`
 }
 
 type Diagnostic struct {
@@ -272,9 +273,19 @@ func (bundle DocumentBundle) Validate() error {
 		}
 	}
 
+	if bundle.SchemaVersion == DocumentBundleSchemaVersionV3 &&
+		(bundle.ContentKind != ContentKindTypst || bundle.DocumentEngine != "typst" || bundle.State != DocumentBundleStateFinal ||
+			!isSHA256(bundle.BundleHash) || len(bundle.WorkUnits) != 0 || len(bundle.Assets) == 0 || len(bundle.Assets) > EmbeddedAssetsMaxCount) {
+		return errors.New("v3 requires a final Typst bundle with bounded embedded images and no semantic work claims")
+	}
 	assetIDs := map[string]struct{}{}
+	embeddedPaths, embeddedHashes := map[string]bool{}, map[string]bool{}
+	var embeddedBytes int64
 	for index := range bundle.Assets {
 		asset := &bundle.Assets[index]
+		if (bundle.SchemaVersion == DocumentBundleSchemaVersionV3) != (asset.Kind == "embedded") {
+			return errors.New("embedded image resources require the explicit v3 contract")
+		}
 		if err := asset.validate(); err != nil {
 			return fmt.Errorf("asset %d: %w", index, err)
 		}
@@ -282,6 +293,25 @@ func (bundle DocumentBundle) Validate() error {
 			return fmt.Errorf("duplicate asset id %q", asset.ID)
 		}
 		assetIDs[asset.ID] = struct{}{}
+		if asset.Kind == "embedded" {
+			if embeddedPaths[asset.ProjectPath] || embeddedHashes[asset.SHA256] {
+				return errors.New("embedded image resources must be deduplicated")
+			}
+			embeddedPaths[asset.ProjectPath], embeddedHashes[asset.SHA256] = true, true
+			embeddedBytes += asset.Bytes
+			if embeddedBytes > EmbeddedAssetsMaxBytes {
+				return errors.New("embedded images exceed the aggregate byte limit")
+			}
+		}
+	}
+	if bundle.SchemaVersion == DocumentBundleSchemaVersionV3 && bundle.BundleHash != "" {
+		if err := validateEmbeddedReferences(bundle.Pages, bundle.Assets); err != nil {
+			return err
+		}
+		expected, err := EmbeddedBundleHash(bundle)
+		if err != nil || expected != bundle.BundleHash {
+			return errors.New("v3 bundle digest does not match the complete resource-bearing result")
+		}
 	}
 	for index := range bundle.Diagnostics {
 		if err := bundle.Diagnostics[index].validate(); err != nil {
@@ -325,7 +355,7 @@ func (page DocumentPage) validate(bundleState string, schemaVersion string) erro
 		}
 		dependencies[dependency] = struct{}{}
 	}
-	if schemaVersion == DocumentBundleSchemaVersionV1 {
+	if schemaVersion == DocumentBundleSchemaVersionV1 || schemaVersion == DocumentBundleSchemaVersionV3 {
 		if page.Blocks != nil {
 			return errors.New("v1 page cannot contain blocks")
 		}
@@ -394,7 +424,7 @@ func finalFragmentBlockIDs(fragment string) ([]string, error) {
 }
 
 func SupportedDocumentBundleSchemaVersion(value string) bool {
-	return value == DocumentBundleSchemaVersionV1 || value == DocumentBundleSchemaVersionV2
+	return value == DocumentBundleSchemaVersionV1 || value == DocumentBundleSchemaVersionV2 || value == DocumentBundleSchemaVersionV3
 }
 
 func (kind DocumentBlockKind) Valid() bool {
@@ -550,12 +580,16 @@ func (asset AssetReference) validate() error {
 	}
 	switch asset.Kind {
 	case "project-file":
-		if asset.ArtifactKey != "" || validateCanonicalPath(asset.ProjectPath) != nil {
+		if asset.BodyBase64 != "" || asset.ArtifactKey != "" || validateCanonicalPath(asset.ProjectPath) != nil {
 			return errors.New("project-file asset requires only a canonical projectPath")
 		}
 	case "generated":
-		if asset.ProjectPath != "" || validateCanonicalPath(asset.ArtifactKey) != nil {
+		if asset.BodyBase64 != "" || asset.ProjectPath != "" || validateCanonicalPath(asset.ArtifactKey) != nil {
 			return errors.New("generated asset requires only a canonical artifactKey")
+		}
+	case "embedded":
+		if _, err := DecodeEmbeddedAsset(asset); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("unsupported asset kind %q", asset.Kind)

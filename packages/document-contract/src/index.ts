@@ -1,6 +1,7 @@
 export const RIN_PROJECT_GRAPH_SCHEMA_VERSION = 'rin-project-graph/v1' as const;
 export const RIN_DOCUMENT_BUNDLE_SCHEMA_VERSION_V1 = 'rin-document-bundle/v1' as const;
 export const RIN_DOCUMENT_BUNDLE_SCHEMA_VERSION_V2 = 'rin-document-bundle/v2' as const;
+export const RIN_DOCUMENT_BUNDLE_SCHEMA_VERSION_V3 = 'rin-document-bundle/v3' as const;
 // Producers remain on v1 until both Markdown and LaTeX block emitters are ready.
 export const RIN_DOCUMENT_BUNDLE_SCHEMA_VERSION = RIN_DOCUMENT_BUNDLE_SCHEMA_VERSION_V1;
 
@@ -73,7 +74,28 @@ export interface RinDocumentBundleV2 {
   provenance: RinProvenance;
 }
 
-export type RinDocumentBundle = RinDocumentBundleV1 | RinDocumentBundleV2;
+export interface RinEmbeddedImage {
+  id: string;
+  kind: 'embedded';
+  sha256: string;
+  bytes: number;
+  mediaType: 'image/svg+xml' | 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+  projectPath: string;
+  bodyBase64: string;
+}
+
+// Resource-bearing final Typst pages retain v1's non-annotation semantics.
+export interface RinDocumentBundleV3 extends Omit<RinDocumentBundleV1, 'schemaVersion' | 'state' | 'contentKind' | 'documentEngine' | 'workUnits' | 'assets'> {
+  schemaVersion: typeof RIN_DOCUMENT_BUNDLE_SCHEMA_VERSION_V3;
+  state: 'final';
+  contentKind: 'typst';
+  documentEngine: 'typst';
+  workUnits: [];
+  assets: RinEmbeddedImage[];
+  knowledgeIndex?: unknown;
+}
+
+export type RinDocumentBundle = RinDocumentBundleV1 | RinDocumentBundleV2 | RinDocumentBundleV3;
 
 export interface RinPage {
   id: string;
