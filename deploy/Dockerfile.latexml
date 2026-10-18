@@ -88,13 +88,13 @@ ENV RIN_RENDERER_ADDR=:8090 \
 WORKDIR /opt/rin-renderer/engines/katex
 COPY ${RENDERER_SOURCE_ROOT}/engines/katex/package.json ${RENDERER_SOURCE_ROOT}/engines/katex/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --ignore-scripts
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
 COPY ${RENDERER_SOURCE_ROOT}/engines/katex/render-katex.mjs ./
 
 WORKDIR /opt/rin-renderer/engines/mathjax
 COPY ${RENDERER_SOURCE_ROOT}/engines/mathjax/package.json ${RENDERER_SOURCE_ROOT}/engines/mathjax/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev --ignore-scripts
+    npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
 COPY ${RENDERER_SOURCE_ROOT}/engines/mathjax/render-mathjax.mjs ./
 
 COPY --from=api-build /out/rin-renderer-api /usr/local/bin/rin-renderer-api
