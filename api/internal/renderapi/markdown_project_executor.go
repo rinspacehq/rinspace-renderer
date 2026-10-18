@@ -160,7 +160,7 @@ func (executor *markdownProjectExecutor) Execute(ctx context.Context, request Pr
 		"rinRenderer":              executor.cfg.RendererVersion,
 		"markdownAdapter":          finalBundle.Provenance.AdapterVersion,
 		"markdownPipeline":         finalBundle.Provenance.EngineVersion,
-		"markdownSanitizer":        "rin-markdown-final-sanitizer/v2",
+		"markdownSanitizer":        contracts.MarkdownSanitizerVersion,
 		"shiki":                    codeservice.ShikiVersion,
 		"mathJax":                  executor.cfg.MathJaxVersion,
 		"mathJaxFont":              executor.cfg.MathJaxFontVersion,

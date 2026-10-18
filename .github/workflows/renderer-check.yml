@@ -74,6 +74,8 @@ jobs:
           npm --prefix engines/markdown ci --omit=dev --ignore-scripts --no-audit --no-fund
           npm --prefix engines/mathjax ci --omit=dev --ignore-scripts --no-audit --no-fund
           npm --prefix engines/katex ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Real MathJax CHTML finalizer contract
+        run: node engines/markdown/mathjax-finalizer.test.mjs
       - name: Prepare locked Typst compiler for native regressions
         run: node deploy/prepare-typst-test-runtime.mjs "${RUNNER_TEMP}/rin-typst-native-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
       - name: Go API tests
