@@ -7,7 +7,7 @@ ARG RENDERER_BASE_IMAGE
 FROM --platform=linux/amd64 ${NODE_IMAGE} AS markdown-build
 WORKDIR /opt/rin-renderer/engines/markdown
 COPY engines/markdown/package.json engines/markdown/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
 COPY engines/markdown/*.mjs ./
 
 FROM --platform=linux/amd64 ${RENDERER_BASE_IMAGE}
