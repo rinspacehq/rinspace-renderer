@@ -47,6 +47,14 @@ type Result struct {
 
 var ErrQuarantined = errors.New("PDF contains active or embedded content and was quarantined")
 
+func init() {
+	// Inspection is read-only and must not create or trust a host configuration
+	// or user font registry. Set pdfcpu's process-wide policy before any worker
+	// starts; changing ConfigPath during individual requests would introduce races.
+	// This does not change PDF validation or embedded-font handling.
+	api.DisableConfigDir()
+}
+
 func Inspect(body []byte) (Result, error) {
 	if len(body) < 16 || !bytes.HasPrefix(body, []byte("%PDF-")) {
 		return Result{}, errors.New("PDF signature is invalid")

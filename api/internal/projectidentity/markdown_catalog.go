@@ -11,14 +11,19 @@ import (
 
 const MarkdownEntrypoint = "main.md"
 
-// ParseMarkdownCatalog accepts only the repository's nested relative-path list.
+// ParseMarkdownCatalog accepts a leading book title and a nested relative-path list.
 // It does not guess an old JSON/YAML format, glob files, or infer hierarchy from headings.
 func ParseMarkdownCatalog(source string, files map[string][]byte) ([]MarkdownBookPage, error) {
 	pages := make([]MarkdownBookPage, 0)
 	seen := map[string]bool{}
 	previousLevel := 0
+	titleSeen := false
 	for lineNumber, raw := range strings.Split(strings.ReplaceAll(source, "\r\n", "\n"), "\n") {
 		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		if len(pages) == 0 && !titleSeen && strings.HasPrefix(raw, "# ") && strings.TrimSpace(raw[2:]) != "" && !strings.ContainsAny(raw, "\t\r\x00") {
+			titleSeen = true
 			continue
 		}
 		line := strings.TrimLeft(raw, " ")
@@ -83,5 +88,23 @@ func ImportMarkdownCatalogBook(filename string, archive []byte, title string, li
 	if err != nil {
 		return Project{}, err
 	}
+	if heading := MarkdownCatalogTitle(string(catalog)); heading != "" {
+		title = heading
+	}
 	return markdownBookGraph(files, title, pages)
+}
+
+// MarkdownCatalogTitle is used only after catalog validation. A title is metadata,
+// not a book page; a title-only file still fails ParseMarkdownCatalog.
+func MarkdownCatalogTitle(source string) string {
+	for _, raw := range strings.Split(strings.ReplaceAll(source, "\r\n", "\n"), "\n") {
+		if strings.TrimSpace(raw) == "" {
+			continue
+		}
+		if strings.HasPrefix(raw, "# ") && !strings.ContainsAny(raw, "\t\r\x00") {
+			return strings.TrimSpace(raw[2:])
+		}
+		break
+	}
+	return ""
 }

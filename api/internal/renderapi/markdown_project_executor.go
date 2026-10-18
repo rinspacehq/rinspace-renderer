@@ -112,7 +112,7 @@ func (executor *markdownProjectExecutor) Execute(ctx context.Context, request Pr
 		return markdownExecutionFailure("markdown.project.invalid", "invalid Markdown project archive", err)
 	}
 	project.Graph.Options["documentMode"] = mode
-	if title := strings.TrimSpace(request.Title); title != "" {
+	if title := strings.TrimSpace(request.Title); mode != "book" && title != "" {
 		project.Graph.Options["title"] = title
 	}
 	files := make(map[string][]byte, len(project.Files))
