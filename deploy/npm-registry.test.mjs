@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,13 +11,17 @@ const official = '--registry=https://registry.npmjs.org';
 const replacement = '--replace-registry-host=always';
 
 test('image and source checks replace mirror download hosts without changing frozen inputs', async () => {
-  const dockerfile = await readFile(new URL('./Dockerfile.runtime', import.meta.url), 'utf8');
+  // Audit every image stage, including the LaTeXML base that runtime inherits.
+  // Reviewing only Dockerfile.runtime leaves frozen mirrors in its parent image.
+  const dockerfiles = await Promise.all((await readdir(new URL('./', import.meta.url)))
+    .filter(name => name.startsWith('Dockerfile.'))
+    .map(name => readFile(new URL(name, import.meta.url), 'utf8')));
   const workflow = await readFile(new URL('../.github/workflows/renderer-check.yml', import.meta.url), 'utf8');
   const commands = [
-    ...dockerfile.split('\n').filter(line => line.includes('npm ci ')),
+    ...dockerfiles.flatMap(text => text.split('\n').filter(line => /npm (?:--prefix \S+ )?ci(?:\s|$)/.test(line))),
     ...workflow.split('\n').filter(line => /npm --prefix engines\/(markdown|mathjax|katex) ci /.test(line)),
   ];
-  assert.equal(commands.length, 5);
+  assert.equal(commands.length, 7);
   for (const command of commands) {
     for (const flag of [official, replacement, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--fetch-timeout=60000', '--fetch-retries=2']) {
       assert(command.includes(flag), `frozen install command lacks ${flag}`);
