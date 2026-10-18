@@ -102,7 +102,7 @@ func TestMarkdownProjectExecutorPublishesOrderedBookBundle(t *testing.T) {
 	defer executor.Close()
 
 	archive := markdownExecutorFiles(t, map[string]string{
-		"main.md":           "- 03-啊啊啊.md\n  - 01-可爱捏/01-非常可爱.md\n",
+		"main.md":           "# Catalog Book\n\n- 03-啊啊啊.md\n  - 01-可爱捏/01-非常可爱.md\n",
 		"03-啊啊啊.md":         "# 啊啊啊\n\n[Next](01-可爱捏/01-非常可爱.md)",
 		"01-可爱捏/01-非常可爱.md": "# 非常可爱\n\nThe end.",
 	})
@@ -115,7 +115,7 @@ func TestMarkdownProjectExecutorPublishesOrderedBookBundle(t *testing.T) {
 		t.Fatalf("Markdown Book execution failed: status=%d message=%q err=%v diagnostics=%#v", result.Status, result.Message, result.Err, result.Diagnostics)
 	}
 	bundle := result.Canonical.Inline
-	if bundle.Title != "Server Book" || len(bundle.Pages) != 2 || bundle.Pages[0].ID != "rin-md-"+contracts.SHA256Hex([]byte("03-啊啊啊.md"))[:24] ||
+	if bundle.Title != "Catalog Book" || len(bundle.Pages) != 2 || bundle.Pages[0].ID != "rin-md-"+contracts.SHA256Hex([]byte("03-啊啊啊.md"))[:24] ||
 		bundle.Pages[1].TOC[0].Depth != 2 || bundle.Pages[0].SourcePath != "03-啊啊啊.md" ||
 		bundle.Pages[1].SourcePath != "01-可爱捏/01-非常可爱.md" ||
 		len(bundle.WorkUnits) != 0 || bundle.Provenance.Adapter == "" || result.Canonical.Cache.Hit {

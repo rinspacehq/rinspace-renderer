@@ -40,3 +40,23 @@ func TestMarkdownCatalogGraphIncludesCatalogAndSingleChapter(t *testing.T) {
 		t.Fatal("catalog was rendered as a chapter or excluded from project identity")
 	}
 }
+
+func TestMarkdownCatalogBookTitleIsNotAChapter(t *testing.T) {
+	files := map[string][]byte{"intro.md": []byte("# Introduction\n")}
+	for _, source := range []string{"# 书名\n\n- intro.md\n", "\r\n# 书名\r\n\r\n- intro.md\r\n"} {
+		pages, err := ParseMarkdownCatalog(source, files)
+		if err != nil || len(pages) != 1 || pages[0].Path != "intro.md" || MarkdownCatalogTitle(source) != "书名" {
+			t.Fatalf("title became a page or was lost: %#v, %v", pages, err)
+		}
+		archive := identityArchive(t, []identityArchiveFile{{name: "main.md", body: source}, {name: "intro.md", body: "# Introduction"}})
+		project, err := ImportMarkdownCatalogBook("book.zip", archive, "Old project title", projectcore.Limits{ArchiveMaxBytes: 1 << 20, FileMaxCount: 10, FileMaxBytes: 1 << 20})
+		if err != nil || project.Graph.Options["title"] != "书名" || len(project.Graph.Entrypoints) != 1 {
+			t.Fatalf("entrypoint title was not authoritative: %#v, %v", project.Graph.Options, err)
+		}
+	}
+	for _, source := range []string{"# \n- intro.md", "# One\n# Two\n- intro.md", "- intro.md\n# Late", "## Title\n- intro.md", "# Book\nBody\n- intro.md", "# Book\tName\n- intro.md"} {
+		if _, err := ParseMarkdownCatalog(source, files); err == nil {
+			t.Errorf("accepted invalid heading: %q", source)
+		}
+	}
+}
