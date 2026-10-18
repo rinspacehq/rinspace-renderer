@@ -15,7 +15,6 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/finaloutput"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/operational"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/orchestration"
-	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 )
 
@@ -35,7 +34,6 @@ type ProjectExecutionRequest struct {
 	Renderer                 string
 	DocumentMode             string
 	DisableMarkdownBookReuse bool
-	MarkdownBookPages        []projectidentity.MarkdownBookPage
 	ProjectID                string
 	SourceCommit             string
 	ControlProjectHash       string

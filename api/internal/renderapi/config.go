@@ -102,6 +102,7 @@ type Config struct {
 	TypstFontPath               string
 	TypstFontHash               string
 	TypstPackageHash            string
+	TypstPackagePath            string
 	TypstVersion                string
 	TypstTimeout                time.Duration
 	TypstMaxOutputBytes         int64
@@ -209,10 +210,11 @@ func ConfigFromEnv() Config {
 		TypstFontPath:               envString("RIN_RENDERER_TYPST_FONT_PATH", ""),
 		TypstFontHash:               strings.ToLower(strings.TrimSpace(os.Getenv("RIN_RENDERER_TYPST_FONT_SHA256"))),
 		TypstPackageHash:            strings.ToLower(strings.TrimSpace(os.Getenv("RIN_RENDERER_TYPST_PACKAGE_SHA256"))),
+		TypstPackagePath:            strings.TrimSpace(os.Getenv("RIN_RENDERER_TYPST_PACKAGE_PATH")),
 		TypstVersion:                envString("RIN_RENDERER_TYPST_VERSION", ""),
 		TypstTimeout:                envDurationSeconds("RIN_RENDERER_TYPST_TIMEOUT_SECONDS", defaultTypstTimeout),
 		TypstMaxOutputBytes:         envInt64("RIN_RENDERER_TYPST_MAX_OUTPUT_BYTES", defaultTypstOutputSize),
-		TypstMathRender:             envBool("RIN_RENDERER_TYPST_MATH_RENDER", false),
+		TypstMathRender:             envBool("RIN_RENDERER_TYPST_MATH_RENDER", true),
 		KaTeXScript:                 envString("RIN_RENDERER_KATEX_SCRIPT", "../engines/katex/render-katex.mjs"),
 		DiagramWorkerEndpoint:       envString("RIN_RENDERER_TEXSVG_ENDPOINT", ""),
 		DiagramWorkerToken:          strings.TrimSpace(os.Getenv("RIN_RENDERER_TEXSVG_TOKEN")),

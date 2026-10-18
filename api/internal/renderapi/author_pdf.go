@@ -77,8 +77,7 @@ func (s *Server) authorPDFOutcome(project projectRenderContext, failed []Diagnos
 	}
 	diagnostics := append([]Diagnostic(nil), failed...)
 	diagnostics = append(diagnostics, Diagnostic{Severity: "warning", Code: "document.author_pdf_reading", Engine: "author-pdf", Message: "HTML rendering failed; reading uses the author-provided PDF from the same source commit."})
-	fragment := fmt.Sprintf(`<div class="rin-author-pdf" data-rin-pdf="%s" data-rin-pdf-sha256="%s" data-rin-pdf-pages="%d" data-rin-pdf-commit="%s" data-rin-pdf-path="%s"><p>PDF</p></div>`,
-		base64.StdEncoding.EncodeToString(pdf.Body), pdf.Inspection.SourceSHA256, pdf.Inspection.PageCount, project.SourceCommit, html.EscapeString(pdf.Path))
+	fragment := pdfReadingFragment(pdf.Body, pdf.Inspection, project.SourceCommit, pdf.Path)
 	response := ProjectRenderResponse{RequestID: project.RequestID, Title: project.Title, MainFile: project.MainFile,
 		Engine: "author-pdf", Fallback: true, PrimaryEngine: "latexml", FallbackEngine: "author-pdf", HTML: fragment,
 		Diagrams: []DiagramRef{}, Assets: []AssetRef{}, GeneratedArtifacts: []contracts.ArtifactReference{},
@@ -89,4 +88,11 @@ func (s *Server) authorPDFOutcome(project projectRenderContext, failed []Diagnos
 		},
 	}
 	return projectEngineOutcome{Response: response, Status: http.StatusOK, Diagnostics: diagnostics}, true
+}
+
+// Shared by author-supplied LaTeX PDFs and newly compiled Typst fallback PDFs.
+// The source identity and inspected bytes use the same authenticated reader.
+func pdfReadingFragment(body []byte, inspected pdfinspect.Result, commit, sourcePath string) string {
+	return fmt.Sprintf(`<div class="rin-author-pdf" data-rin-pdf="%s" data-rin-pdf-sha256="%s" data-rin-pdf-pages="%d" data-rin-pdf-commit="%s" data-rin-pdf-path="%s"><p>PDF</p></div>`,
+		base64.StdEncoding.EncodeToString(body), inspected.SourceSHA256, inspected.PageCount, html.EscapeString(commit), html.EscapeString(sourcePath))
 }

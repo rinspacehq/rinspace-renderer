@@ -64,8 +64,12 @@ pins="$(node --input-type=module -e '
   const font = lock.font;
   const packages = lock.packages;
   const profile = lock.profile;
-  const expected = crypto.createHash("sha256").update([...packages.approved].sort().join("\n")).digest("hex");
-  if (expected !== packages.packageSetDigest) throw new Error("package set digest in the lock is not reproducible");
+  if (!/^[a-f0-9]{64}$/.test(packages.packageSetDigest) || profile.packageSetDigest !== packages.packageSetDigest) throw new Error("invalid sealed package digest");
+  const parts = [profile.schemaVersion, profile.compilerVersion, profile.compilerHash, profile.fontHash,
+    profile.packageSetDigest, profile.adapterVersion, profile.finalOutputVersion, profile.mathPresentation];
+  if (profile.mathPresentation === "mathjax-chtml") parts.push(profile.mathJaxVersion, profile.mathJaxFontVersion);
+  const expected = "typst-html-" + crypto.createHash("sha256").update(parts.join("\n")).digest("hex").slice(0, 32);
+  if (expected !== profile.id) throw new Error("Typst render profile is not reproducible");
   const rows = {
     version: compiler.version,
     binaryRelativePath: compiler.binaryRelativePath,
@@ -129,9 +133,9 @@ case "$binary_version" in
   *) fail "Typst version mismatch: $binary_version" ;;
 esac
 
-# Package downloads must stay impossible at runtime: the compiler is forced to
-# use an empty, non-writable package root that never carries vendored packages.
-[ -z "$(ls -A "$package_path" 2>/dev/null || true)" ] || fail "Typst package path must stay empty"
+# Package downloads stay impossible at runtime; the exact approved dependency
+# sources are sealed by a complete file-tree digest, not an ambient host cache.
+node "${script_directory}/typst-packages.mjs" verify "$lock" "$package_path" || fail "Typst package set verification failed"
 package_mode="$(stat -c '%a' "$package_path")"
 # Permission bits, not -w: the check must hold for any installer UID, including
 # one that can bypass the write bit.

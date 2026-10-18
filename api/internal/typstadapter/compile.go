@@ -27,12 +27,14 @@ const (
 // provide a network-disabled container and resource limits before admitting
 // jobs; a CLI flag alone cannot guarantee that packages are fetched offline.
 type Compiler struct {
-	BinaryPath string
-	BinaryHash string
-	FontPath   string
-	FontHash   string
-	Timeout    time.Duration
-	MaxOutput  int64
+	BinaryPath  string
+	BinaryHash  string
+	FontPath    string
+	FontHash    string
+	PackagePath string
+	PackageHash string
+	Timeout     time.Duration
+	MaxOutput   int64
 }
 
 type CompileResult struct {
@@ -96,6 +98,10 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	if _, ok := files[entrypoint]; !ok {
 		return CompileResult{}, errors.New("Typst entrypoint is missing")
 	}
+	packages, err := ReadPackageSnapshot(compiler.PackagePath, compiler.PackageHash)
+	if err != nil {
+		return CompileResult{}, err
+	}
 	base, err := os.MkdirTemp("", "rin-typst-job-")
 	if err != nil {
 		return CompileResult{}, err
@@ -115,6 +121,15 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 			return CompileResult{}, err
 		}
 		if err := os.WriteFile(target, body, 0o600); err != nil {
+			return CompileResult{}, err
+		}
+	}
+	for name, body := range packages {
+		target := filepath.Join(packageRoot, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			return CompileResult{}, err
+		}
+		if err := os.WriteFile(target, body, 0o400); err != nil {
 			return CompileResult{}, err
 		}
 	}

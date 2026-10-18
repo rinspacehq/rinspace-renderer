@@ -241,8 +241,8 @@ func TestAsyncMarkdownBookDurableJob(t *testing.T) {
 	var result contracts.RenderResult
 	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &result) != nil || result.Validate() != nil ||
 		result.RequestID != "render-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ||
-		result.Inline == nil || len(result.Inline.Pages) != 2 || result.Inline.Pages[0].ID != "intro" ||
-		result.Inline.Pages[1].ID != "chapter" || result.Inline.Pages[1].SourcePath != "chapter.md" || len(result.Inline.WorkUnits) != 0 {
+		result.Inline == nil || len(result.Inline.Pages) != 2 || result.Inline.Pages[0].ID != "rin-md-"+contracts.SHA256Hex([]byte("intro.md"))[:24] ||
+		result.Inline.Pages[1].ID != "rin-md-"+contracts.SHA256Hex([]byte("chapter.md"))[:24] || result.Inline.Pages[1].SourcePath != "chapter.md" || len(result.Inline.WorkUnits) != 0 {
 		t.Fatalf("invalid durable Markdown Book result: status=%d result=%#v body=%s", response.Code, result, response.Body.String())
 	}
 }
@@ -266,7 +266,7 @@ func submitAsyncMarkdown(t *testing.T, handler http.Handler, archive []byte, loc
 	_, _ = part.Write(archive)
 	_ = writer.WriteField("contentKind", "markdown")
 	_ = writer.WriteField("documentEngine", "unified")
-	_ = writer.WriteField("entrypoint", "article.md")
+	_ = writer.WriteField("entrypoint", "main.md")
 	_ = writer.WriteField("priorityIntent", "publish")
 	if !local {
 		_ = writer.WriteField("requestId", "render-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
@@ -292,7 +292,7 @@ func submitAsyncMarkdownBook(t *testing.T, handler http.Handler, archive []byte)
 	_ = writer.WriteField("contentKind", "markdown")
 	_ = writer.WriteField("documentEngine", "unified")
 	_ = writer.WriteField("documentMode", "book")
-	_ = writer.WriteField("bookPages", `[{"path":"intro.md","id":"intro","title":"Intro"},{"path":"chapter.md","id":"chapter","title":"Chapter"}]`)
+	_ = writer.WriteField("entrypoint", "main.md")
 	_ = writer.WriteField("title", "Durable Book")
 	_ = writer.WriteField("priorityIntent", "publish")
 	_ = writer.WriteField("requestId", "render-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
@@ -326,7 +326,7 @@ func asyncMarkdownArchive(t *testing.T, source string) []byte {
 	t.Helper()
 	var body bytes.Buffer
 	writer := zip.NewWriter(&body)
-	file, _ := writer.Create("article.md")
+	file, _ := writer.Create("main.md")
 	_, _ = io.WriteString(file, source)
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
@@ -339,6 +339,7 @@ func asyncMarkdownBookArchive(t *testing.T) []byte {
 	var body bytes.Buffer
 	writer := zip.NewWriter(&body)
 	for _, item := range []struct{ path, source string }{
+		{"main.md", "- intro.md\n- chapter.md\n"},
 		{"intro.md", "# Intro\n\n[Chapter](chapter.md) with $x^2$."},
 		{"chapter.md", "# Chapter\n\n```js\nconst answer = 42\n```"},
 	} {

@@ -39,7 +39,24 @@ test('Typst compiler remains pinned and offline', () => {
   assert.equal(lock.compiler.binarySha256, candidate.compiler.binarySha256);
   assert.equal(candidate.packagePolicy.downloadsInWorker, false);
   assert.equal(candidate.packagePolicy.externalImports, false);
-  assert.deepEqual(candidate.packagePolicy.approvedPackages, []);
+  const html = json('typst-html-toolchain.lock.json');
+  assert.deepEqual(candidate.packagePolicy.approvedPackages, html.packages.approved.map(item => `${item.name}@${item.version}`));
+  assert.equal(candidate.packagePolicy.packageSetDigest, html.packages.packageSetDigest);
+  assert.equal(html.profile.mathPresentation, 'mathjax-chtml');
+  assert.equal(html.rendererEnvironment.defaults.RIN_RENDERER_TYPST_TIMEOUT_SECONDS, '120');
+});
+
+test('ordinary CI cannot silently skip real Typst HTML/PDF regressions', () => {
+  const workflow = read('../.github/workflows/renderer-check.yml').toString('utf8');
+  const prepare = read('prepare-typst-test-runtime.mjs').toString('utf8');
+  assert.match(workflow, /node deploy\/prepare-typst-test-runtime\.mjs/);
+  assert.match(workflow, />> "\$GITHUB_ENV"/);
+  assert.match(prepare, /compiler\.assetSha256/);
+  assert.match(prepare, /compiler\.binarySha256/);
+  assert.match(prepare, /font\.packageSha256/);
+  assert.match(prepare, /font\.sha256/);
+  assert.match(prepare, /RIN_TYPST_TEST_BINARY=/);
+  assert.match(prepare, /RIN_TYPST_TEST_FONT=/);
 });
 
 test('local image and compose require immutable inputs and bounded runtime', () => {

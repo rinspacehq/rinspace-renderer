@@ -28,7 +28,7 @@ jobs:
           git diff --check
           node packages/protocol/validate-protocol.mjs
           node engines/markdown/verify-isolation.mjs
-          node --test deploy/source-policy.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs deploy/release-evidence.test.mjs
+          node --test deploy/source-policy.test.mjs deploy/typst-packages.test.mjs deploy/serve-shadow-storage.test.mjs deploy/verify-release-manifest.test.mjs deploy/release-evidence.test.mjs
 
   markdown:
     name: Markdown contract suite
@@ -73,6 +73,8 @@ jobs:
           npm --prefix engines/markdown ci --omit=dev --ignore-scripts --no-audit --no-fund
           npm --prefix engines/mathjax ci --omit=dev --ignore-scripts --no-audit --no-fund
           npm --prefix engines/katex ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Prepare locked Typst compiler for native regressions
+        run: node deploy/prepare-typst-test-runtime.mjs "${RUNNER_TEMP}/rin-typst-native-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
       - name: Go API tests
         working-directory: api
         run: go test ./... -count=1

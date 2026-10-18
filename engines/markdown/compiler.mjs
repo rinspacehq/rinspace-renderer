@@ -15,7 +15,7 @@ import { VFile } from 'vfile';
 export const DOCUMENT_BUNDLE_SCHEMA_VERSION = 'rin-document-bundle/v2';
 export const PROJECT_GRAPH_SCHEMA_VERSION = 'rin-project-graph/v1';
 export const MARKDOWN_ADAPTER_NAME = 'rin-markdown';
-export const MARKDOWN_ADAPTER_VERSION = '0.6.0';
+export const MARKDOWN_ADAPTER_VERSION = '0.7.0';
 export const DRAFT_FRAGMENT_FORMAT = 'html-with-rin-placeholders';
 export const SAFE_ADMONITIONS = Object.freeze([
   'note',
@@ -171,6 +171,14 @@ export async function compileMarkdownBookDraft(payload, options = {}) {
 
   const pages = drafts.map((draft) => draft.bundle.pages[0]);
   for (let index = 0; index < pages.length; index += 1) {
+    const page = pages[index];
+    const level = input.pages[index].level;
+    page.fragment = `<section id="${escapeAttribute(page.id)}">${page.fragment}</section>`;
+    // Catalog indentation owns book hierarchy; body headings remain local TOC entries.
+    page.toc = [{ id: page.id, depth: level, text: page.title },
+      ...page.toc.filter((entry) => entry.id !== page.id).map((entry) => ({
+        ...entry, depth: Math.min(6, level + entry.depth),
+      }))];
     pages[index].fragment = appendBookNavigation(pages[index].fragment, pages, index);
   }
   const assetsByID = new Map();
@@ -647,8 +655,8 @@ function normalizeBookCompileInput(payload) {
   }
   const projectHash = String(payload.projectHash || '');
   if (!sha256Pattern.test(projectHash)) throw compilerError('markdown.project_hash.invalid', 'Markdown project hash must be sha256');
-  if (!Array.isArray(payload.pages) || payload.pages.length < 2 || payload.pages.length > 2048) {
-    throw compilerError('markdown.book.pages.invalid', 'Markdown Book requires between 2 and 2048 ordered pages');
+  if (!Array.isArray(payload.pages) || payload.pages.length < 1 || payload.pages.length > 512) {
+    throw compilerError('markdown.book.pages.invalid', 'Markdown Book requires between 1 and 512 ordered pages');
   }
   const seenPaths = new Set();
   const seenIDs = new Set();
@@ -669,6 +677,7 @@ function normalizeBookCompileInput(payload) {
       sourcePath: normalized.sourcePath,
       pageId: normalized.pageId,
       title: normalized.title,
+      level: Number.isInteger(page.level) && page.level >= 1 && page.level <= 6 ? page.level : 1,
       language: normalized.language,
       dependencyHashes: normalized.dependencyHashes,
     };

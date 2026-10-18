@@ -49,7 +49,7 @@ assert.equal(final.bundle.pages.length, 2);
 assert.match(final.bundle.pages[0].fragment, /href="chapters\/basis\.md#rin-md-vector-basis"/);
 assert.match(final.bundle.pages[1].fragment, /href="chapters\/introduction\.md#rin-md-introduction"/);
 assert.deepEqual(final.bundle.pages.map((page) => page.toc[0].id), [
-  'rin-md-introduction', 'rin-md-vector-basis',
+  'rin-md-md-introduction', 'rin-md-md-vector-basis',
 ]);
 assert.match(final.bundle.bundleHash, /^[a-f0-9]{64}$/);
 assert.equal(final.pageCache.records.length, 2);
@@ -213,14 +213,14 @@ const unicodeDraft = await compileMarkdownBookDraft({
   projectHash: 'f'.repeat(64),
   title: '测试 markdown 书籍',
   pages: [
-    { pageId: 'md-003-啊啊啊', sourcePath: '03-啊啊啊.md', title: '啊啊啊', source: '# 啊啊啊', dependencyHashes: [] },
-    { pageId: 'md-001-可爱捏-sec-001-非常可爱', sourcePath: '01-可爱捏/01-非常可爱.md', title: '非常可爱', source: '# 非常可爱', dependencyHashes: [] },
+    { pageId: 'rin-md-unicode-chapter', sourcePath: '03-啊啊啊.md', title: '啊啊啊', source: '# 啊啊啊', dependencyHashes: [] },
+    { pageId: 'rin-md-unicode-child', sourcePath: '01-可爱捏/01-非常可爱.md', title: '非常可爱', source: '# 非常可爱', dependencyHashes: [] },
   ],
   assets: [],
 });
 const unicodeFinal = await finalizeMarkdownBundle({ bundle: unicodeDraft.bundle, resolvedWork: resolveCode(unicodeDraft.bundle) });
-assert.deepEqual(unicodeDraft.bundle.pages.map((page) => page.id), ['md-003-啊啊啊', 'md-001-可爱捏-sec-001-非常可爱']);
-assert.deepEqual(unicodeFinal.bundle.pages.map((page) => page.id), ['md-003-啊啊啊', 'md-001-可爱捏-sec-001-非常可爱']);
+assert.deepEqual(unicodeDraft.bundle.pages.map((page) => page.id), ['rin-md-unicode-chapter', 'rin-md-unicode-child']);
+assert.deepEqual(unicodeFinal.bundle.pages.map((page) => page.id), ['rin-md-unicode-chapter', 'rin-md-unicode-child']);
 
 console.log('Markdown Book Bundle ok: ordered stable pages, navigation, TOC, assets, and cross-page links');
 

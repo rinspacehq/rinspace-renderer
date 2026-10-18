@@ -1,6 +1,6 @@
 {
   "name": "@rinspace/rin-renderer-markdown-engine",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -11,7 +11,7 @@
     "start": "node worker.mjs --ndjson-worker",
     "smoke": "node smoke.mjs",
     "compile-draft:test": "node compile-draft.test.mjs",
-    "book:test": "node book.test.mjs",
+    "book:test": "node book.test.mjs && node catalog.test.mjs",
     "finalize:test": "node finalizer.test.mjs",
     "corpus:test": "node corpus/run-corpus.mjs --out .rin-markdown-corpus/report.json --deltas-out .rin-markdown-corpus/deltas.json",
     "corpus:gate:test": "node corpus/check-upgrade-gate.test.mjs",

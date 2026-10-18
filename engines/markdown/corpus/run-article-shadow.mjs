@@ -233,7 +233,7 @@ function markedSection(body, marker) {
 async function renderAndCompareArticle({ article, endpoint, token, timeoutMs, pollMs, snapshotDir }) {
   const started = Date.now();
   try {
-    const archive = createZip([{ path: 'article.md', data: Buffer.from(article.source) }]);
+    const archive = createZip([{ path: 'main.md', data: Buffer.from(article.source) }]);
     const submission = await submitJob({ endpoint, token, archive, article });
     const job = await waitForJob({ endpoint, token, job: submission.job, timeoutMs, pollMs });
     if (job.state !== 'succeeded') {
@@ -297,7 +297,7 @@ async function submitJob({ endpoint, token, archive, article }) {
   const form = new FormData();
   form.append('source', new Blob([archive], { type: 'application/zip' }), `${safeName(article.id)}.zip`);
   for (const [key, value] of Object.entries({
-    contentKind: 'markdown', documentEngine: 'unified', entrypoint: 'article.md',
+    contentKind: 'markdown', documentEngine: 'unified', entrypoint: 'main.md',
     priorityIntent: 'rebuild', title: article.title, projectStatus: 'published-preview',
     options: '{"documentMode":"article","publish":true}',
   })) form.append(key, value);
@@ -333,7 +333,7 @@ function validateResult(result, jobID, sourceSha256) {
     throw new Error('durable Markdown result identity or final Bundle is invalid');
   }
   const page = result.inline.pages[0];
-  if (!isRecord(page) || page.sourcePath !== 'article.md' || page.fragmentFormat !== 'html' ||
+  if (!isRecord(page) || page.sourcePath !== 'main.md' || page.fragmentFormat !== 'html' ||
       typeof page.fragment !== 'string' || !page.fragment || !Array.isArray(page.dependencyHashes) ||
       !page.dependencyHashes.includes(sourceSha256)) {
     throw new Error('durable Markdown page does not match shadow source');

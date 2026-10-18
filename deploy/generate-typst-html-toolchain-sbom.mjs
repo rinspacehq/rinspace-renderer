@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { packageFiles, packageSnapshotHash } from './typst-packages.mjs';
 
 const usage = 'usage: generate-typst-html-toolchain-sbom.mjs --lock <lock.json> --artifact-root <dir> --commit <sha> --output <file.spdx.json>';
 
@@ -78,6 +79,19 @@ const packages = [
     }],
   },
 ];
+
+if (packageSnapshotHash(await packageFiles(relocatable(lock.packages.relativePath))) !== lock.packages.packageSetDigest) {
+  throw new Error('sealed Typst packages do not match the lock');
+}
+for (const item of lock.packages.approved) {
+  packages.push({
+    name: item.name, SPDXID: `SPDXRef-Package-typst-${item.name}`, versionInfo: item.version,
+    downloadLocation: `https://packages.typst.org/preview/${item.name}-${item.version}.tar.gz`,
+    filesAnalyzed: false, licenseConcluded: item.license, licenseDeclared: item.license,
+    copyrightText: 'NOASSERTION', checksums: [{ algorithm: 'SHA256', checksumValue: item.archiveSha256 }],
+    sourceInfo: `Complete unmodified source and upstream licenses included in packages/preview/${item.name}/${item.version}.`,
+  });
+}
 
 const created = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 const document = {

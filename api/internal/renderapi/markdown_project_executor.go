@@ -78,7 +78,7 @@ func newMarkdownProjectExecutor(cfg Config, server *Server, cache orchestration.
 		cfg: cfg, server: server, worker: worker, code: code,
 		adapter: markdownadapter.Adapter{
 			Worker: worker, MaxFileBytes: cfg.ProjectFileMaxBytes, Cache: cache, Store: store,
-			MathFontVersion: cfg.MathJaxFontVersion, BookCacheCompatibility: "rin-markdown-book-cache-compat/v1",
+			MathFontVersion: cfg.MathJaxFontVersion, BookCacheCompatibility: "rin-markdown-book-cache-compat/v2",
 		},
 	}, nil
 }
@@ -97,10 +97,12 @@ func (executor *markdownProjectExecutor) Execute(ctx context.Context, request Pr
 	}
 	var project projectidentity.Project
 	var err error
-	if mode == "book" {
-		project, err = projectidentity.ImportMarkdownBook(request.ArchiveName, request.Archive, request.Title,
-			request.MarkdownBookPages, projectLimitsFromConfig(executor.cfg))
-	} else if mode == "article" && len(request.MarkdownBookPages) == 0 {
+	if request.ExplicitMainFile != projectidentity.MarkdownEntrypoint {
+		err = errors.New("Markdown requires main.md")
+	} else if mode == "book" {
+		project, err = projectidentity.ImportMarkdownCatalogBook(request.ArchiveName, request.Archive, request.Title,
+			projectLimitsFromConfig(executor.cfg))
+	} else if mode == "article" {
 		project, err = projectidentity.Import(request.ArchiveName, request.Archive, contracts.ContentKindMarkdown,
 			request.ExplicitMainFile, projectLimitsFromConfig(executor.cfg))
 	} else {
@@ -191,7 +193,7 @@ func (executor *markdownProjectExecutor) Execute(ctx context.Context, request Pr
 	}
 	response := ProjectRenderResponse{
 		RequestID: request.RequestID, Title: finalBundle.Title, HTML: page.Fragment,
-		Engine: markdownadapter.Engine, MainFile: page.SourcePath,
+		Engine: markdownadapter.Engine, MainFile: projectidentity.MarkdownEntrypoint,
 		GeneratedArtifacts: artifacts, Assets: []AssetRef{}, AssetFiles: []AssetFile{},
 		Diagrams: []DiagramRef{}, Reader: map[string]any{"documentMode": mode, "pages": readerPages},
 		Project: map[string]any{"files": projectFiles}, Diagnostics: markdownResponseDiagnostics(finalBundle.Diagnostics),
