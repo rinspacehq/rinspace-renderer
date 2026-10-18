@@ -22,7 +22,7 @@ const (
 	compileBookOperation       = "markdown.compile-book-draft"
 	planBookCacheOperation     = "markdown.plan-book-cache"
 	finalizeOperation          = "markdown.finalize"
-	bookPageCacheSchemaVersion = "rin-markdown-book-page-cache/v2"
+	bookPageCacheSchemaVersion = contracts.MarkdownBookPageCacheSchemaVersion
 	bookPageCacheMediaType     = "application/vnd.rin.markdown-book-page-cache+json"
 	defaultBookPageCacheBytes  = int64(16 << 20)
 	defaultBookPageCacheTTL    = 30 * 24 * time.Hour
@@ -416,7 +416,7 @@ func (adapter Adapter) bookCacheVersions(draft contracts.DocumentBundle) map[str
 		"plugin":                   draft.Provenance.AdapterVersion,
 		"font":                     adapter.MathFontVersion,
 		"theme":                    DefaultCodeTheme,
-		"sanitizer":                "rin-markdown-final-sanitizer/v2",
+		"sanitizer":                contracts.MarkdownSanitizerVersion,
 		"document-bundle-contract": draft.SchemaVersion,
 		"output-strategy":          "mathjax-chtml",
 		"compatibility":            adapter.BookCacheCompatibility,

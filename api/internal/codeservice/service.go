@@ -17,7 +17,7 @@ const (
 	DefaultTheme                = "github-light"
 	ShikiVersion                = "4.4.2"
 	DefaultPluginVersion        = "rin-markdown-code/v2"
-	DefaultSanitizerVersion     = "rin-markdown-final-sanitizer/v2"
+	DefaultSanitizerVersion     = contracts.MarkdownSanitizerVersion
 	DefaultCompatibilityVersion = "rin-reader-code/v1"
 	DefaultMaxBatchSize         = 512
 	DefaultMaxSourceBytes       = int64(512 << 10)
