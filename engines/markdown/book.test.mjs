@@ -81,6 +81,13 @@ const repeatedFinal = await finalizeMarkdownBundle({
 });
 assert.deepEqual(repeatedFinal.bundle, final.bundle, 'all-cache finalization differs from clean full finalization');
 assert.deepEqual(repeatedFinal.pageCache.reusedPageIds, ['md-introduction', 'md-vector-basis']);
+const previousSchemaCache = structuredClone(pageCache);
+for (const record of Object.values(previousSchemaCache)) record.schemaVersion = 'rin-markdown-book-page-cache/v2';
+const previousSchemaFinal = await finalizeMarkdownBundle({
+  bundle: repeatedDraft.bundle, resolvedWork: repeatedResolved, pageCache: previousSchemaCache,
+});
+assert.deepEqual(previousSchemaFinal.bundle, final.bundle, 'previous sanitizer cache changed clean output');
+assert.deepEqual(previousSchemaFinal.pageCache.reusedPageIds, [], 'previous sanitizer cache must not be reused');
 const corruptPageCache = structuredClone(pageCache);
 corruptPageCache['md-vector-basis'].page.fragment = '<article><script>alert(1)</script></article>';
 const corruptFallback = await finalizeMarkdownBundle({

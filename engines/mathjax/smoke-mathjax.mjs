@@ -60,17 +60,24 @@ const schemaProbeSources = [
   String.raw`\begin{cases}x^2 & x>0\\0 & x\le 0\end{cases}`,
   String.raw`\begin{multline}a+b+c+d+e+f\\+g+h+i+j+k+l\end{multline}`,
   String.raw`\xrightarrow[below]{above}`,
+  String.raw`a\\b`,
+  String.raw`{a\\b}`,
+  String.raw`\left(a\\b\right)`,
+  String.raw`a\newline b`,
+  String.raw`a\\[1em]b`,
 ];
+const schemaProbeRequests = schemaProbeSources.flatMap((source) =>
+  [false, true].map((displayMode) => ({ source, displayMode })));
 const schemaProbe = JSON.parse(execFileSync(process.execPath, ['render-mathjax.mjs'], {
   cwd: new URL('.', import.meta.url),
-  input: `${JSON.stringify({ requests: schemaProbeSources.map((source) => ({ source, displayMode: true })) })}\n`,
+  input: `${JSON.stringify({ requests: schemaProbeRequests })}\n`,
   encoding: 'utf8', maxBuffer: 10 * 1024 * 1024,
 }));
-if (!schemaProbe.ok || schemaProbe.results.length !== schemaProbeSources.length || schemaProbe.results.some((item) => !item.ok)) {
+if (!schemaProbe.ok || schemaProbe.results.length !== schemaProbeRequests.length || schemaProbe.results.some((item) => !item.ok)) {
   throw new Error('Pinned MathJax schema probe did not render every formula.');
 }
 const emittedMathJaxTags = new Set(schemaProbe.results.flatMap((item) =>
-  [...item.html.matchAll(/<\/?(mjx-[a-z0-9-]+)/g)].map((match) => match[1])));
+  [...item.html.matchAll(/<\/?(mjx-[a-z0-9-]+)/gi)].map((match) => match[1].toLowerCase())));
 const unapprovedMathJaxTags = [...emittedMathJaxTags].filter((tag) => !allowedMathJaxTags.has(tag));
 if (unapprovedMathJaxTags.length) {
   throw new Error(`Pinned MathJax emitted tags missing from the Markdown finalizer: ${unapprovedMathJaxTags.join(', ')}`);

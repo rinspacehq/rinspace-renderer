@@ -8,8 +8,8 @@ import { VFile } from 'vfile';
 
 import { validPageID, validateDraftBundle } from './compiler.mjs';
 
-export const MARKDOWN_SANITIZER_VERSION = 'rin-markdown-final-sanitizer/v2';
-export const MARKDOWN_BOOK_CACHE_SCHEMA_VERSION = 'rin-markdown-book-page-cache/v2';
+export const MARKDOWN_SANITIZER_VERSION = 'rin-markdown-final-sanitizer/v3';
+export const MARKDOWN_BOOK_CACHE_SCHEMA_VERSION = 'rin-markdown-book-page-cache/v3';
 const finalFragmentFormat = 'html';
 const workIDPattern = /^rw_[a-f0-9]{32}$/;
 const blockIDPattern = /^rb_[a-f0-9]{32}$/;
@@ -45,7 +45,7 @@ const mathJaxTags = Object.freeze([
   'mjx-stretchy-h', 'mjx-stretchy-v', 'mjx-ext', 'mjx-base', 'mjx-row', 'mjx-nstrut',
   'mjx-dstrut', 'mjx-tstrut', 'mjx-dbox', 'mjx-dtable', 'mjx-cbox', 'mjx-munder',
   'mjx-mover', 'mjx-texatom', 'mjx-beg', 'mjx-mid', 'mjx-end', 'mjx-mark', 'mjx-spacer', 'mjx-sqrt',
-  'mjx-rbox',
+  'mjx-rbox', 'mjx-linestack', 'mjx-linebox', 'mjx-linestrut',
 ]);
 const allowedTags = new Set([...standardTags, ...mathJaxTags]);
 
@@ -107,6 +107,16 @@ const attributes = {
 };
 for (const heading of ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']) attributes[heading] = globalAttributes;
 for (const tag of mathJaxTags) attributes[tag] = mathJaxAttributes;
+// MathJax 4's CHTML mrow wrapper uses these inert layout nodes for explicit
+// line breaks, including inline TeX. Keep their attributes tag-scoped: this is
+// not permission for arbitrary custom elements or metadata on ordinary HTML.
+attributes['mjx-linebox'] = [...mathJaxAttributes, 'lineno', ['align', 'left', 'center', 'right']];
+for (const tag of ['mjx-linestack', 'mjx-mrow']) {
+  attributes[tag] = [
+    ...mathJaxAttributes, ['break-top', 'true'], ['breakable', 'true'],
+    ['break-align', 'middle', 'center', 'bottom'],
+  ];
+}
 attributes.div = [
   ...attributes.div, 'dataRinMathEngine', 'dataRinMathSource', 'dataRinMathVersion',
   'dataRinMathSpeechStyle', 'dataRinMathSvgHash', 'dataRinMathObjectId',
