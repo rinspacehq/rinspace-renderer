@@ -181,7 +181,7 @@ func checkPublication(files map[string][]byte, entry, mode, binary, font, packag
 	start := time.Now()
 	// A valid synthetic identity exercises the canonical publication contract;
 	// it is never submitted to a queue or associated with a remote project.
-	result := executor.Execute(ctx, renderapi.ProjectExecutionRequest{ContentKind: "typst", JobID: "job-local-publication-check", RequestID: "request-local-publication-check", ArchiveName: "project.zip", Archive: archive.Bytes(), Title: "Local publication check", ExplicitMainFile: entry, DocumentMode: mode, ProjectID: mode + ":1", SourceCommit: strings.Repeat("a", 40), ControlProjectHash: strings.Repeat("b", 64)})
+	result := executor.Execute(ctx, renderapi.ProjectExecutionRequest{ContentKind: "typst", JobID: "00000000-0000-4000-8000-000000000001", RequestID: "render-" + strings.Repeat("c", 32), ArchiveName: "project.zip", Archive: archive.Bytes(), Title: "Local publication check", ExplicitMainFile: entry, DocumentMode: mode, ProjectID: mode + ":1", SourceCommit: strings.Repeat("a", 40), ControlProjectHash: strings.Repeat("b", 64)})
 	if result.Err != nil {
 		return nil, fmt.Errorf("publication executor: %w (%s)", result.Err, result.Message)
 	}
