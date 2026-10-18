@@ -62,6 +62,38 @@ func TestNormalizeDiagramSourceWrapsMathDisplayAndInline(t *testing.T) {
 	}
 }
 
+func TestNormalizeMathDoesNotNestStandaloneDisplayEnvironments(t *testing.T) {
+	for _, environment := range []string{"equation", "equation*", "align", "align*", "alignat", "alignat*", "gather", "gather*", "multline", "multline*", "flalign", "flalign*", "displaymath"} {
+		t.Run(environment, func(t *testing.T) {
+			source := `\begin{` + environment + `}x+y\end{` + environment + `}`
+			for _, viaBody := range []bool{true, false} {
+				body, fallback := source, ""
+				if !viaBody {
+					body, fallback = "", source
+				}
+				if got := normalizeDiagramSource("math", "display", body, fallback); got != source {
+					t.Fatalf("standalone environment was nested inside math delimiters: %q", got)
+				}
+			}
+		})
+	}
+}
+
+func TestNormalizeMathKeepsBareInnerAndMalformedSourcesUnchanged(t *testing.T) {
+	for _, source := range []string{
+		`x+y`, `\begin{aligned}x&=y\end{aligned}`, `\begin{cases}x&x>0\\0&x\le0\end{cases}`,
+		`\begin{equation}x`, `\begin{equation}x\end{align}`, `\begin{unknown}x\end{unknown}`,
+		`prefix\begin{equation}x\end{equation}`, `\begin{equation}x\end{equation}suffix`,
+	} {
+		if got := normalizeDiagramSource("math", "display", source, ""); got != `\[`+source+`\]` {
+			t.Fatalf("unexpected repair or missing display wrapper: %q", got)
+		}
+		if got := normalizeDiagramSource("math", "inline", source, ""); got != `\(`+source+`\)` {
+			t.Fatalf("inline wrapper changed: %q", got)
+		}
+	}
+}
+
 func TestTightenRenderedSVGCropsDvisvgmPageCanvas(t *testing.T) {
 	source := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -792 612 792" height="792pt" version="1.1" width="612pt"><g id="page1"><g transform="matrix(1 0 0 -1 0 0)"><path d="M29.742187 683.648465L83.1406 737.043" fill="none" stroke="#000" stroke-width=".79701"/><path d="M114.780869 655.300349L171.476283 711.991788" fill="none" stroke="#000" stroke-width=".79701"/></g></g></svg>`
 

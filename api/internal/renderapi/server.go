@@ -873,11 +873,7 @@ func (s *Server) sharedMathService(requestID string, cache *mathRenderCache) (*m
 	if s.cfg.MathPrimaryEngine == "katex" {
 		primaryVersion = s.cfg.KaTeXVersion
 	}
-	fallbackVersion := strings.Join([]string{
-		firstNonEmpty(s.cfg.DiagramEngineVersion, "rin-texsvg"),
-		firstNonEmpty(s.cfg.TeXLiveVersion, "texlive-unreported"),
-		firstNonEmpty(s.cfg.DvisvgmVersion, "dvisvgm-unreported"),
-	}, "+")
+	fallbackVersion := mathSVGFallbackVersion(s.cfg)
 	config := mathservice.Config{
 		Primary:              s.primaryMathRenderer(),
 		PrimaryEngine:        s.cfg.MathPrimaryEngine,
@@ -914,6 +910,17 @@ func (s *Server) sharedMathService(requestID string, cache *mathRenderCache) (*m
 		}
 	}
 	return mathservice.New(config)
+}
+
+const mathSVGWrapperVersion = "rin-texsvg-math-display/v2"
+
+func mathSVGFallbackVersion(cfg Config) string {
+	return strings.Join([]string{
+		firstNonEmpty(cfg.DiagramEngineVersion, "rin-texsvg"),
+		firstNonEmpty(cfg.TeXLiveVersion, "texlive-unreported"),
+		firstNonEmpty(cfg.DvisvgmVersion, "dvisvgm-unreported"),
+		mathSVGWrapperVersion,
+	}, "+")
 }
 
 func newMathBatchItem(source string, display bool, wrapperID string, location *contracts.SourceLocation, macroContexts ...map[string]string) (orchestration.MathBatchItem, error) {

@@ -182,6 +182,16 @@ jobs:
             cp "deploy/${COMPONENT}.lock.json" evidence/notices/renderer-source/
           fi
           node deploy/fetch-notice-sources.mjs deploy/notice-sources.lock.json evidence/notices/upstream
+      - name: Native math SVG contract in the exact runtime image
+        if: inputs.component == 'runtime'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only --user 0 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 512m --pids-limit 96 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --mount "type=bind,src=${PWD}/engines/texsvg/native-math.test.mjs,dst=/native-math.test.mjs,readonly" \
+            --entrypoint node "$REFERENCE" /native-math.test.mjs
       - name: Seal SPDX and the full notice bundle
         shell: bash
         run: |

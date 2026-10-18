@@ -30,6 +30,7 @@ const (
 	defaultRenderTimeout   = 25 * time.Second
 	defaultCommandTimeout  = 20 * time.Second
 	defaultEngineVersion   = "rin-diagram-go-v1"
+	mathWrapperVersion     = "rin-texsvg-math-display/v2"
 )
 
 type config struct {
@@ -84,9 +85,10 @@ func main() {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{
-			"status":  "ok",
-			"service": "rin-renderer-texsvg-worker",
-			"version": cfg.engineVersion,
+			"status":             "ok",
+			"service":            "rin-renderer-texsvg-worker",
+			"version":            cfg.engineVersion,
+			"mathWrapperVersion": mathWrapperVersion,
 		})
 	})
 
@@ -1177,6 +1179,8 @@ func texCompileArgs(texPath string) []string {
 	}
 }
 
+var standaloneMathDisplayEnvironment = regexp.MustCompile(`(?s)^\\begin\s*\{(equation\*?|align\*?|alignat\*?|gather\*?|multline\*?|flalign\*?|displaymath)\}.*\\end\s*\{([a-z]+\*?)\}$`)
+
 func normalizeDiagramSource(kind, options, body, source string) string {
 	body = strings.TrimSpace(body)
 	source = strings.TrimSpace(source)
@@ -1187,6 +1191,13 @@ func normalizeDiagramSource(kind, options, body, source string) string {
 		}
 		if strings.EqualFold(options, "inline") {
 			return `\(` + mathSource + `\)`
+		}
+		// Standalone AMS/display environments already enter math mode. Adding
+		// another \[...\] causes a bad-delimiter/nested-equation error even for
+		// valid source. Preserve the source rather than rewriting its body,
+		// alignment, numbering or explicit tags; TeX still validates it normally.
+		if match := standaloneMathDisplayEnvironment.FindStringSubmatch(mathSource); len(match) == 3 && match[1] == match[2] {
+			return mathSource
 		}
 		return `\[` + mathSource + `\]`
 	}
