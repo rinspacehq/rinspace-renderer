@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -50,12 +51,13 @@ func fileSHA256(t *testing.T, path string) string {
 func typstTestConfig(t *testing.T, nativeHTML string) Config {
 	t.Helper()
 	cfg := testConfig()
+	cfg.TypstMathRender = false // native adapter tests; default presentation has its own regression
 	binary, binaryHash, font, fontHash := writeFakeTypstCompiler(t, nativeHTML)
 	cfg.TypstBin = binary
 	cfg.TypstBinHash = binaryHash
 	cfg.TypstFontPath = font
 	cfg.TypstFontHash = fontHash
-	cfg.TypstPackageHash = strings.Repeat("b", 64)
+	cfg.TypstPackageHash = typstadapter.EmptyPackageHash
 	cfg.TypstVersion = "0.15.1"
 	cfg.TypstTimeout = 20 * 1000 * 1000 * 1000
 	cfg.TypstMaxOutputBytes = 32 << 20
@@ -98,11 +100,9 @@ func runTypstExecutor(t *testing.T, cfg Config, archive []byte, mode string) Pro
 }
 
 const typstBookHTML = `<!DOCTYPE html><html><head><title>Book</title></head><body>` +
-	`<p><span id="rin-page-intro"></span></p>` +
 	`<h1 id="intro">引言</h1>` +
 	`<p>正文 <math display="inline"><mi>x</mi></math> <a href="https://example.com/page">外链</a> ` +
 	`<a href="#chapter-two">内链</a></p>` +
-	`<p><span id="rin-page-chapter-two"></span></p>` +
 	`<h1 id="chapter-two">第二章</h1>` +
 	`<p>第二章内容</p>` +
 	`<svg width="10" height="10"><circle cx="5" cy="5" r="4"></circle></svg>` +
@@ -320,10 +320,8 @@ func TestCapabilitiesAdvertiseTypstOnlyWhenPinned(t *testing.T) {
 // A book whose cross-chapter reference no longer resolves must fail closed: a
 // reader would otherwise be routed to the wrong page or to nothing at all.
 const typstDanglingBookHTML = `<!DOCTYPE html><html><head><title>Book</title></head><body>` +
-	`<p><span id="rin-page-intro"></span></p>` +
 	`<h1 id="intro">引言</h1>` +
 	`<p>引用丢失 <a href="#missing-section">不存在的章节</a></p>` +
-	`<p><span id="rin-page-second"></span></p>` +
 	`<h1 id="second">第二章</h1>` +
 	`</body></html>`
 

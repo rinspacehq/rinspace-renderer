@@ -15,7 +15,6 @@ import (
 
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/nodeworker"
-	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
 )
 
 func TestMarkdownProjectExecutorPublishesFinalBundle(t *testing.T) {
@@ -31,8 +30,8 @@ func TestMarkdownProjectExecutorPublishesFinalBundle(t *testing.T) {
 	source := "# Server article\n\nA safe paragraph with **GFM-compatible** markup."
 	result := executor.Execute(context.Background(), ProjectExecutionRequest{
 		ContentKind: "markdown", JobID: "11111111-1111-4111-8111-111111111111", RequestID: "render-11111111111111111111111111111111",
-		ArchiveName: "article.zip", Archive: markdownExecutorArchive(t, "article.md", source),
-		Engine: "unified", Title: "Server article", ExplicitMainFile: "article.md", ProjectStatus: "published-preview",
+		ArchiveName: "article.zip", Archive: markdownExecutorArchive(t, "main.md", source),
+		Engine: "unified", Title: "Server article", ExplicitMainFile: "main.md", ProjectStatus: "published-preview",
 	})
 	if result.Err != nil || result.Status != 200 || result.Canonical == nil {
 		t.Fatalf("Markdown execution failed: status=%d message=%q err=%v diagnostics=%#v", result.Status, result.Message, result.Err, result.Diagnostics)
@@ -76,8 +75,8 @@ func TestMarkdownProjectExecutorPublishesV2MathAndCodeBlocks(t *testing.T) {
 	source := "# Work blocks\n\n$$\nx^2\n$$\n\n```go\nfmt.Println(\"x\")\n```"
 	result := executor.Execute(context.Background(), ProjectExecutionRequest{
 		ContentKind: "markdown", RequestID: "33333333-3333-4333-8333-333333333333",
-		ArchiveName: "article.zip", Archive: markdownExecutorArchive(t, "article.md", source),
-		Engine: "unified", Title: "Work blocks", ExplicitMainFile: "article.md", ProjectStatus: "published-preview",
+		ArchiveName: "article.zip", Archive: markdownExecutorArchive(t, "main.md", source),
+		Engine: "unified", Title: "Work blocks", ExplicitMainFile: "main.md", ProjectStatus: "published-preview",
 	})
 	if result.Err != nil || result.Status != 200 || result.Canonical == nil || result.Canonical.Inline == nil {
 		t.Fatalf("Markdown v2 work-block execution failed: status=%d message=%q err=%v diagnostics=%#v", result.Status, result.Message, result.Err, result.Diagnostics)
@@ -103,24 +102,21 @@ func TestMarkdownProjectExecutorPublishesOrderedBookBundle(t *testing.T) {
 	defer executor.Close()
 
 	archive := markdownExecutorFiles(t, map[string]string{
+		"main.md":           "- 03-啊啊啊.md\n  - 01-可爱捏/01-非常可爱.md\n",
 		"03-啊啊啊.md":         "# 啊啊啊\n\n[Next](01-可爱捏/01-非常可爱.md)",
 		"01-可爱捏/01-非常可爱.md": "# 非常可爱\n\nThe end.",
 	})
 	result := executor.Execute(context.Background(), ProjectExecutionRequest{
 		ContentKind: "markdown", RequestID: "22222222-2222-4222-8222-222222222222",
 		ArchiveName: "book.zip", Archive: archive, Engine: "unified", Title: "Server Book",
-		DocumentMode: "book", ProjectStatus: "published-preview",
-		MarkdownBookPages: []projectidentity.MarkdownBookPage{
-			{Path: "03-啊啊啊.md", ID: "md-003-啊啊啊", Title: "啊啊啊"},
-			{Path: "01-可爱捏/01-非常可爱.md", ID: "md-001-可爱捏-sec-001-非常可爱", Title: "非常可爱"},
-		},
+		DocumentMode: "book", ProjectStatus: "published-preview", ExplicitMainFile: "main.md",
 	})
 	if result.Err != nil || result.Status != 200 || result.Canonical == nil || result.Canonical.Inline == nil {
 		t.Fatalf("Markdown Book execution failed: status=%d message=%q err=%v diagnostics=%#v", result.Status, result.Message, result.Err, result.Diagnostics)
 	}
 	bundle := result.Canonical.Inline
-	if bundle.Title != "Server Book" || len(bundle.Pages) != 2 || bundle.Pages[0].ID != "md-003-啊啊啊" ||
-		bundle.Pages[1].ID != "md-001-可爱捏-sec-001-非常可爱" || bundle.Pages[0].SourcePath != "03-啊啊啊.md" ||
+	if bundle.Title != "Server Book" || len(bundle.Pages) != 2 || bundle.Pages[0].ID != "rin-md-"+contracts.SHA256Hex([]byte("03-啊啊啊.md"))[:24] ||
+		bundle.Pages[1].TOC[0].Depth != 2 || bundle.Pages[0].SourcePath != "03-啊啊啊.md" ||
 		bundle.Pages[1].SourcePath != "01-可爱捏/01-非常可爱.md" ||
 		len(bundle.WorkUnits) != 0 || bundle.Provenance.Adapter == "" || result.Canonical.Cache.Hit {
 		t.Fatalf("unexpected final Markdown Book result: %#v", result.Canonical)
@@ -130,7 +126,7 @@ func TestMarkdownProjectExecutorPublishesOrderedBookBundle(t *testing.T) {
 			t.Fatalf("Book page omitted final source/dependency identity: %#v", page)
 		}
 	}
-	if result.Response.MainFile != "03-啊啊啊.md" || result.Response.HTML != bundle.Pages[0].Fragment {
+	if result.Response.MainFile != "main.md" || result.Response.HTML != bundle.Pages[0].Fragment {
 		t.Fatalf("legacy compatibility projection was not derived from canonical first page: %#v", result.Response)
 	}
 }

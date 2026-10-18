@@ -13,10 +13,10 @@ import (
 
 func TestAdaptHTMLKeepsChapterBoundaryAndCrossPageReferences(t *testing.T) {
 	source := `<!doctype html><html><head><style>body{color:red}</style></head><body>` +
-		`<p><span id="rin-page-second"></span></p><h2>第二章</h2><p>第二章正文</p>` +
-		`<p><span id="rin-page-group-theory"></span></p><h2 id="group-theory">第四章</h2>` +
+		`<h2 id="second">第二章</h2><p>第二章正文</p>` +
+		`<h2 id="group-theory">第四章</h2>` +
 		`<p>第四章正文 <a href="#definition">前文定义</a></p>` +
-		`<p><span id="rin-page-definition"></span></p><h3 id="definition">定义</h3>` +
+		`<h3 id="definition">定义</h3>` +
 		`<p><a href="#group-theory">返回第四章</a></p></body></html>`
 	result, err := AdaptHTML([]byte(source), "book", nil)
 	if err != nil {
@@ -190,7 +190,7 @@ func TestAdaptHTMLKeepsRealArticleMathAndCommutativeDiagram(t *testing.T) {
 		`<td><math><mi>𝐷</mi></math></td></tr></table>` +
 		"<figcaption>表\u00a01\u2003交换图：表格与数学排版</figcaption></figure>"
 	source := `<!doctype html><html><head><style>mtd{}</style></head><body>` +
-		`<p><span id="rin-page-introduction"></span></p><h2>1. 引言</h2>` +
+		`<h2>1. 引言</h2>` +
 		`<p>行间公式：</p>` + matrix + `<p>交换图：</p>` + diagram + `</body></html>`
 	result, err := AdaptHTML([]byte(source), "article", nil)
 	if err != nil {

@@ -12,7 +12,7 @@ const ProfileSchemaVersion = "rin-typst-html-profile/v2"
 // AdapterVersion is the semantic version of the Go HTML adapter and sanitizer.
 // Bump it whenever the accepted element/attribute/URL policy changes so a new
 // renderProfileId is produced and stale cached results are not reused.
-const AdapterVersion = "rin-typst-html-adapter/v1"
+const AdapterVersion = "rin-typst-html-adapter/v2"
 
 // MathPresentation values recorded in a profile.
 const (
@@ -33,6 +33,8 @@ type Profile struct {
 	AdapterVersion     string
 	FinalOutputVersion string
 	MathPresentation   string
+	MathJaxVersion     string
+	MathJaxFontVersion string
 }
 
 // ID returns a stable, content-addressed profile identifier. Unknown or empty
@@ -48,6 +50,10 @@ func (profile Profile) ID() string {
 		firstNonEmpty(profile.AdapterVersion, AdapterVersion),
 		firstNonEmpty(profile.FinalOutputVersion, "final-output-unreported"),
 		firstNonEmpty(profile.MathPresentation, MathPresentationNative),
+	}
+	if profile.MathPresentation == MathPresentationMathJax {
+		parts = append(parts, firstNonEmpty(profile.MathJaxVersion, "mathjax-unreported"),
+			firstNonEmpty(profile.MathJaxFontVersion, "mathjax-font-unreported"))
 	}
 	digest := sha256.Sum256([]byte(strings.Join(parts, "\n")))
 	return "typst-html-" + hex.EncodeToString(digest[:16])

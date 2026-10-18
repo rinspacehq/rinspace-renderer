@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -315,15 +314,12 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 		writeError(response, http.StatusBadRequest, "invalid_job_request", "renderProfileId is only valid for Typst document jobs")
 		return
 	}
-	var bookPages []projectidentity.MarkdownBookPage
-	if contentKind == "markdown" && documentMode == "book" {
-		bookPages, err = decodeMarkdownBookPages(request.FormValue("bookPages"), handler.config.ProjectFileMaxCount)
-		if err != nil {
-			writeError(response, http.StatusBadRequest, "invalid_book_manifest", "Markdown Book page manifest is invalid")
-			return
-		}
-	} else if strings.TrimSpace(request.FormValue("bookPages")) != "" {
-		writeError(response, http.StatusBadRequest, "invalid_job_request", "Only Markdown Book jobs can include a Book page manifest")
+	if strings.TrimSpace(request.FormValue("bookPages")) != "" {
+		writeError(response, http.StatusBadRequest, "invalid_job_request", "Book chapters must be declared in main.md, not bookPages")
+		return
+	}
+	if contentKind == "markdown" && request.FormValue("entrypoint") != projectidentity.MarkdownEntrypoint {
+		writeError(response, http.StatusBadRequest, "invalid_job_request", "Markdown entrypoint must be main.md")
 		return
 	}
 	digest := sha256.Sum256(body)
@@ -339,7 +335,7 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 		var project projectidentity.Project
 		var projectErr error
 		if documentMode == "book" {
-			project, projectErr = projectidentity.ImportMarkdownBook(header.Filename, body, request.FormValue("title"), bookPages, limits)
+			project, projectErr = projectidentity.ImportMarkdownCatalogBook(header.Filename, body, request.FormValue("title"), limits)
 		} else {
 			project, projectErr = projectidentity.Import(header.Filename, body, contracts.ContentKindMarkdown,
 				request.FormValue("entrypoint"), limits)
@@ -350,10 +346,9 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 		}
 		projectHash = project.Graph.ProjectHash
 	}
-	canonicalBookPages, _ := json.Marshal(bookPages)
 	optionsDigest := sha256.Sum256([]byte(strings.Join([]string{
 		request.FormValue("entrypoint"), documentEngine, request.FormValue("options"),
-		request.FormValue("title"), request.FormValue("projectStatus"), documentMode, string(canonicalBookPages),
+		request.FormValue("title"), request.FormValue("projectStatus"), documentMode,
 		outputKind, previewEnginePolicyID, previewImageDigest, previewContractVersion, renderProfileID,
 	}, "\x00")))
 	requestMetadata, err := json.Marshal(map[string]any{
@@ -361,7 +356,6 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 		"requestId": controlRequestID,
 		"options":   request.FormValue("options"), "title": request.FormValue("title"),
 		"projectStatus": request.FormValue("projectStatus"), "documentMode": documentMode,
-		"bookPages":       bookPages,
 		"renderProfileId": renderProfileID,
 		"sourceCommit":    controlSourceCommit, "controlProjectHash": controlProjectHash,
 		"controlProjectId": controlProjectID,
@@ -405,26 +399,6 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 	writeJSON(response, http.StatusAccepted, map[string]any{
 		"job": job, "queue": queue, "location": location, "reused": result.Reused,
 	})
-}
-
-func decodeMarkdownBookPages(value string, maxPages int) ([]projectidentity.MarkdownBookPage, error) {
-	if strings.TrimSpace(value) == "" || maxPages < 1 || len(value) > 1<<20 {
-		return nil, errors.New("missing or oversized Markdown Book page manifest")
-	}
-	decoder := json.NewDecoder(strings.NewReader(value))
-	decoder.DisallowUnknownFields()
-	var pages []projectidentity.MarkdownBookPage
-	if err := decoder.Decode(&pages); err != nil {
-		return nil, err
-	}
-	if len(pages) < 1 || len(pages) > maxPages {
-		return nil, fmt.Errorf("Markdown Book page count %d is outside limits", len(pages))
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		return nil, errors.New("Markdown Book page manifest has trailing data")
-	}
-	return pages, nil
 }
 
 func (handler *Handler) status(response http.ResponseWriter, request *http.Request) {

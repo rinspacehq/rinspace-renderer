@@ -20,6 +20,7 @@ type MarkdownBookPage struct {
 	Path  string `json:"path"`
 	ID    string `json:"id"`
 	Title string `json:"title,omitempty"`
+	Level int    `json:"level,omitempty"`
 }
 
 func Import(filename string, archive []byte, contentKind contracts.ContentKind, entrypoint string, limits projectcore.Limits) (Project, error) {
@@ -28,9 +29,16 @@ func Import(filename string, archive []byte, contentKind contracts.ContentKind, 
 		[]contracts.ProjectReference{}, map[string]any{"documentMode": "article"}, limits)
 }
 
-// ImportMarkdownBook turns the ordered files[] representation used by existing Rinspace Markdown
-// books into the canonical Project Graph without changing its stable page IDs or titles.
+// ImportMarkdownBook builds a graph from already verified catalog entries.
 func ImportMarkdownBook(filename string, archive []byte, title string, pages []MarkdownBookPage, limits projectcore.Limits) (Project, error) {
+	files, _, err := projectcore.ImportMarkdownArchive(filename, archive, limits)
+	if err != nil {
+		return Project{}, err
+	}
+	return markdownBookGraph(files, title, pages)
+}
+
+func markdownBookGraph(files []projectcore.File, title string, pages []MarkdownBookPage) (Project, error) {
 	if len(pages) < 1 {
 		return Project{}, errors.New("Markdown Book requires at least one page")
 	}
@@ -39,6 +47,7 @@ func ImportMarkdownBook(filename string, archive []byte, title string, pages []M
 	order := make([]string, 0, len(pages))
 	pageIDs := make(map[string]any, len(pages))
 	pageTitles := make(map[string]any, len(pages))
+	pageLevels := make(map[string]any, len(pages))
 	seenIDs := map[string]struct{}{}
 	for _, page := range pages {
 		cleaned, ok := contracts.CleanProjectPath(page.Path)
@@ -52,12 +61,13 @@ func ImportMarkdownBook(filename string, archive []byte, title string, pages []M
 		entrypoints = append(entrypoints, contracts.ProjectEntrypoint{Path: cleaned, Role: contracts.EntrypointRoleBookPage})
 		order = append(order, cleaned)
 		pageIDs[cleaned] = page.ID
+		pageLevels[cleaned] = page.Level
 		if value := strings.TrimSpace(page.Title); value != "" {
 			pageTitles[cleaned] = value
 		}
 	}
 	options := map[string]any{
-		"documentMode": "book", "pageOrder": order, "pageIds": pageIDs, "pageTitles": pageTitles,
+		"documentMode": "book", "pageOrder": order, "pageIds": pageIDs, "pageTitles": pageTitles, "pageLevels": pageLevels,
 	}
 	if value := strings.TrimSpace(title); value != "" {
 		options["title"] = value
@@ -68,8 +78,7 @@ func ImportMarkdownBook(filename string, archive []byte, title string, pages []M
 			contracts.ProjectReference{From: order[index+1], To: order[index], Kind: "book-navigation-previous", Resolved: true},
 		)
 	}
-	return importProject(filename, archive, contracts.ContentKindMarkdown, entrypoints,
-		references, options, limits)
+	return graphFromFiles(files, contracts.ContentKindMarkdown, entrypoints, references, options)
 }
 
 func importProject(filename string, archive []byte, contentKind contracts.ContentKind, entrypoints []contracts.ProjectEntrypoint, references []contracts.ProjectReference, options map[string]any, limits projectcore.Limits) (Project, error) {
@@ -85,6 +94,10 @@ func importProject(filename string, archive []byte, contentKind contracts.Conten
 	if err != nil {
 		return Project{}, err
 	}
+	return graphFromFiles(files, contentKind, entrypoints, references, options)
+}
+
+func graphFromFiles(files []projectcore.File, contentKind contracts.ContentKind, entrypoints []contracts.ProjectEntrypoint, references []contracts.ProjectReference, options map[string]any) (Project, error) {
 	if len(entrypoints) == 0 {
 		return Project{}, errors.New("project requires an entrypoint")
 	}

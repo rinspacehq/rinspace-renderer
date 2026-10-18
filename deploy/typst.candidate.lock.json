@@ -1,6 +1,6 @@
 {
   "schemaVersion": "rin-typst-candidate-lock/v1",
-  "status": "production-candidate",
+  "status": "development-candidate",
   "platform": "linux/amd64",
   "compiler": {
     "version": "0.15.1",
@@ -40,26 +40,34 @@
   "packagePolicy": {
     "downloadsInWorker": false,
     "externalImports": false,
-    "approvedPackages": [],
-    "packageSetDigestAlgorithm": "sha256(sorted 'name@version' entries joined with LF, no trailing newline)",
-    "packageSetDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "approvedPackages": [
+      "cetz@0.5.2",
+      "ctheorems@1.1.3",
+      "headcount@0.1.1",
+      "oxifmt@1.0.0"
+    ],
+    "packageSetDigestAlgorithm": "sha256(sorted path + NUL + sha256(file bytes) + NUL + decimal byte length + LF entries)",
+    "packageSetDigest": "f7b444f9d865dad4abc856e2839cd9acfa41a213470d247601d14315042ab895"
   },
   "productionProfile": {
-    "id": "typst-html-081b0530d02f7d29bfb369c7820cd318",
+    "id": "typst-html-6bfc9645e7a297b9bb3992f659ffd7ee",
     "schemaVersion": "rin-typst-html-profile/v2",
     "compilerVersion": "0.15.1",
     "compilerHash": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
     "fontHash": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9",
-    "packageSetDigest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "adapterVersion": "rin-typst-html-adapter/v1",
+    "packageSetDigest": "f7b444f9d865dad4abc856e2839cd9acfa41a213470d247601d14315042ab895",
+    "adapterVersion": "rin-typst-html-adapter/v2",
     "finalOutputVersion": "rin-final-output/v1",
-    "mathPresentation": "typst-mathml-native"
+    "mathPresentation": "mathjax-chtml",
+    "mathJaxVersion": "4.1.3",
+    "mathJaxFontVersion": "mathjax-newcm-4.1.3"
   },
   "managedExtensionPatch": {
     "patchVersion": "rinspace-tinymist-managed-v1",
     "sourceTreeHash": "f2f3fc90ff8ea91634242d1907ce0c7aa43a9e10c1cfe7020a6162b65748dde7",
     "outputTreeHash": "afce0b21837c1c57c1e1b948e714c72ede45f00facd1c7a5ea87b78ae94e4217"
   },
-  "workerImageDigest": "ghcr.io/rinspacehq/rinspace/rin-renderer-typst-pdf@sha256:4256be396ec9cf3f39ba49c2d5ff379c7f42e4fd52400769417a311d432ba587",
+  "historicalWorkerImageDigest": "ghcr.io/rinspacehq/rinspace/rin-renderer-typst-pdf@sha256:4256be396ec9cf3f39ba49c2d5ff379c7f42e4fd52400769417a311d432ba587",
+  "workerImageStatus": "not-built-for-this-profile",
   "workerImageSourceHash": "f61cd4b1619fcfdbeef88179ea4b62a56a367d9e677d2771671f7c6119b2d6c0"
 }

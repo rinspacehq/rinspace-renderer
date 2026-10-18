@@ -1,0 +1,8 @@
+{
+  "source": "markdown-book.tar.gz",
+  "contentKind": "markdown",
+  "documentEngine": "unified",
+  "entrypoint": "main.md",
+  "documentMode": "book",
+  "priorityIntent": "rebuild"
+}

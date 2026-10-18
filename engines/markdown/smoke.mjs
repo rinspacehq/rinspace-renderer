@@ -47,7 +47,7 @@ const health = responses[0];
 if (!health.ok || !health.result?.ready || health.result.engine !== 'unified-markdown') {
   throw new Error('Markdown worker health failed');
 }
-if (health.result.engineVersion !== '0.6.0' || health.result.shiki?.version !== '4.4.2') {
+if (health.result.engineVersion !== '0.7.0' || health.result.shiki?.version !== '4.4.2') {
   throw new Error('Markdown worker reports unexpected engine or Shiki version');
 }
 if (!/^rin-markdown-pipeline\/v2\+deps\.sha256\.[a-f0-9]{64}$/.test(health.result.pipelineVersion)) {

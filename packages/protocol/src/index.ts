@@ -221,16 +221,10 @@ export interface RinRendererJobSubmission {
   reused: boolean;
 }
 
-export interface RinMarkdownBookPage {
-  path: string;
-  id: string;
-  title?: string;
-}
-
 export interface RinRendererJobSubmitFields {
   contentKind: 'latex' | 'markdown' | 'typst';
   outputKind?: 'document' | 'latex-pdf-preview' | 'typst-pdf-preview' | 'typst-pdf-export';
-  documentEngine: 'auto' | 'latexml' | 'unified' | 'latexmk';
+  documentEngine: 'auto' | 'latexml' | 'unified' | 'latexmk' | 'typst';
   priorityIntent: 'publish' | 'preview' | 'rebuild' | 'migration';
   resourceClass?: string;
   priorityClass?: 'publish' | 'preview' | 'rebuild' | 'migration';
@@ -243,7 +237,6 @@ export interface RinRendererJobSubmitFields {
   previewContractVersion?: typeof RIN_LATEX_PDF_PREVIEW_SCHEMA_VERSION;
   entrypoint?: string;
   documentMode?: 'article' | 'book';
-  bookPages?: RinMarkdownBookPage[];
   options?: string;
 }
 

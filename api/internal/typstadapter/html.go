@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -24,8 +25,8 @@ import (
 
 const maxNativeHTMLBytes = 32 << 20
 
-var pageMarker = regexp.MustCompile(`^rin-page-([a-z][a-z0-9-]{0,79})$`)
 var codeLanguage = regexp.MustCompile(`^[a-zA-Z0-9_+-]{1,32}$`)
+var languageTag = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9-]*$`)
 
 // The pinned Typst HTML backend writes MathML presentation attributes so the
 // MathJax conversion reproduces the compiler's native spacing and stretching.
@@ -40,6 +41,16 @@ var mathVariant = regexp.MustCompile(`^(?:normal|bold|italic|bold-italic|double-
 func mathTokenElement(tag string) bool {
 	switch tag {
 	case "mi", "mn", "mo", "ms", "mtext":
+		return true
+	}
+	return false
+}
+
+// Typst applies scriptlevel and displaystyle to the innermost presentation
+// element, not just tokens. Keep these inherited MathML attributes off HTML.
+func mathPresentationElement(tag string) bool {
+	switch tag {
+	case "math", "mrow", "mi", "mn", "mo", "ms", "mspace", "mtext", "mfrac", "msqrt", "mroot", "msub", "msup", "msubsup", "mmultiscripts", "mprescripts", "munder", "mover", "munderover", "mtable", "mtr", "mtd":
 		return true
 	}
 	return false
@@ -62,10 +73,11 @@ type Asset struct {
 	Path       string
 	SourcePath string
 	Body       []byte
+	MediaType  string
 }
 
 // AdaptHTML requires the complete HTML document from one Typst compilation.
-// Book page identities come only from the explicit rinWebPage marker. Every
+// Books are split at the compiled HTML headings, without source markers. Every
 // image is normalized into a content-addressed asset so the existing upload
 // path can replace its URL after the final-output validator checks the fragment.
 // SourcePath is retained when Typst embedded an unchanged project SVG; graphics
@@ -76,6 +88,11 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 	}
 	if mode != "article" && mode != "book" {
 		return Result{}, errors.New("Typst document mode is invalid")
+	}
+	// The tree builder can discard duplicate attributes on foreign (MathML)
+	// elements. Check tokens first, so parsing cannot conceal ambiguous input.
+	if err := rejectDuplicateAttributes(source); err != nil {
+		return Result{}, err
 	}
 	root, err := html.Parse(bytes.NewReader(source))
 	if err != nil {
@@ -94,7 +111,7 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 	sort.Strings(fileNames)
 	for _, name := range fileNames {
 		body := projectFiles[name]
-		if cleaned, ok := contracts.CleanProjectPath(name); ok && cleaned == name && strings.HasSuffix(strings.ToLower(name), ".svg") {
+		if cleaned, ok := contracts.CleanProjectPath(name); ok && cleaned == name {
 			hash := sha256.Sum256(body)
 			if _, exists := assetHashes[hash]; !exists {
 				assetHashes[hash] = name
@@ -103,7 +120,14 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 	}
 	result := Result{Pages: []Page{}}
 	current := Page{ID: "page-main"}
-	seenPages := map[string]struct{}{}
+	var boundaries map[*html.Node]Page
+	if mode == "book" {
+		boundaries, err = automaticBookPages(body)
+		if err != nil {
+			return Result{}, err
+		}
+	}
+	started := false
 	var fragment bytes.Buffer
 	flush := func() error {
 		if current.ID == "" || strings.TrimSpace(fragment.String()) == "" {
@@ -121,31 +145,20 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 		return nil
 	}
 	for child := body.FirstChild; child != nil; child = child.NextSibling {
-		if marker, ok := markerPageID(child); ok {
-			if _, duplicate := seenPages[marker]; duplicate {
-				return Result{}, fmt.Errorf("duplicate Typst page marker %q", marker)
-			}
-			seenPages[marker] = struct{}{}
-			if mode == "article" {
-				// The shared template can mark article sections, but an article
-				// remains a single reader page.
-				continue
-			}
-			if len(seenPages) == 1 {
-				if strings.TrimSpace(fragment.String()) != "" {
-					return Result{}, errors.New("book content precedes its first page marker")
+		if page, ok := boundaries[child]; ok {
+			if started {
+				if err := flush(); err != nil {
+					return Result{}, err
 				}
-			} else if err := flush(); err != nil {
-				return Result{}, err
 			}
-			current = Page{ID: marker}
-			continue
+			current = page
+			started = true
 		}
-		if mode == "book" && len(seenPages) == 0 {
+		if !started && mode == "book" {
 			if child.Type == html.TextNode && strings.TrimSpace(child.Data) == "" {
 				continue
 			}
-			return Result{}, errors.New("book content precedes its first page marker")
+			return Result{}, errors.New("Typst book content has no reading boundary")
 		}
 		if err := sanitizeNode(child, assetHashes, assets); err != nil {
 			return Result{}, err
@@ -157,9 +170,6 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 		if err := html.Render(&fragment, child); err != nil {
 			return Result{}, err
 		}
-	}
-	if mode == "book" && len(seenPages) == 0 {
-		return Result{}, errors.New("book HTML has no explicit page marker")
 	}
 	if err := flush(); err != nil {
 		return Result{}, err
@@ -179,28 +189,69 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 	return result, nil
 }
 
-func markerPageID(node *html.Node) (string, bool) {
-	if node.Type != html.ElementNode || node.Data != "p" || node.FirstChild == nil || node.FirstChild != node.LastChild || node.FirstChild.Data != "span" {
-		return "", false
-	}
-	span := node.FirstChild
-	if span.FirstChild != nil {
-		return "", false
-	}
-	for _, attr := range span.Attr {
-		if attr.Key == "id" {
-			match := pageMarker.FindStringSubmatch(attr.Val)
-			return matchValue(match), len(match) == 2
+func rejectDuplicateAttributes(source []byte) error {
+	tokens := html.NewTokenizer(bytes.NewReader(source))
+	for {
+		switch tokens.Next() {
+		case html.ErrorToken:
+			if tokens.Err() == io.EOF {
+				return nil
+			}
+			return tokens.Err()
+		case html.StartTagToken, html.SelfClosingTagToken:
+			// x/net/html also deduplicates in Token(). Inspect only this raw
+			// start tag, respecting quoted values (including spaces and '>').
+			raw := string(tokens.Raw())
+			i := strings.IndexAny(raw, " \t\r\n\f>")
+			if i < 0 {
+				continue
+			}
+			seen := map[string]bool{}
+			for i < len(raw) {
+				for i < len(raw) && strings.ContainsRune(" \t\r\n\f/", rune(raw[i])) {
+					i++
+				}
+				if i >= len(raw) || raw[i] == '>' {
+					break
+				}
+				start := i
+				for i < len(raw) && !strings.ContainsRune(" \t\r\n\f=/>", rune(raw[i])) {
+					i++
+				}
+				if i == start {
+					break
+				}
+				name := strings.ToLower(raw[start:i])
+				if seen[name] {
+					return fmt.Errorf("Typst HTML duplicates attribute %q", name)
+				}
+				seen[name] = true
+				for i < len(raw) && strings.ContainsRune(" \t\r\n\f", rune(raw[i])) {
+					i++
+				}
+				if i < len(raw) && raw[i] == '=' {
+					i++
+					for i < len(raw) && strings.ContainsRune(" \t\r\n\f", rune(raw[i])) {
+						i++
+					}
+					if i < len(raw) && (raw[i] == '\'' || raw[i] == '"') {
+						quote := raw[i]
+						i++
+						for i < len(raw) && raw[i] != quote {
+							i++
+						}
+						if i < len(raw) {
+							i++
+						}
+					} else {
+						for i < len(raw) && !strings.ContainsRune(" \t\r\n\f>", rune(raw[i])) {
+							i++
+						}
+					}
+				}
+			}
 		}
 	}
-	return "", false
-}
-
-func matchValue(match []string) string {
-	if len(match) == 2 {
-		return match[1]
-	}
-	return ""
 }
 
 func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[string]Asset) error {
@@ -245,6 +296,35 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 				return errors.New("Typst code language is invalid")
 			}
 			attrs = append(attrs, attr)
+		case "colspan", "rowspan", "start", "value", "aria-level":
+			validTag := (name == "colspan" || name == "rowspan") && (node.Data == "td" || node.Data == "th") ||
+				name == "start" && node.Data == "ol" || name == "value" && node.Data == "li" ||
+				name == "aria-level" && node.Data == "div"
+			number, err := strconv.Atoi(attr.Val)
+			if !validTag || err != nil || number < 1 || number > 32767 {
+				return fmt.Errorf("Typst HTML numeric attribute %s is invalid", name)
+			}
+			attrs = append(attrs, attr)
+		case "reversed":
+			if node.Data != "ol" || attr.Val != "reversed" && attr.Val != "" {
+				return errors.New("Typst reversed enumeration is invalid")
+			}
+			attrs = append(attrs, attr)
+		case "cite":
+			if node.Data != "blockquote" || !safeLink(attr.Val) {
+				return errors.New("Typst quotation citation is unsafe")
+			}
+			attrs = append(attrs, attr)
+		case "lang":
+			if len(attr.Val) > 64 || !languageTag.MatchString(attr.Val) {
+				return errors.New("Typst language is invalid")
+			}
+			attrs = append(attrs, attr)
+		case "dir":
+			if attr.Val != "ltr" && attr.Val != "rtl" && attr.Val != "auto" {
+				return errors.New("Typst text direction is invalid")
+			}
+			attrs = append(attrs, attr)
 		case "style": // Native Typst CSS is page-global; reader chrome owns styling.
 			continue
 		case "display":
@@ -262,9 +342,24 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 				return errors.New("Typst MathML operator form is invalid")
 			}
 			attrs = append(attrs, attr)
-		case "stretchy":
+		case "fence", "separator", "stretchy", "symmetric", "largeop", "movablelimits":
 			if node.Data != "mo" || !mathFlag.MatchString(attr.Val) {
-				return errors.New("Typst MathML operator stretching is invalid")
+				return fmt.Errorf("Typst MathML operator %s is invalid", name)
+			}
+			attrs = append(attrs, attr)
+		case "minsize":
+			if node.Data != "mo" || !mathLength.MatchString(attr.Val) || strings.HasPrefix(attr.Val, "-") {
+				return errors.New("Typst MathML operator minimum size is invalid")
+			}
+			attrs = append(attrs, attr)
+		case "displaystyle":
+			if !mathPresentationElement(node.Data) || !mathFlag.MatchString(attr.Val) {
+				return errors.New("Typst MathML display style is invalid")
+			}
+			attrs = append(attrs, attr)
+		case "scriptlevel":
+			if !mathPresentationElement(node.Data) || attr.Val != "0" && attr.Val != "1" && attr.Val != "2" {
+				return errors.New("Typst MathML script level is invalid")
 			}
 			attrs = append(attrs, attr)
 		case "accent":
@@ -289,7 +384,7 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 			attrs = append(attrs, attr)
 		case "id", "class", "role", "alt", "title", "width", "height", "aria-label":
 			if name == "id" && strings.HasPrefix(attr.Val, "rin-page-") {
-				return errors.New("Typst page marker is not a top-level canonical marker")
+				return errors.New("obsolete Typst page marker; use ordinary headings")
 			}
 			attrs = append(attrs, attr)
 		case "href":
@@ -333,15 +428,19 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 }
 
 func resolveImage(raw string, hashes map[[32]byte]string, assets map[string]Asset) (string, error) {
-	const prefix = "data:image/svg+xml;base64,"
-	if !strings.HasPrefix(raw, prefix) {
-		return "", errors.New("Typst image is not a supported embedded SVG")
+	media, encoded, ok := strings.Cut(raw, ";base64,")
+	if !ok || !strings.HasPrefix(media, "data:image/") {
+		return "", errors.New("Typst image is not an embedded image")
 	}
-	data, err := io.ReadAll(base64.NewDecoder(base64.StdEncoding, strings.NewReader(strings.TrimPrefix(raw, prefix))))
+	media = strings.TrimPrefix(media, "data:")
+	data, err := io.ReadAll(io.LimitReader(base64.NewDecoder(base64.StdEncoding, strings.NewReader(encoded)), (4<<20)+1))
 	if err != nil || len(data) == 0 || len(data) > 4<<20 {
 		return "", errors.New("Typst embedded image is invalid or too large")
 	}
 	name := hashes[sha256.Sum256(data)]
+	if media != "image/svg+xml" {
+		return normalizeRaster(data, media, name, assets)
+	}
 	return normalizeImage(data, name, assets)
 }
 
@@ -351,7 +450,7 @@ func normalizeImage(data []byte, sourcePath string, assets map[string]Asset) (st
 		return "", fmt.Errorf("Typst SVG is unsafe: %w", err)
 	}
 	generatedPath := "typst-assets/" + normalized.Hash + ".svg"
-	assets[generatedPath] = Asset{Path: generatedPath, SourcePath: sourcePath, Body: normalized.Bytes}
+	assets[generatedPath] = Asset{Path: generatedPath, SourcePath: sourcePath, Body: normalized.Bytes, MediaType: "image/svg+xml"}
 	return generatedPath, nil
 }
 
@@ -365,7 +464,7 @@ func safeLink(raw string) bool {
 
 func allowedElement(tag string) bool {
 	switch tag {
-	case "article", "section", "div", "p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "a", "em", "strong", "b", "i", "u", "s", "br", "sup", "sub", "blockquote", "pre", "code", "ul", "ol", "li", "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "figure", "figcaption", "img", "hr", "math", "mrow", "mi", "mn", "mo", "ms", "mspace", "mtext", "mfrac", "msqrt", "mroot", "msub", "msup", "msubsup", "munder", "mover", "munderover", "mtable", "mtr", "mtd", "semantics", "annotation":
+	case "article", "section", "nav", "div", "p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "a", "em", "strong", "b", "i", "u", "s", "mark", "br", "sup", "sub", "blockquote", "pre", "code", "ul", "ol", "li", "dl", "dt", "dd", "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "figure", "figcaption", "img", "hr", "math", "mrow", "mi", "mn", "mo", "ms", "mspace", "mtext", "mfrac", "msqrt", "mroot", "msub", "msup", "msubsup", "mmultiscripts", "mprescripts", "munder", "mover", "munderover", "mtable", "mtr", "mtd", "semantics", "annotation":
 		return true
 	}
 	return false

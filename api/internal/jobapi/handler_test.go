@@ -396,9 +396,9 @@ func TestSubmissionUsesAuthenticatedIdentityAndReturns202(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	archive := markdownTestArchive(t, "article.md", "# Article")
+	archive := markdownTestArchive(t, "main.md", "# Article")
 	_, _ = file.Write(archive)
-	_ = writer.WriteField("entrypoint", "article.md")
+	_ = writer.WriteField("entrypoint", "main.md")
 	_ = writer.Close()
 	request := authorizedRequest(http.MethodPost, "/api/render/jobs", &body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
@@ -967,8 +967,8 @@ func TestSubmissionPersistsCompleteControlPlaneIdentity(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, _ = file.Write(markdownTestArchive(t, "article.md", "# Article"))
-		_ = writer.WriteField("entrypoint", "article.md")
+		_, _ = file.Write(markdownTestArchive(t, "main.md", "# Article"))
+		_ = writer.WriteField("entrypoint", "main.md")
 		_ = writer.Close()
 		request := authorizedRequest(http.MethodPost, "/api/render/jobs", &body)
 		request.Header.Set("X-Rin-Renderer-Owner-Scope", "article:42")
@@ -1017,7 +1017,7 @@ func TestSubmissionPersistsCompleteControlPlaneIdentity(t *testing.T) {
 	}
 }
 
-func TestSubmissionAcceptsCanonicalMarkdownBookManifest(t *testing.T) {
+func TestSubmissionAcceptsMarkdownBookCatalog(t *testing.T) {
 	admit := &fakeAdmission{}
 	handler := newTestHandler(t, admit, newFakeRepository(), &fakeStore{})
 	var body bytes.Buffer
@@ -1027,7 +1027,7 @@ func TestSubmissionAcceptsCanonicalMarkdownBookManifest(t *testing.T) {
 	_ = writer.WriteField("priorityIntent", "publish")
 	_ = writer.WriteField("documentMode", "book")
 	_ = writer.WriteField("title", "Book")
-	_ = writer.WriteField("bookPages", `[{"path":"intro.md","id":"intro","title":"Intro"},{"path":"chapter.md","id":"chapter","title":"Chapter"}]`)
+	_ = writer.WriteField("entrypoint", "main.md")
 	file, err := writer.CreateFormFile("source", "book.zip")
 	if err != nil {
 		t.Fatal(err)
@@ -1047,7 +1047,7 @@ func TestSubmissionAcceptsCanonicalMarkdownBookManifest(t *testing.T) {
 		BookPages    []struct{ Path, ID, Title string } `json:"bookPages"`
 	}
 	if err := json.Unmarshal(admit.request.RequestMetadata, &metadata); err != nil || metadata.DocumentMode != "book" ||
-		len(metadata.BookPages) != 2 || metadata.BookPages[0].Path != "intro.md" || metadata.BookPages[1].ID != "chapter" {
+		len(metadata.BookPages) != 0 {
 		t.Fatalf("stored Markdown Book request metadata = %#v, %v", metadata, err)
 	}
 	if admit.request.ProjectHash == strings.Repeat("0", 64) || admit.request.OptionsHash == "" {
@@ -1105,12 +1105,12 @@ func TestSubmissionRejectsInvalidMarkdownBookManifest(t *testing.T) {
 	request.Header.Set("Idempotency-Key", "publish-book-invalid")
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
-	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "invalid_book_manifest") || admit.request.Source != nil {
+	if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), "invalid_job_request") || admit.request.Source != nil {
 		t.Fatalf("invalid Markdown Book manifest = %d %s", response.Code, response.Body.String())
 	}
 }
 
-func TestSubmissionAcceptsSinglePageMarkdownBookManifest(t *testing.T) {
+func TestSubmissionAcceptsSinglePageMarkdownBookCatalog(t *testing.T) {
 	admit := &fakeAdmission{}
 	handler := newTestHandler(t, admit, newFakeRepository(), &fakeStore{})
 	var body bytes.Buffer
@@ -1119,9 +1119,9 @@ func TestSubmissionAcceptsSinglePageMarkdownBookManifest(t *testing.T) {
 	_ = writer.WriteField("documentEngine", "unified")
 	_ = writer.WriteField("priorityIntent", "publish")
 	_ = writer.WriteField("documentMode", "book")
-	_ = writer.WriteField("bookPages", `[{"path":"intro.md","id":"intro","title":"Intro"}]`)
+	_ = writer.WriteField("entrypoint", "main.md")
 	file, _ := writer.CreateFormFile("source", "book.zip")
-	_, _ = file.Write(markdownBookTestArchive(t))
+	_, _ = file.Write(markdownBookTestArchive(t, "- intro.md\n"))
 	_ = writer.Close()
 	request := authorizedRequest(http.MethodPost, "/api/render/jobs", &body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
@@ -1129,10 +1129,7 @@ func TestSubmissionAcceptsSinglePageMarkdownBookManifest(t *testing.T) {
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusAccepted {
-		t.Fatalf("single-page Markdown Book manifest = %d %s", response.Code, response.Body.String())
-	}
-	if !strings.Contains(string(admit.request.RequestMetadata), "intro") {
-		t.Fatalf("expected single-page manifest metadata, got %s", admit.request.RequestMetadata)
+		t.Fatalf("single-page book catalog = %d %s", response.Code, response.Body.String())
 	}
 }
 
@@ -1151,11 +1148,15 @@ func markdownTestArchive(t *testing.T, path string, source string) []byte {
 	return body.Bytes()
 }
 
-func markdownBookTestArchive(t *testing.T) []byte {
+func markdownBookTestArchive(t *testing.T, catalogs ...string) []byte {
 	t.Helper()
 	var body bytes.Buffer
 	writer := zip.NewWriter(&body)
-	for _, item := range []struct{ path, source string }{{"intro.md", "# Intro"}, {"chapter.md", "# Chapter"}} {
+	catalog := "- intro.md\n  - chapter.md\n"
+	if len(catalogs) > 0 {
+		catalog = catalogs[0]
+	}
+	for _, item := range []struct{ path, source string }{{"main.md", catalog}, {"intro.md", "# Intro"}, {"chapter.md", "# Chapter"}} {
 		file, err := writer.Create(item.path)
 		if err != nil {
 			t.Fatal(err)

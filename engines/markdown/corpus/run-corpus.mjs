@@ -43,6 +43,13 @@ async function main() {
       const second = await renderFixture(fixture);
       if (JSON.stringify(first) !== JSON.stringify(second)) {
         const difference = firstSemanticDifference(first, second);
+        for (let index = 0; index < first.pages.length; index += 1) {
+          const detail = firstSemanticDifference(
+            { ...first.pages[index].debugBundle, bundleHash: '' },
+            { ...second.pages[index].debugBundle, bundleHash: '' },
+          );
+          if (detail) console.error(`Determinism detail: ${detail}`);
+        }
         throw new Error(`two identical renders produced different semantic records${difference ? ` (${difference})` : ''}`);
       }
       const invariantErrors = evaluateInvariants(fixture, first);
@@ -79,6 +86,11 @@ async function main() {
 
 function firstSemanticDifference(left, right, currentPath = '') {
   if (JSON.stringify(left) === JSON.stringify(right)) return '';
+  if (typeof left === 'string' && typeof right === 'string') {
+    let offset = 0;
+    while (offset < Math.min(left.length, right.length) && left[offset] === right[offset]) offset += 1;
+    return `${currentPath}: difference at character ${offset}: ${JSON.stringify(left.slice(Math.max(0, offset - 32), offset + 80))} != ${JSON.stringify(right.slice(Math.max(0, offset - 32), offset + 80))}`;
+  }
   if (Array.isArray(left) && Array.isArray(right)) {
     const length = Math.max(left.length, right.length);
     for (let index = 0; index < length; index += 1) {
@@ -114,7 +126,9 @@ async function renderFixture(fixture) {
       adapterVersion: pipelineCapabilities().engineVersion,
       engineVersion: pipelineCapabilities().pipelineVersion,
     });
-    pages.push(pageSemantics(sourcePath, draft.bundle, final, work));
+    const semantic = pageSemantics(sourcePath, draft.bundle, final, work);
+    Object.defineProperty(semantic, 'debugBundle', { value: final.bundle });
+    pages.push(semantic);
   }
   return {
     pageCount: pages.length,

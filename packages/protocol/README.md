@@ -45,8 +45,10 @@ SyncTeX, bounded raw log, aux, and fls artifact, with optional bbl/blg/toc/out f
 must remain in the root-adjacent `.rinspace/` directory; PDF, log, and aggregate limits are 32 MiB,
 2 MiB, and 48 MiB respectively.
 
-This branch is additive: requests that omit `outputKind` keep the existing document-render behavior,
-the multipart `bookPages` field remains a JSON string, and `/api/render/pdf/inspect` keeps the
+Requests that omit `outputKind` select document rendering. Markdown requires
+`entrypoint=main.md`: article body, or the book's nested relative chapter-path list.
+The obsolete multipart `bookPages` field is rejected; there is no old-format fallback.
+`/api/render/pdf/inspect` keeps the
 `rin-pdf-inspection/v1` / `pdf-inspect` contract. Setting the server-side
 `pdf_preview_enabled=false` rejects only the new output kind and is the protocol rollback switch.
 

@@ -30,12 +30,14 @@ func newTypstProjectExecutor(cfg Config, server *Server) *typstProjectExecutor {
 
 func (executor *typstProjectExecutor) compiler() typstadapter.Compiler {
 	return typstadapter.Compiler{
-		BinaryPath: strings.TrimSpace(executor.cfg.TypstBin),
-		BinaryHash: strings.ToLower(strings.TrimSpace(executor.cfg.TypstBinHash)),
-		FontPath:   strings.TrimSpace(executor.cfg.TypstFontPath),
-		FontHash:   strings.ToLower(strings.TrimSpace(executor.cfg.TypstFontHash)),
-		Timeout:    executor.cfg.TypstTimeout,
-		MaxOutput:  executor.cfg.TypstMaxOutputBytes,
+		BinaryPath:  strings.TrimSpace(executor.cfg.TypstBin),
+		BinaryHash:  strings.ToLower(strings.TrimSpace(executor.cfg.TypstBinHash)),
+		FontPath:    strings.TrimSpace(executor.cfg.TypstFontPath),
+		FontHash:    strings.ToLower(strings.TrimSpace(executor.cfg.TypstFontHash)),
+		PackagePath: strings.TrimSpace(executor.cfg.TypstPackagePath),
+		PackageHash: strings.ToLower(strings.TrimSpace(executor.cfg.TypstPackageHash)),
+		Timeout:     executor.cfg.TypstTimeout,
+		MaxOutput:   executor.cfg.TypstMaxOutputBytes,
 	}
 }
 
@@ -62,6 +64,8 @@ func (executor *typstProjectExecutor) profile(mathPresentation string) typstadap
 		AdapterVersion:     typstadapter.AdapterVersion,
 		FinalOutputVersion: finaloutput.ContractVersion,
 		MathPresentation:   mathPresentation,
+		MathJaxVersion:     executor.cfg.MathJaxVersion,
+		MathJaxFontVersion: executor.cfg.MathJaxFontVersion,
 	}
 }
 
@@ -90,6 +94,11 @@ func (executor *typstProjectExecutor) Execute(ctx context.Context, request Proje
 	}
 	entrypoint := project.Graph.Entrypoints[0].Path
 	compiled, err := executor.compiler().Compile(ctx, files, entrypoint, "html")
+	if ctx.Err() == nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		if reason := typstadapter.UnsupportedHTML(compiled.Log); reason != "" && (err == nil || strings.Contains(strings.ToLower(compiled.Log), "error:")) {
+			return executor.pdfFallback(ctx, request, project, files, entrypoint, mode, reason)
+		}
+	}
 	if err != nil {
 		return typstCompileFailure(ctx, err, compiled.Log)
 	}
@@ -186,7 +195,7 @@ func typstAdaptedResult(input typstAdaptedInput) ProjectExecutionResult {
 	files := make([]AssetFile, 0, len(input.Adapted.Assets))
 	for _, asset := range input.Adapted.Assets {
 		files = append(files, AssetFile{
-			Path: asset.Path, Filename: asset.Path, MIME: "image/svg+xml",
+			Path: asset.Path, Filename: asset.Path, MIME: firstNonEmpty(asset.MediaType, "image/svg+xml"),
 			Encoding: "base64", Body: base64.StdEncoding.EncodeToString(asset.Body), Bytes: int64(len(asset.Body)),
 		})
 	}

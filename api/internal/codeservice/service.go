@@ -16,7 +16,7 @@ import (
 const (
 	DefaultTheme                = "github-light"
 	ShikiVersion                = "4.4.2"
-	DefaultPluginVersion        = "rin-markdown-code/v1"
+	DefaultPluginVersion        = "rin-markdown-code/v2"
 	DefaultSanitizerVersion     = "rin-markdown-final-sanitizer/v2"
 	DefaultCompatibilityVersion = "rin-reader-code/v1"
 	DefaultMaxBatchSize         = 512

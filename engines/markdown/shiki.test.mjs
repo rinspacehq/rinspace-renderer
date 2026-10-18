@@ -10,6 +10,22 @@ import {
 } from './shiki.mjs';
 
 await assertShikiReady();
+
+// A slow machine must not publish a silently partially highlighted line.
+const deterministicInput = { contractVersion: SHIKI_BATCH_CONTRACT, theme: APPROVED_SHIKI_THEME,
+  items: [{ id: 'rw_10000000000000000000000000000000', source: 'const vector = [1, 2, 3]', language: 'js' }] };
+const realClock = Date.now;
+const normal = await resolveShikiBatch(deterministicInput);
+try {
+  let elapsed = 0;
+  Date.now = () => (elapsed += 1000);
+  const throttled = await resolveShikiBatch(deterministicInput);
+  assert.equal(throttled.items[0].html, normal.items[0].html);
+} finally { Date.now = realClock; }
+const longLine = '<'.repeat(5000);
+const bounded = await resolveShikiBatch({ ...deterministicInput, items: [{ ...deterministicInput.items[0], source: longLine }] });
+assert.ok(!bounded.items[0].html.includes('<'.repeat(5)));
+assert.equal((bounded.items[0].html.match(/&lt;|&#x3c;|&#60;/gi) || []).length, 5000);
 assert.equal(APPROVED_SHIKI_LANGUAGES.length, 30);
 assert.ok(APPROVED_SHIKI_LANGUAGES.includes('yaml'));
 

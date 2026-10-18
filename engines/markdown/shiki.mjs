@@ -135,6 +135,13 @@ function renderItem(highlighter, item) {
     html: highlighter.codeToHtml(item.source, {
       lang: canonicalLanguage,
       theme: APPROVED_SHIKI_THEME,
+      // Shiki's 500ms per-line wall clock silently returns partial tokens on
+      // cold/throttled CPUs, so identical source can get different HTML/cache
+      // hashes. Bound work by line length, not elapsed time. The enclosing
+      // supervised worker still enforces its finite request deadline and kills
+      // canceled/stalled processes; source and batch byte limits also remain.
+      tokenizeTimeLimit: 0,
+      tokenizeMaxLineLength: 4096,
     }),
     canonicalLanguage,
     highlighted: true,

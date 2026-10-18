@@ -51,8 +51,14 @@ func TestPinnedCompilerBuildsBothTargetsFromCorpus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("pinned %s compile failed: %v: %s", format, err, result.Log)
 		}
-		if format == "html" && (!bytes.Contains(result.Output, []byte("rin-page-group-theory")) || !bytes.Contains(result.Output, []byte("<math>"))) {
+		if format == "html" && (!bytes.Contains(result.Output, []byte(`id="group-theory"`)) || !bytes.Contains(result.Output, []byte("<math>")) || bytes.Contains(result.Output, []byte("rin-page-"))) {
 			t.Fatal("Typst HTML lost book pages or MathML")
+		}
+		if format == "html" {
+			adapted, err := AdaptHTML(result.Output, "book", files)
+			if err != nil || len(adapted.Pages) != 9 {
+				t.Fatalf("real marker-free book adaptation: pages=%d error=%v", len(adapted.Pages), err)
+			}
 		}
 		if format == "pdf" && !bytes.HasPrefix(result.Output, []byte("%PDF-")) {
 			t.Fatal("Typst PDF header is missing")

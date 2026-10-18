@@ -30,6 +30,7 @@ export async function readBookShadowManifest(filename) {
     const pageEntries = hasBookURL ? await publicMarkdownBookPages(book) : book.pages;
     if (pageEntries.length < 2 || pageEntries.length > 512) throw new Error(`Book ${book.id} page count is invalid`);
     const pages = [];
+    let previousLevel = 0;
     for (const page of pageEntries) {
       const hasSource = typeof page?.source === 'string' && page.source !== '';
       const hasSourceURL = typeof page?.sourceUrl === 'string' && page.sourceUrl !== '';
@@ -37,6 +38,9 @@ export async function readBookShadowManifest(filename) {
       if (!page || typeof page.id !== 'string' || typeof page.path !== 'string' || typeof page.title !== 'string' || Number(hasSource) + Number(hasSourceURL) + Number(hasSourceText) !== 1 || ids.has(page.id) || paths.has(page.path) || !page.path.endsWith('.md')) {
         throw new Error(`invalid or duplicate page in Book ${book.id}`);
       }
+      const level = page.level === undefined ? 1 : page.level;
+      if (!Number.isInteger(level) || level < 1 || level > 6 || level > previousLevel + 1 || page.path === 'main.md' || /[\\:\r\n\0\t]/.test(page.path) || page.path.split('/').some(segment => !segment || segment.startsWith('.'))) throw new Error('Invalid main.md chapter path or hierarchy');
+      previousLevel = level;
       if (hasSourceURL && manifest.provenance.containsPrivateSource) throw new Error('private manifests cannot fetch public page URLs');
       ids.add(page.id); paths.add(page.path);
       const source = (hasSource ? fs.readFileSync(safePath(root, page.source), 'utf8')
@@ -44,7 +48,7 @@ export async function readBookShadowManifest(filename) {
           : page.sourceText).replace(/\r\n?/g, '\n');
       if (!source.trim()) throw new Error(`empty page source in Book ${book.id}`);
       if (page.changeProbe === true) changeProbeCount++;
-      pages.push({ id: page.id, path: page.path, title: page.title, source, sha256: sha256(source), changeProbe: page.changeProbe === true });
+      pages.push({ id: `rin-md-${sha256(page.path).slice(0,24)}`, path: page.path, title: page.title, level, source, sha256: sha256(source), changeProbe: page.changeProbe === true });
     }
     if (changeProbeCount !== 1) throw new Error(`Book ${book.id} requires exactly one changeProbe page`);
     const assets = Array.isArray(book.assets) ? book.assets.map((asset) => {
@@ -168,8 +172,9 @@ function compareIncrementalResult(incremental, clean) {
   };
 }
 
-function bookArchive(book) {
+export function bookArchive(book) {
   return createZip([
+    { path: 'main.md', data: book.pages.map(page => `${'  '.repeat(page.level - 1)}- ${page.path}\n`).join('') },
     ...book.pages.map((page) => ({ path: page.path, data: page.source })),
     ...book.assets.map((asset) => ({ path: asset.path, data: asset.data })),
   ]);
@@ -178,9 +183,8 @@ function bookArchive(book) {
 async function render(endpoint, token, book, archive, phase, incrementalReuse) {
   const form = new FormData();
   form.append('source', new Blob([archive], { type: 'application/zip' }), `${book.id}.zip`);
-  const pageManifest = book.pages.map(({ path, id, title }) => ({ path, id, title }));
   const options = JSON.stringify({ documentMode: 'book', incrementalReuse, publish: true });
-  for (const [key, value] of Object.entries({ contentKind: 'markdown', documentEngine: 'unified', documentMode: 'book', bookPages: JSON.stringify(pageManifest), entrypoint: book.pages[0].path, priorityIntent: 'rebuild', title: book.title, projectStatus: 'published-preview', options })) form.append(key, value);
+  for (const [key, value] of Object.entries({ contentKind: 'markdown', documentEngine: 'unified', documentMode: 'book', entrypoint: 'main.md', priorityIntent: 'rebuild', title: book.title, projectStatus: 'published-preview', options })) form.append(key, value);
   const headers = authHeaders(token);
   headers['Idempotency-Key'] = `markdown-book-shadow-${book.id}-${phase}-${sha256(archive)}`;
   const started = Date.now();

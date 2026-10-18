@@ -11,10 +11,6 @@
     "documentEngine": { "enum": ["auto", "latexml", "unified", "latexmk", "typst"] },
     "entrypoint": { "$ref": "#/$defs/canonicalPath" },
     "documentMode": { "enum": ["article", "book"], "default": "article" },
-    "bookPages": {
-      "type": "string",
-      "description": "Ordered JSON array of Markdown Book pages with path, stable id, and optional title."
-    },
     "priorityIntent": { "enum": ["publish", "preview", "rebuild", "migration"] },
     "resourceClass": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
     "priorityClass": { "enum": ["publish", "preview", "rebuild", "migration"] },
@@ -35,6 +31,10 @@
     "options": { "type": "string", "description": "Versioned JSON options." }
   },
   "allOf": [
+    {
+      "if": { "properties": { "contentKind": { "const": "markdown" } }, "required": ["contentKind"] },
+      "then": { "required": ["entrypoint"], "properties": { "entrypoint": { "const": "main.md" } } }
+    },
     {
       "if": {
         "properties": { "outputKind": { "const": "latex-pdf-preview" } },

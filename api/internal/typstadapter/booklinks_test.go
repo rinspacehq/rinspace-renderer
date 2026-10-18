@@ -10,9 +10,9 @@ import (
 
 func TestResolveBookLinksMarksOnlyCrossPageReferences(t *testing.T) {
 	source := `<!doctype html><html><body>` +
-		`<p><span id="rin-page-first"></span></p><h2 id="first">第一章</h2>` +
+		`<h2 id="first">第一章</h2>` +
 		`<p>见 <a href="#second">第二章</a> 与 <a href="#first">本页</a>。</p>` +
-		`<p><span id="rin-page-second"></span></p><h2 id="second">第二章</h2>` +
+		`<h2 id="second">第二章</h2>` +
 		`<p><a href="#first">回第一章</a></p></body></html>`
 	result, err := AdaptHTML([]byte(source), "book", nil)
 	if err != nil {
@@ -39,19 +39,19 @@ func TestResolveBookLinksRejectsDanglingDuplicateAndUnboundedPages(t *testing.T)
 		code   string
 	}{
 		"dangling": {
-			source: `<html><body><p><span id="rin-page-a"></span></p><h2>A</h2>` +
+			source: `<html><body><h2>A</h2>` +
 				`<p><a href="#missing">loss</a></p></body></html>`,
 			code: "typst.book.link.unresolved",
 		},
 		"duplicate": {
-			source: `<html><body><p><span id="rin-page-a"></span></p><h2>A</h2>` +
-				`<p><span id="shared">x</span></p><p><span id="rin-page-b"></span></p><h2>B</h2>` +
+			source: `<html><body><h2>A</h2>` +
+				`<p><span id="shared">x</span></p><h2>B</h2>` +
 				`<p><span id="shared">y</span></p></body></html>`,
 			code: "typst.book.anchor.duplicate",
 		},
 		"no heading": {
-			source: `<html><body><p><span id="rin-page-a"></span></p><h2>A</h2><p>正文</p>` +
-				`<p><span id="rin-page-b"></span></p><p>缺少标题</p></body></html>`,
+			source: `<html><body><h2>A</h2><p>正文</p>` +
+				`<h2></h2></body></html>`,
 			code: "typst.book.page.heading",
 		},
 	}

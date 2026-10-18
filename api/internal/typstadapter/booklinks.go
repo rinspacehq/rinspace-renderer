@@ -29,10 +29,9 @@ func bookReject(code string, format string, args ...any) *BookError {
 }
 
 // resolveBookLinks builds the whole-book anchor map, proves that each reader
-// page begins with an explicit heading, rejects duplicate or unresolvable
-// anchors, and marks cross-page references. Anchor identity is only ever the id
-// the compiler emitted; it is never regenerated from a heading slug, an array
-// index or a PDF page number.
+// page has reading metadata, rejects duplicate or unresolvable anchors, and
+// marks cross-page references. Compiler-emitted anchor identities are preserved;
+// generated reading-page identities never replace source labels.
 func resolveBookLinks(pages []Page) error {
 	pageByAnchor := make(map[string]string)
 	for index := range pages {

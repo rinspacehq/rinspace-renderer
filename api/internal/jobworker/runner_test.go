@@ -16,7 +16,6 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/jobpostgres"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/jobresult"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/orchestration"
-	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/renderapi"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/scheduler"
 )
@@ -182,13 +181,12 @@ func TestRenderForwardsMarkdownBookRequestMetadataAsOneProject(t *testing.T) {
 	job.DocumentEngine = "unified"
 	job.RequestMetadata, _ = json.Marshal(requestMetadata{
 		DocumentMode: "book", SourceName: "book.zip", Title: "Book", Options: `{"incrementalReuse":false}`,
-		MarkdownBookPages: []projectidentity.MarkdownBookPage{{Path: "intro.md", ID: "intro"}, {Path: "chapter.md", ID: "chapter"}},
+		Entrypoint: "main.md",
 	})
 	executor := &fakeExecutor{result: successfulExecution()}
 	runner := newTestRunner(t, &fakeScheduler{}, &fakeStore{source: []byte("archive")}, executor)
 	_, failure := runner.render(context.Background(), job)
-	if failure != nil || executor.request.DocumentMode != "book" || !executor.request.DisableMarkdownBookReuse || len(executor.request.MarkdownBookPages) != 2 ||
-		executor.request.MarkdownBookPages[1].ID != "chapter" {
+	if failure != nil || executor.request.DocumentMode != "book" || !executor.request.DisableMarkdownBookReuse || executor.request.ExplicitMainFile != "main.md" {
 		t.Fatalf("forwarded Markdown Book request = %#v, failure %#v", executor.request, failure)
 	}
 }

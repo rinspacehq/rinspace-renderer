@@ -16,7 +16,7 @@ import (
 
 const (
 	Engine                     = "rin-markdown"
-	AdapterVersion             = "0.6.0"
+	AdapterVersion             = "0.7.0"
 	DefaultCodeTheme           = "github-light"
 	compileDraftOperation      = "markdown.compile-draft"
 	compileBookOperation       = "markdown.compile-book-draft"
@@ -77,6 +77,7 @@ type compileBookPagePayload struct {
 	SourcePath       string   `json:"sourcePath"`
 	PageID           string   `json:"pageId"`
 	Title            string   `json:"title,omitempty"`
+	Level            int      `json:"level"`
 	DependencyHashes []string `json:"dependencyHashes"`
 }
 
@@ -162,8 +163,8 @@ func (adapter Adapter) Analyze(ctx context.Context, snapshot orchestration.Proje
 	if mode == "article" && (len(snapshot.Graph.Entrypoints) != 1 || snapshot.Graph.Entrypoints[0].Role != contracts.EntrypointRoleDocument) {
 		return orchestration.Analysis{}, errors.New("Markdown article adapter requires exactly one document entrypoint")
 	}
-	if mode == "book" && len(snapshot.Graph.Entrypoints) < 2 {
-		return orchestration.Analysis{}, errors.New("Markdown Book adapter requires at least two page entrypoints")
+	if mode == "book" && len(snapshot.Graph.Entrypoints) < 1 {
+		return orchestration.Analysis{}, errors.New("Markdown Book adapter requires at least one page entrypoint")
 	}
 	entrypoints := make([]string, 0, len(snapshot.Graph.Entrypoints))
 	for _, entrypoint := range snapshot.Graph.Entrypoints {
@@ -220,6 +221,7 @@ func (adapter Adapter) Compile(ctx context.Context, snapshot orchestration.Proje
 			pages = append(pages, compileBookPagePayload{
 				Source: string(source), SourcePath: sourcePath, PageID: pageOption(snapshot.Graph.Options, "pageIds", sourcePath, stablePageID(sourcePath)),
 				Title: pageOption(snapshot.Graph.Options, "pageTitles", sourcePath, ""), DependencyHashes: []string{},
+				Level: markdownPageLevel(snapshot.Graph.Options, sourcePath),
 			})
 		}
 		operation = compileBookOperation
@@ -248,6 +250,17 @@ func (adapter Adapter) Compile(ctx context.Context, snapshot orchestration.Proje
 		return contracts.DocumentBundle{}, fmt.Errorf("validate Markdown draft: %w", err)
 	}
 	return response.Bundle, nil
+}
+
+func markdownPageLevel(options map[string]any, sourcePath string) int {
+	levels, _ := options["pageLevels"].(map[string]any)
+	if level, ok := levels[sourcePath].(int); ok && level >= 1 && level <= 6 {
+		return level
+	}
+	if level, ok := levels[sourcePath].(float64); ok && level >= 1 && level <= 6 && level == float64(int(level)) {
+		return int(level)
+	}
+	return 1
 }
 
 func pageOption(options map[string]any, key string, path string, fallback string) string {

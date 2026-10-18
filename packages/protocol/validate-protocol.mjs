@@ -86,7 +86,6 @@ for (const symbol of [
   'RinRenderResultV1',
   'RinRendererJobStatus',
   'RinRendererJobSubmission',
-  'RinMarkdownBookPage',
   'RinRendererJobSubmitFields',
   'RinRendererLatexPDFPreviewJobSubmitFields',
   'RinRendererLatexPDFPreviewSubmission',
@@ -180,7 +179,7 @@ for (const field of ['outputKind', 'resourceClass', 'priorityClass', 'snapshotHa
     throw new Error(`Job status schema is missing PDF preview field ${field}`);
   }
 }
-for (const field of ['documentMode', 'bookPages']) {
+for (const field of ['documentMode']) {
   if (!openapi.includes(`${field}:`) && !schemas.get('schemas/job-submit-request.schema.json')?.properties?.[field]) {
     throw new Error(`OpenAPI is missing Markdown Book field ${field}`);
   }
@@ -291,8 +290,15 @@ if (pdfInspectionSchema.properties?.contentKind?.const !== 'pdf' ||
 const previewRequestSchema = schemas.get('schemas/job-submit-request.schema.json');
 for (const field of ['source', 'contentKind', 'documentEngine', 'priorityIntent']) assertRequired(previewRequestSchema, field);
 const requestFixtureDir = path.join(root, 'fixtures/job-submit');
-for (const name of ['legacy-latex.json', 'legacy-markdown-book.json']) {
+for (const name of ['legacy-latex.json', 'markdown-book.json']) {
   validateJobSubmitRequest(JSON.parse(fs.readFileSync(path.join(requestFixtureDir, name), 'utf8')), name);
+}
+if (previewRequestSchema.properties.bookPages) throw new Error('Obsolete bookPages remains in the request schema');
+const markdownFixture = JSON.parse(fs.readFileSync(path.join(requestFixtureDir, 'markdown-book.json'), 'utf8'));
+for (const invalid of [{ ...markdownFixture, entrypoint: 'content.md' }, { ...markdownFixture, bookPages: '[]' }]) {
+  let rejected = false;
+  try { validateJobSubmitRequest(invalid, 'obsolete Markdown request'); } catch { rejected = true; }
+  if (!rejected) throw new Error('Obsolete Markdown request passed protocol validation');
 }
 const previewSubmission = JSON.parse(fs.readFileSync(path.join(requestFixtureDir, 'latex-pdf-preview.json'), 'utf8'));
 validatePreviewSubmission(previewSubmission, 'latex-pdf-preview.json');
@@ -370,7 +376,7 @@ console.log('Rin Renderer protocol files are consistent.');
 
 function validateJobSubmitRequest(request, label) {
   const allowed = new Set([
-    'source', 'contentKind', 'outputKind', 'documentEngine', 'entrypoint', 'documentMode', 'bookPages',
+    'source', 'contentKind', 'outputKind', 'documentEngine', 'entrypoint', 'documentMode',
     'priorityIntent', 'resourceClass', 'priorityClass', 'snapshotHash', 'sessionId', 'draftRevision',
     'enginePolicyId', 'renderProfileId', 'imageDigest', 'previewContractVersion', 'controlProjectId', 'sourceCommit',
     'controlProjectHash', 'options',
@@ -381,6 +387,7 @@ function validateJobSubmitRequest(request, label) {
     if (typeof request[field] !== 'string' || !request[field]) throw contractError('request_field', `${label}: invalid ${field}`);
   }
   if (!['latex', 'markdown', 'typst'].includes(request.contentKind)) throw contractError('request_field', `${label}: invalid contentKind`);
+  if (request.contentKind === 'markdown' && request.entrypoint !== 'main.md') throw contractError('request_field', `${label}: Markdown requires main.md`);
   if (request.entrypoint !== undefined) assertCanonicalPath(request.entrypoint, `${label}: entrypoint`);
   if (request.outputKind === 'latex-pdf-preview') validatePreviewFields(request, label);
   else if (request.outputKind === 'typst-pdf-preview') validateTypstPreviewFields(request, label);

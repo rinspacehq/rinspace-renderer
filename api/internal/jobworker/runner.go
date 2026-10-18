@@ -22,7 +22,6 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/jobresult"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/operational"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/orchestration"
-	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/renderapi"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/scheduler"
 )
@@ -78,21 +77,20 @@ type Runner struct {
 }
 
 type requestMetadata struct {
-	RequestID          string                             `json:"requestId"`
-	SourceName         string                             `json:"sourceName"`
-	Entrypoint         string                             `json:"entrypoint"`
-	Title              string                             `json:"title"`
-	MetadataMainFile   string                             `json:"metadataMainFile"`
-	ActiveFile         string                             `json:"activeFile"`
-	ProjectStatus      string                             `json:"projectStatus"`
-	MathPolicy         string                             `json:"mathPolicy"`
-	Renderer           string                             `json:"renderer"`
-	Options            string                             `json:"options"`
-	DocumentMode       string                             `json:"documentMode"`
-	MarkdownBookPages  []projectidentity.MarkdownBookPage `json:"bookPages,omitempty"`
-	SourceCommit       string                             `json:"sourceCommit,omitempty"`
-	ControlProjectHash string                             `json:"controlProjectHash,omitempty"`
-	ControlProjectID   string                             `json:"controlProjectId,omitempty"`
+	RequestID          string `json:"requestId"`
+	SourceName         string `json:"sourceName"`
+	Entrypoint         string `json:"entrypoint"`
+	Title              string `json:"title"`
+	MetadataMainFile   string `json:"metadataMainFile"`
+	ActiveFile         string `json:"activeFile"`
+	ProjectStatus      string `json:"projectStatus"`
+	MathPolicy         string `json:"mathPolicy"`
+	Renderer           string `json:"renderer"`
+	Options            string `json:"options"`
+	DocumentMode       string `json:"documentMode"`
+	SourceCommit       string `json:"sourceCommit,omitempty"`
+	ControlProjectHash string `json:"controlProjectHash,omitempty"`
+	ControlProjectID   string `json:"controlProjectId,omitempty"`
 }
 
 type renderFailure struct {
@@ -389,8 +387,7 @@ func (runner *Runner) render(ctx context.Context, job jobpostgres.Job) (renderap
 		MetadataMainFile: metadata.MetadataMainFile, ActiveFile: metadata.ActiveFile,
 		ProjectStatus: metadata.ProjectStatus, MathPolicy: metadata.MathPolicy, Renderer: metadata.Renderer,
 		DocumentMode: metadata.DocumentMode, DisableMarkdownBookReuse: disableMarkdownBookReuse,
-		MarkdownBookPages: metadata.MarkdownBookPages,
-		ProjectID:         metadata.ControlProjectID, SourceCommit: metadata.SourceCommit, ControlProjectHash: metadata.ControlProjectHash,
+		ProjectID: metadata.ControlProjectID, SourceCommit: metadata.SourceCommit, ControlProjectHash: metadata.ControlProjectHash,
 	})
 	if result.Err != nil {
 		status := result.Status

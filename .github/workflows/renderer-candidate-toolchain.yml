@@ -67,6 +67,9 @@ jobs:
             -o candidate/toolchain/licenses/typst-LICENSE \
             "https://raw.githubusercontent.com/typst/typst/v${TYPST_VERSION}/LICENSE"
           grep -q 'Apache License' candidate/toolchain/licenses/typst-LICENSE
+          node deploy/typst-packages.mjs assemble deploy/typst-html-toolchain.lock.json candidate/toolchain/packages-locked
+          rmdir candidate/toolchain/packages
+          mv candidate/toolchain/packages-locked candidate/toolchain/packages
           cp deploy/typst-html-toolchain.lock.json candidate/typst-html-toolchain.lock.json
           cp deploy/typst-html-toolchain.lock.json candidate/toolchain/typst-html-toolchain.lock.json
           cat > candidate/toolchain/THIRD_PARTY_NOTICES.md <<'NOTICE'
@@ -76,6 +79,9 @@ jobs:
           WenQuanYi Zen Hei is GPL-2.0-only WITH Font-exception-2.0; its Debian
           copyright and license notice is in `licenses/fonts-wqy-zenhei-copyright`.
           Their exact versions and file hashes are in `typst-html-toolchain.lock.json`.
+          The sealed package directory includes exact sources and upstream licenses
+          for CeTZ (LGPL-3.0-or-later), ctheorems and headcount (MIT), and oxifmt
+          (MIT OR Apache-2.0). Runtime package downloads remain disabled.
           NOTICE
           chmod 0555 candidate/toolchain/packages
           deploy/verify-typst-html-toolchain.sh --root candidate
