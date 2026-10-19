@@ -5,6 +5,13 @@ structure, normalizes SVG/raster assets and routes references across automatic
 book pages. Articles remain one page. Authors use ordinary headings; no
 `rinWebPage` macro or helper file is part of the source format.
 
+Article outlines use the native heading hierarchy. The renderer assigns stable,
+unique IDs only where Typst did not emit an anchor, retaining native IDs and
+cross-references. It reserves every existing ID before allocating a new one and
+exports the same ordered heading IDs/text/depth in the canonical single article
+page's TOC. Generated outline and endnote headings are not article sections.
+No author outline command, custom marker or browser-invented anchor is required.
+
 Built-in native HTML presentation is retained, rather than stripping every style.
 The policy is reviewed against Typst 0.15.1 source commit
 `9dfd3a08500b7896045f907433cf7b4b02434fad`: `typst-html/src/rules.rs`,

@@ -250,6 +250,19 @@ func canonicalProjectPages(response ProjectRenderResponse) ([]contracts.Document
 		TOC: []contracts.TOCEntry{}, DependencyHashes: []string{},
 	}}
 	if response.DocumentMode != "book" {
+		if response.Engine == "typst" {
+			encoded, err := json.Marshal(response.Reader)
+			if err != nil {
+				return nil, err
+			}
+			var reader canonicalReaderPayload
+			if err := json.Unmarshal(encoded, &reader); err != nil {
+				return nil, err
+			}
+			for _, entry := range reader.TOC {
+				fallback[0].TOC = append(fallback[0].TOC, contracts.TOCEntry{ID: entry.ID, Depth: entry.Level, Text: entry.Text})
+			}
+		}
 		return addCanonicalPageSemanticBlocks(response.Engine, fallback)
 	}
 	encoded, err := json.Marshal(response.Reader)

@@ -67,13 +67,13 @@
     "packageSetDigest": "f7b444f9d865dad4abc856e2839cd9acfa41a213470d247601d14315042ab895"
   },
   "profile": {
-    "id": "typst-html-0d3fd7a2169db2fc35f6dbade7dce09a",
+    "id": "typst-html-8a67d0d51df83438e7c6f878f79621d7",
     "schemaVersion": "rin-typst-html-profile/v2",
     "compilerVersion": "0.15.1",
     "compilerHash": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
     "fontHash": "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9",
     "packageSetDigest": "f7b444f9d865dad4abc856e2839cd9acfa41a213470d247601d14315042ab895",
-    "adapterVersion": "rin-typst-html-adapter/v4",
+    "adapterVersion": "rin-typst-html-adapter/v5",
     "finalOutputVersion": "rin-final-output/v1",
     "mathPresentation": "mathjax-chtml",
     "mathJaxVersion": "4.1.3",
