@@ -182,6 +182,11 @@ type typstAdaptedInput struct {
 func typstAdaptedResult(input typstAdaptedInput) ProjectExecutionResult {
 	readerPages := make([]map[string]any, 0, len(input.Adapted.Pages))
 	toc := make([]map[string]any, 0, len(input.Adapted.Pages))
+	if input.Mode == "article" {
+		for _, entry := range input.Adapted.ArticleTOC {
+			toc = append(toc, map[string]any{"id": entry.ID, "text": entry.Text, "level": entry.Depth})
+		}
+	}
 	fragments := make([]string, 0, len(input.Adapted.Pages))
 	for _, page := range input.Adapted.Pages {
 		fragments = append(fragments, page.HTML)

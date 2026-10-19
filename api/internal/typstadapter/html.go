@@ -65,6 +65,7 @@ type Page struct {
 
 type Result struct {
 	Pages      []Page
+	ArticleTOC []contracts.TOCEntry
 	AssetPaths []string
 	Assets     []Asset
 }
@@ -119,6 +120,10 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 		}
 	}
 	result := Result{Pages: []Page{}}
+	var outline *articleOutline
+	if mode == "article" {
+		outline = newArticleOutline(body)
+	}
 	current := Page{ID: "page-main"}
 	var boundaries map[*html.Node]Page
 	if mode == "book" {
@@ -163,6 +168,11 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 		if err := sanitizeNode(child, assetHashes, assets); err != nil {
 			return Result{}, err
 		}
+		if outline != nil {
+			if err := outline.visit(child); err != nil {
+				return Result{}, err
+			}
+		}
 		if current.Title == "" && child.Type == html.ElementNode && isHeading(child.Data) {
 			current.Title = strings.TrimSpace(textContent(child))
 			current.Level = int(child.Data[1] - '0')
@@ -173,6 +183,9 @@ func AdaptHTML(source []byte, mode string, projectFiles map[string][]byte) (Resu
 	}
 	if err := flush(); err != nil {
 		return Result{}, err
+	}
+	if outline != nil {
+		result.ArticleTOC = outline.entries
 	}
 	result.AssetPaths = assetKeys(assets)
 	for _, path := range result.AssetPaths {

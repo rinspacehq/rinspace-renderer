@@ -22,6 +22,10 @@ func TestMathMLUsesSharedPinnedMathJaxInput(t *testing.T) {
 		t.Fatal(err)
 	}
 	fragment := converted.Pages[0].HTML
+	if len(converted.ArticleTOC) != 1 || converted.ArticleTOC[0] != adapted.ArticleTOC[0] ||
+		!strings.Contains(fragment, `id="`+converted.ArticleTOC[0].ID+`"`) {
+		t.Fatal("MathJax conversion lost the renderer-owned article heading outline")
+	}
 	for _, expected := range []string{
 		"<mjx-container",
 		`data-rin-math-engine="mathjax-chtml"`,
