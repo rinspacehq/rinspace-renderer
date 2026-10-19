@@ -262,6 +262,31 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 		return nil
 	}
 	if node.Data == "svg" {
+		var presentation []html.Attribute
+		for _, attr := range node.Attr {
+			switch attr.Key {
+			case "width", "height", "id", "class", "role", "aria-label":
+				presentation = append(presentation, attr)
+			case "style":
+				style, err := sanitizeNativeStyle("svg", attr.Val)
+				if err != nil {
+					return err
+				}
+				// The SVG remains an independently sanitized asset. Keep its
+				// native size/display on the image replacing the inline frame;
+				// overflow belongs to the SVG viewport, not site chrome.
+				parts := strings.Split(style, "; ")
+				kept := parts[:0]
+				for _, part := range parts {
+					if !strings.HasPrefix(part, "overflow:") && part != "" {
+						kept = append(kept, part)
+					}
+				}
+				if len(kept) > 0 {
+					presentation = append(presentation, html.Attribute{Key: "style", Val: strings.Join(kept, "; ")})
+				}
+			}
+		}
 		var raw bytes.Buffer
 		if err := html.Render(&raw, node); err != nil || raw.Len() > 4<<20 {
 			return errors.New("Typst inline SVG is invalid or too large")
@@ -272,6 +297,7 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 		}
 		node.Data, node.DataAtom = "img", atom.Img
 		node.Attr = []html.Attribute{{Key: "src", Val: path}, {Key: "data-rin-asset-path", Val: path}}
+		node.Attr = append(node.Attr, presentation...)
 		node.FirstChild, node.LastChild = nil, nil
 		return nil
 	}
@@ -325,8 +351,14 @@ func sanitizeNode(node *html.Node, assetHashes map[[32]byte]string, assets map[s
 				return errors.New("Typst text direction is invalid")
 			}
 			attrs = append(attrs, attr)
-		case "style": // Native Typst CSS is page-global; reader chrome owns styling.
-			continue
+		case "style":
+			style, err := sanitizeNativeStyle(node.Data, attr.Val)
+			if err != nil {
+				return err
+			}
+			if style != "" {
+				attrs = append(attrs, html.Attribute{Key: "style", Val: style})
+			}
 		case "display":
 			if node.Data != "math" || attr.Val != "block" && attr.Val != "inline" {
 				return errors.New("Typst MathML display is invalid")

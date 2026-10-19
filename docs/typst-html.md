@@ -5,6 +5,25 @@ structure, normalizes SVG/raster assets and routes references across automatic
 book pages. Articles remain one page. Authors use ordinary headings; no
 `rinWebPage` macro or helper file is part of the source format.
 
+Built-in native HTML presentation is retained, rather than stripping every style.
+The policy is reviewed against Typst 0.15.1 source commit
+`9dfd3a08500b7896045f907433cf7b4b02434fad`: `typst-html/src/rules.rs`,
+`convert.rs`, `css/encode.rs`, `css/resolve.rs`, and `encode.rs`.
+Native MathML `math-shift` and `typst-svg/src/lib.rs::svg_in_html` are included
+in the same review. The checked-in `native-presentation.html` is actual compiler
+output from the adjacent synthetic `.typ`/`.svg` fixtures; CI checks that output
+unconditionally and recompiles the sources with the pinned compiler as well.
+This includes image dimensions/scaling/display, three-term relative `calc`
+lengths, inline boxes, under/overlines, small caps, syntax-highlight colors,
+preserved whitespace and outline/footnote list styles. Inline SVG normalization
+retains the frame's display dimensions on its authenticated image replacement.
+A single explicit image dimension keeps the original aspect ratio; intrinsic
+raster dimensions do not override it. `html.elem` can inject arbitrary CSS even
+through the official compiler: unsupported or unsafe body declarations fail
+closed, never silently lose presentation. External CSS/resource fetching and
+page-global styling are not admitted into reader chrome. MathML layout continues
+to use the existing equivalent semantic attributes before MathJax conversion.
+
 MathML uses the same pinned MathJax CHTML engine and fonts as LaTeX. Equations
 retain anchors and assistive MathML. Identical formulas reuse one conversion;
 bounded batches avoid turning a short math-operation timeout into a book limit.
