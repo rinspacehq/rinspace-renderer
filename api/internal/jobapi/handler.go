@@ -675,6 +675,9 @@ func publicJobFailure(job jobpostgres.Job, failure jobresult.StoredFailure) map[
 // the pinned compiler log for Markdown, LaTeX and Typst document builds.
 func documentFailureDetail(failure jobresult.StoredFailure) string {
 	for _, diagnostic := range failure.Diagnostics {
+		if !strings.EqualFold(strings.TrimSpace(diagnostic.Severity), "error") {
+			continue
+		}
 		if message := strings.TrimSpace(diagnostic.Message); message != "" {
 			return message
 		}
