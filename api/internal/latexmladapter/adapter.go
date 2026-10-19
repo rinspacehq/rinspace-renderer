@@ -492,6 +492,20 @@ const xecjkCompatibilityShim = xecjkCompatibilitySentinel + `
 \def\rinpc@setmainfont@without#1{}
 \def\setmainfont{\rinpc@ifnextchar[{ \rinpc@setmainfont@with}{\rinpc@setmainfont@without}}
 \fi
+\ifx\setsansfont\undefined
+\let\setsansfont\setmainfont
+\fi
+\ifx\setmonofont\undefined
+\let\setmonofont\setmainfont
+\fi
+\ifx\newfontfamily\undefined
+\def\rinpc@fontfamily@with[#1]#2{}
+\def\rinpc@fontfamily@without#1{}
+\def\newfontfamily#1{\def#1{}\rinpc@ifnextchar[{\rinpc@fontfamily@with}{\rinpc@fontfamily@without}}
+\fi
+\ifx\newfontface\undefined
+\let\newfontface\newfontfamily
+\fi
 \ifx\setCJKfamilyfont\undefined
 \def\rinpc@setCJKfamilyfont@with[#1]#2{}
 \def\rinpc@setCJKfamilyfont@without#1{}
