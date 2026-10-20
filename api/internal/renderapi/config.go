@@ -42,7 +42,7 @@ const (
 	defaultMarkdownMaxRSS       = int64(768 << 20)
 	defaultLateXMLLockFile      = "/opt/rin-renderer/engines/latexml/latexml.lock"
 	defaultTypstTimeout         = 120 * time.Second
-	defaultTypstOutputSize      = int64(32 << 20)
+	defaultTypstOutputSize      = int64(64 << 20)
 )
 
 type Config struct {

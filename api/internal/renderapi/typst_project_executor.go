@@ -236,11 +236,13 @@ func typstCompileFailure(ctx context.Context, err error, log string) ProjectExec
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || ctx.Err() != nil {
 		code = "typst.compile.timeout"
 		message = "Typst HTML compilation timed out or was canceled"
+	} else if errors.Is(err, typstadapter.ErrOutputTooLarge) {
+		code = "typst.output.too_large"
+		message = "Typst compiler output exceeds its size limit"
 	}
-	detail := boundedDiagnostic(log)
-	if detail == "" {
-		detail = boundedDiagnostic(err.Error())
-	}
+	// Compiler warnings must not conceal wrapper failures (for example a
+	// successful native export rejected for exceeding the output limit).
+	detail := boundedDiagnostic(err.Error() + "\n" + log)
 	return ProjectExecutionResult{
 		Status: http.StatusUnprocessableEntity, Message: message,
 		Err:         errors.New(code + ": " + detail),

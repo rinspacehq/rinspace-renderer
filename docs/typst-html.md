@@ -56,6 +56,13 @@ Typst itself supplies SVG export and `html.frame`. CeTZ is a drawing package,
 not a TeX-to-SVG service. The compiler's local/embedded graphics enter the same
 validated asset pipeline as other renderer resources.
 
+Native compiler HTML is bounded at 64 MiB: repeated images can expand into
+repeated data URLs before the adapter deduplicates them into assets. The
+normalized reader fragment and unique embedded-asset limits remain unchanged.
+An output-limit failure reports both the actual and permitted byte counts;
+ordinary compiler warnings must not hide that failure. Set
+`RIN_RENDERER_TYPST_MAX_OUTPUT_BYTES=67108864` for this capacity profile.
+
 Resource-bearing results use `rin-document-bundle/v3`: the canonical response
 contains each sanitized image once with its exact Base64 bytes, SHA-256, length,
 type and content-addressed path. Persist the complete result before publication;
