@@ -19,9 +19,11 @@ import (
 
 const (
 	maxCompilerInputBytes  = 64 << 20
-	maxCompilerOutputBytes = 32 << 20
+	maxCompilerOutputBytes = MaxNativeHTMLBytes
 	maxCompilerLogBytes    = 64 << 10
 )
+
+var ErrOutputTooLarge = errors.New("Typst output exceeds its size limit")
 
 // Compiler is an isolated local executor. The deployment worker must still
 // provide a network-disabled container and resource limits before admitting
@@ -164,8 +166,11 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 		return CompileResult{Log: log.String()}, fmt.Errorf("Typst compilation failed: %w", err)
 	}
 	info, err := os.Stat(outputPath)
-	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > compiler.MaxOutput {
-		return CompileResult{Log: log.String()}, errors.New("Typst output is missing or exceeds its limit")
+	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
+		return CompileResult{Log: log.String()}, errors.New("Typst output is missing or empty")
+	}
+	if info.Size() > compiler.MaxOutput {
+		return CompileResult{Log: log.String()}, fmt.Errorf("%w: %d bytes; limit is %d bytes", ErrOutputTooLarge, info.Size(), compiler.MaxOutput)
 	}
 	output, err := os.ReadFile(outputPath)
 	if err != nil {

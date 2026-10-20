@@ -87,7 +87,7 @@ func run() error {
 		PackagePath: *packages, PackageHash: *packageHash,
 		BinaryHash: "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
 		FontHash:   "79c18ebe7b811951e8311bad7103ebeae8c337ed9988ea69e8a78a66cfe029b9",
-		Timeout:    5 * time.Minute, MaxOutput: 32 << 20}
+		Timeout:    5 * time.Minute, MaxOutput: typstadapter.MaxNativeHTMLBytes}
 	start := time.Now()
 	compiled, err := compiler.Compile(context.Background(), files, *entry, "html")
 	if err != nil {
