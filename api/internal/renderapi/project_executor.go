@@ -276,11 +276,7 @@ func canonicalProjectPages(response ProjectRenderResponse) ([]contracts.Document
 	if len(reader.Pages) == 0 {
 		return nil, errors.New("book reader payload has no pages")
 	}
-	toc := make([]contracts.TOCEntry, 0, len(reader.TOC))
-	for _, entry := range reader.TOC {
-		toc = append(toc, contracts.TOCEntry{ID: entry.ID, Depth: entry.Level, Text: entry.Text})
-	}
-	pages := make([]contracts.DocumentPage, 0, len(reader.Pages))
+	canonicalPageIDs := make([]string, len(reader.Pages))
 	pageIDs := make(map[string]struct{}, len(reader.Pages))
 	for index, page := range reader.Pages {
 		pageID := canonicalReaderPageID(page.ID, index)
@@ -288,8 +284,23 @@ func canonicalProjectPages(response ProjectRenderResponse) ([]contracts.Document
 			pageID = hashedReaderPageID(page.ID, index)
 		}
 		pageIDs[pageID] = struct{}{}
+		canonicalPageIDs[index] = pageID
+	}
+	toc := make([]contracts.TOCEntry, 0, len(reader.TOC))
+	for _, entry := range reader.TOC {
+		entryID := entry.ID
+		for index, page := range reader.Pages {
+			if page.ID == entry.ID {
+				entryID = canonicalPageIDs[index]
+				break
+			}
+		}
+		toc = append(toc, contracts.TOCEntry{ID: entryID, Depth: entry.Level, Text: entry.Text})
+	}
+	pages := make([]contracts.DocumentPage, 0, len(reader.Pages))
+	for index, page := range reader.Pages {
 		pages = append(pages, contracts.DocumentPage{
-			ID: pageID, SourcePath: response.MainFile, Title: page.Text,
+			ID: canonicalPageIDs[index], SourcePath: response.MainFile, Title: page.Text,
 			Fragment: page.HTML, FragmentFormat: contracts.FragmentFormatHTML,
 			TOC: append([]contracts.TOCEntry(nil), toc...), DependencyHashes: []string{},
 		})
