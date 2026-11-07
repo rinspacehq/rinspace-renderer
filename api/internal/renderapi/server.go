@@ -840,6 +840,7 @@ func normalizeLateXMLMathML(html string) string {
 var lateXMLMathElementPattern = regexp.MustCompile(`(?is)<math\b[^>]*>.*?</math>`)
 var lateXMLTableElementPattern = regexp.MustCompile(`(?is)<table\b[^>]*>.*?</table>`)
 var lateXMLTableRowPattern = regexp.MustCompile(`(?is)<tr\b[^>]*>.*?</tr>`)
+var lateXMLEquationNumberPattern = regexp.MustCompile(`(?is)\bclass\s*=\s*["'][^"']*\b(?:ltx_tag_equation|ltx_eqn_eqno)\b`)
 var lateXMLPGFStrokeColorDefinitionPattern = regexp.MustCompile(`(?is)\\definecolor(?:\[[^\]]+\])?\{pgfstrokecolor\}\{rgb\}\{[^}]+\}`)
 var lateXMLTurnboxMathPattern = regexp.MustCompile(`(?is)\\turnbox\{[^}]+\}\{\$([^$]+)\$\}`)
 var lateXMLOperatorNamePattern = regexp.MustCompile(`(?s)\\operatorname\{([^{}]*)\}`)
@@ -1159,6 +1160,13 @@ func (s *Server) renderLateXMLMathHTML(ctx context.Context, requestID string, ht
 		if !isLateXMLEquationTable(openTag) {
 			return fragment
 		}
+		// A numbered LaTeXML equation table is already the final document
+		// structure: its table/row IDs are reference targets and its tag is the
+		// resolved equation number. Preserve that structure and let the generic
+		// math pass below replace only each MathML element with MathJax HTML.
+		if lateXMLEquationNumberPattern.MatchString(fragment) {
+			return fragment
+		}
 		source, ok := lateXMLEquationTableSource(fragment)
 		if !ok {
 			return fragment
@@ -1346,6 +1354,7 @@ func lateXMLMathSources(fragment string) []string {
 func normalizeLateXMLMathSource(source string) string {
 	source = strings.TrimSpace(source)
 	source = lateXMLMathLineContinuationPattern.ReplaceAllString(source, "")
+	source = projectmath.StripRenderMetadata(source)
 	for {
 		trimmed := strings.TrimSpace(strings.TrimPrefix(source, `\displaystyle`))
 		if trimmed == source {

@@ -13,7 +13,6 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/orchestration"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectcore"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectdiagrams"
-	"github.com/rinspacehq/rinspace-renderer/api/internal/projectmath"
 )
 
 func (s *Server) renderLateXMLProject(ctx context.Context, project projectRenderContext) (ProjectRenderResponse, int, []Diagnostic, string, error) {
@@ -43,13 +42,11 @@ func (s *Server) renderLateXMLProject(ctx context.Context, project projectRender
 		lateXMLManifest = projectcore.RebuildManifestFiles(project.Manifest, extracted.Files)
 		lateXMLManifest.DiagramPlaceholders = diagramPlaceholdersFromExtracted(extracted.Diagrams)
 	}
-	extractedMath := projectmath.Result{}
+	mathMacros := map[string]string{}
 	if project.MathPolicy == "server" {
-		extractedMath = projectmath.Extract(lateXMLFiles)
-		if len(extractedMath.Math) > 0 {
-			lateXMLFiles = extractedMath.Files
-			lateXMLManifest = projectcore.RebuildManifestFiles(lateXMLManifest, extractedMath.Files)
-		}
+		// LaTeXML must see complete equation environments so it owns numbering,
+		// labels and references. MathJax is only the final visual renderer.
+		mathMacros = projectcore.CollectMathMacros(lateXMLFiles)
 	}
 	rendered, err := s.lateXMLAdapter().Render(ctx, latexmladapter.Request{
 		Files:    lateXMLFiles,
@@ -108,15 +105,8 @@ func (s *Server) renderLateXMLProject(ctx context.Context, project projectRender
 	if project.MathPolicy == "server" {
 		var mathDiagnostics []Diagnostic
 		var mathArtifacts []contracts.ArtifactReference
-		var sourceMathSummary MathSummary
-		html, sourceMathSummary, mathArtifacts, mathDiagnostics = s.replaceSourceMathPlaceholdersHTML(ctx, project.RequestID, html, extractedMath.Math, extractedMath.Macros)
+		html, mathSummary, mathArtifacts, mathDiagnostics = s.renderLateXMLMathHTML(ctx, project.RequestID, html, mathMacros)
 		generatedArtifacts = append(generatedArtifacts, mathArtifacts...)
-		mathSummary = mergeMathSummary(mathSummary, sourceMathSummary)
-		diagnostics = append(diagnostics, mathDiagnostics...)
-		mathDiagnostics = nil
-		html, mathSummary, mathArtifacts, mathDiagnostics = s.renderLateXMLMathHTML(ctx, project.RequestID, html, extractedMath.Macros)
-		generatedArtifacts = append(generatedArtifacts, mathArtifacts...)
-		mathSummary = mergeMathSummary(sourceMathSummary, mathSummary)
 		diagnostics = append(diagnostics, mathDiagnostics...)
 	}
 	html = replaceDiagramPlaceholders(html, diagramReplacements)

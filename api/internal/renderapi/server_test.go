@@ -316,9 +316,9 @@ Rin Renderer smoke test.
 	}
 }
 
-func TestProjectRenderWithLateXMLReplacesSourceMathPlaceholders(t *testing.T) {
+func TestProjectRenderWithLateXMLPreservesEquationLabelsBeforeMathJax(t *testing.T) {
 	cfg := testConfig()
-	cfg.LateXMLBin = fakeRenderAPILateXMLCWithMathPlaceholder(t)
+	cfg.LateXMLBin = fakeRenderAPILateXMLCWithEquationLabel(t)
 	cfg.KaTeXScript = testRenderAPIKaTeXScriptPath(t)
 	server := NewServer(cfg)
 	var body bytes.Buffer
@@ -331,9 +331,11 @@ func TestProjectRenderWithLateXMLReplacesSourceMathPlaceholders(t *testing.T) {
 \usepackage{amsmath}
 \begin{document}
 Before.
-\begin{align}
-\mathbf{x}_{1}\pm\mathbf{x}_{2} &= \ket{x_{1}}\pm\ket{x_{2}}
-\end{align}
+\begin{equation}
+D_{2n} = \langle r, s \mid r^n = s^2 = 1, rs = sr^{-1} \rangle
+\label{eq:D_2n}
+\end{equation}
+See equation~\ref{eq:D_2n}.
 After.
 \end{document}`)); err != nil {
 		t.Fatalf("write form file: %v", err)
@@ -362,12 +364,12 @@ After.
 	if payload.Math.Count != 1 || payload.Math.MathJaxCount != 1 || payload.Math.FailedCount != 0 {
 		t.Fatalf("unexpected math summary: %#v diagnostics=%#v", payload.Math, payload.Diagnostics)
 	}
-	for _, expected := range []string{`rin-math-display rin-math-mathjax`, `data-rin-math-engine="mathjax-chtml"`, `mjx-container`, `⟩`, `rin-mathjax-chtml-style`} {
+	for _, expected := range []string{`<table id="eq:D_2n"`, `href="#eq:D_2n"`, `>1</a>`, `ltx_tag_equation`, `(1)`, `rin-math-display rin-math-mathjax`, `data-rin-math-engine="mathjax-chtml"`, `mjx-container`, `⟩`, `rin-mathjax-chtml-style`} {
 		if !strings.Contains(payload.HTML, expected) {
 			t.Fatalf("expected rendered HTML to contain %q, got %s", expected, payload.HTML)
 		}
 	}
-	for _, unexpected := range []string{`RINRENDERERMATHPLACEHOLDER`, `<math`, `ltx_eqn_table`, `rin-latexml-katex`} {
+	for _, unexpected := range []string{`\label`, `LABEL:eq:D_2n`, `ltx_missing_label`, `RINRENDERERMATHPLACEHOLDER`, `<math`, `rin-latexml-katex`} {
 		if strings.Contains(payload.HTML, unexpected) {
 			t.Fatalf("expected rendered HTML to omit %q, got %s", unexpected, payload.HTML)
 		}
@@ -1951,7 +1953,7 @@ HTML
 	return bin
 }
 
-func fakeRenderAPILateXMLCWithMathPlaceholder(t *testing.T) string {
+func fakeRenderAPILateXMLCWithEquationLabel(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "latexmlc")
 	script := `#!/bin/sh
@@ -1970,16 +1972,14 @@ test -n "$dest"
 test -n "$log"
 test -n "$main"
 test -f "$main"
-if grep -Fq '\begin{align}' "$main"; then
-  printf '%s\n' 'expected source display math to be replaced before LaTeXML' >&2
+if ! grep -Fq '\begin{equation}' "$main" || ! grep -Fq '\label{eq:D_2n}' "$main" || ! grep -Fq '\ref{eq:D_2n}' "$main"; then
+  printf '%s\n' 'expected LaTeXML to receive the complete numbered equation and reference' >&2
   exit 4
 fi
-placeholder="$(grep -o 'RINRENDERERMATHPLACEHOLDER[A-Z0-9]*' "$main" | head -n 1)"
-test -n "$placeholder"
 mkdir -p "$(dirname "$dest")"
 printf '%s\n' 'Info: fake latexml conversion complete' > "$log"
 cat > "$dest" <<HTML
-<!doctype html><html><body><article><p>Before.</p><p>$placeholder</p><p>After.</p></article></body></html>
+<!doctype html><html><body><article><p>Before.</p><table id="eq:D_2n" class="ltx_equation ltx_eqn_table"><tbody><tr class="ltx_equation ltx_eqn_row"><td class="ltx_eqn_cell ltx_align_center"><math display="block" class="ltx_Math" alttext="\\displaystyle D_{2n} = \\langle r, s \\mid r^n = s^2 = 1, rs = sr^{-1} \\rangle \\label{eq:D_2n}"><mi>D</mi></math></td><td class="ltx_eqn_cell ltx_eqn_eqno ltx_align_right"><span class="ltx_tag ltx_tag_equation ltx_align_right">(1)</span></td></tr></tbody></table><p>See equation <a class="ltx_ref" href="#eq:D_2n">1</a>.</p><p>After.</p></article></body></html>
 HTML
 `
 	if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {

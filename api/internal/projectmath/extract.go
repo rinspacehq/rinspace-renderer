@@ -254,7 +254,7 @@ func skipMathEnvironmentArguments(source string, environment string, cursor int)
 }
 
 func normalizeRenderSource(environment string, body string) string {
-	body = stripMathMetadata(strings.TrimSpace(body))
+	body = StripRenderMetadata(strings.TrimSpace(body))
 	switch environment {
 	case "align", "flalign", "alignat":
 		return `\begin{aligned}` + body + `\end{aligned}`
@@ -267,7 +267,10 @@ func normalizeRenderSource(environment string, body string) string {
 
 var labelCommandPattern = regexp.MustCompile(`(?s)\\label\s*\{[^{}]*\}`)
 
-func stripMathMetadata(source string) string {
+// StripRenderMetadata removes document-level commands that MathJax must not
+// interpret. LaTeXML remains responsible for labels and references before the
+// final formula source reaches the visual math renderer.
+func StripRenderMetadata(source string) string {
 	return strings.TrimSpace(labelCommandPattern.ReplaceAllString(source, ""))
 }
 
