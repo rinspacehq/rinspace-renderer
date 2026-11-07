@@ -1659,7 +1659,7 @@ func TestNormalizeLateXMLHTMLRemovesNondeterministicGeneratorFooter(t *testing.T
 }
 
 func TestReaderPayloadBuildsTOCAndPagesFromHeadings(t *testing.T) {
-	html := `<article><p>Preface.</p><h2 id="intro">Intro</h2><p>A</p><h3 id="setup">Setup</h3><p>B</p><h2 id="next">Next</h2><p>C</p></article>`
+	html := `<article><p>Preface.</p><h2 id="intro">Intro</h2><p>A</p><h3 id="setup">Setup</h3><h4 id="detail">Detail</h4><h5 id="proof">Proof</h5><p>B</p><h2 id="next">Next</h2><p>C</p></article>`
 
 	reader := readerPayload("Book", html)
 	raw, err := json.Marshal(reader)
@@ -1685,10 +1685,10 @@ func TestReaderPayloadBuildsTOCAndPagesFromHeadings(t *testing.T) {
 		t.Fatalf("decode reader: %v", err)
 	}
 
-	if decoded.Version != "latexml-0.1" || decoded.Title != "Book" || len(decoded.TOC) != 3 || len(decoded.Pages) != 2 {
+	if decoded.Version != "latexml-0.1" || decoded.Title != "Book" || len(decoded.TOC) != 5 || len(decoded.Pages) != 2 {
 		t.Fatalf("unexpected reader payload: %#v", decoded)
 	}
-	if decoded.TOC[0].ID != "intro" || decoded.TOC[1].ID != "setup" || decoded.TOC[2].ID != "next" {
+	if decoded.TOC[0].ID != "intro" || decoded.TOC[1].ID != "setup" || decoded.TOC[2].ID != "detail" || decoded.TOC[2].Level != 4 || decoded.TOC[3].ID != "proof" || decoded.TOC[3].Level != 5 || decoded.TOC[4].ID != "next" {
 		t.Fatalf("unexpected toc: %#v", decoded.TOC)
 	}
 	if decoded.Pages[0].ID != "intro" || !strings.Contains(decoded.Pages[0].HTML, "Preface.") || !strings.Contains(decoded.Pages[0].HTML, `<h3 id="setup">Setup</h3>`) {

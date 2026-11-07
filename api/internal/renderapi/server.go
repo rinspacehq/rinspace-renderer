@@ -1899,7 +1899,7 @@ func lateXMLEnvironmentKindFromTitle(title string) string {
 	}
 }
 
-var readerHeadingPattern = regexp.MustCompile(`(?is)<h([2-4])\b([^>]*)>(.*?)</h[2-4]>`)
+var readerHeadingPattern = regexp.MustCompile(`(?is)<h([2-5])\b([^>]*)>(.*?)</h[2-5]>`)
 var htmlIDAttrPattern = regexp.MustCompile(`(?is)\bid\s*=\s*["']([^"']+)["']`)
 var htmlTagPattern = regexp.MustCompile(`(?is)<[^>]+>`)
 

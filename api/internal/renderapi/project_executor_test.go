@@ -77,10 +77,14 @@ func TestCanonicalResultPreservesUnicodeTOCAnchorAndNormalizesNumericPageID(t *t
 		MainFile: "main.tex", DocumentMode: "book", Versions: Versions{RinRenderer: "test"},
 		Reader: map[string]any{
 			"toc": []map[string]any{
+				{"id": "chapter-1", "text": "第一章", "level": 2},
 				{"id": "1-1-定义", "text": "定义", "level": 3},
+				{"id": "1-1-1-例", "text": "例", "level": 4},
+				{"id": "1-2-性质", "text": "性质", "level": 3},
 			},
 			"pages": []map[string]any{
 				{"id": "1-1-定义", "text": "定义", "level": 3, "html": `<h3 id="1-1-定义">定义</h3>`},
+				{"id": "1-2-性质", "text": "性质", "level": 3, "html": `<h3 id="1-2-性质">性质</h3>`},
 			},
 		},
 	}
@@ -88,9 +92,15 @@ func TestCanonicalResultPreservesUnicodeTOCAnchorAndNormalizesNumericPageID(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	page := result.Inline.Pages[0]
-	if page.ID != "page-1-1-定义" || page.TOC[0].ID != "1-1-定义" || !strings.Contains(page.Fragment, `id="1-1-定义"`) {
-		t.Fatalf("canonical Unicode book page = %#v", page)
+	if len(result.Inline.Pages) != 2 {
+		t.Fatalf("canonical Unicode book pages = %#v", result.Inline.Pages)
+	}
+	first, second := result.Inline.Pages[0], result.Inline.Pages[1]
+	if first.ID != "page-1-1-定义" || first.TOC[0].ID != "chapter-1" || first.TOC[1].ID != "page-1-1-定义" || first.TOC[2].ID != "1-1-1-例" || first.TOC[3].ID != "page-1-2-性质" || !strings.Contains(first.Fragment, `id="1-1-定义"`) {
+		t.Fatalf("first canonical Unicode book page = %#v", first)
+	}
+	if second.ID != "page-1-2-性质" || second.TOC[1].ID != "page-1-1-定义" || second.TOC[3].ID != "page-1-2-性质" || !strings.Contains(second.Fragment, `id="1-2-性质"`) {
+		t.Fatalf("second canonical Unicode book page = %#v", second)
 	}
 }
 
