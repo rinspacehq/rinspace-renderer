@@ -2,7 +2,9 @@ package renderapi
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -38,6 +40,8 @@ func (executor *typstProjectExecutor) compiler() typstadapter.Compiler {
 		PackageHash: strings.ToLower(strings.TrimSpace(executor.cfg.TypstPackageHash)),
 		Timeout:     executor.cfg.TypstTimeout,
 		MaxOutput:   executor.cfg.TypstMaxOutputBytes,
+		SandboxPath: executor.cfg.TypstSandboxBin,
+		SandboxHash: executor.cfg.TypstSandboxHash,
 	}
 }
 
@@ -56,7 +60,7 @@ func (executor *typstProjectExecutor) Configured() bool {
 }
 
 func (executor *typstProjectExecutor) profile(mathPresentation string) typstadapter.Profile {
-	return typstadapter.Profile{
+	profile := typstadapter.Profile{
 		CompilerVersion:    strings.TrimSpace(executor.cfg.TypstVersion),
 		CompilerHash:       strings.ToLower(strings.TrimSpace(executor.cfg.TypstBinHash)),
 		FontHash:           strings.ToLower(strings.TrimSpace(executor.cfg.TypstFontHash)),
@@ -67,6 +71,11 @@ func (executor *typstProjectExecutor) profile(mathPresentation string) typstadap
 		MathJaxVersion:     executor.cfg.MathJaxVersion,
 		MathJaxFontVersion: executor.cfg.MathJaxFontVersion,
 	}
+	if executor.cfg.TypstSandboxBin != "" || executor.cfg.TypstSandboxHash != "" {
+		profile.IsolationVersion = typstadapter.FragmentIsolationVersion
+		profile.SandboxHash = executor.cfg.TypstSandboxHash
+	}
+	return profile
 }
 
 func (executor *typstProjectExecutor) Execute(ctx context.Context, request ProjectExecutionRequest) ProjectExecutionResult {
@@ -93,8 +102,22 @@ func (executor *typstProjectExecutor) Execute(ctx context.Context, request Proje
 		files[file.Path] = body
 	}
 	entrypoint := project.Graph.Entrypoints[0].Path
-	compiled, err := executor.compiler().Compile(ctx, files, entrypoint, "html")
-	if ctx.Err() == nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+	compiler := executor.compiler()
+	fragmentProfile := ""
+	if len(request.FragmentIDs) > 0 {
+		fragmentProfile = TypstFragmentsProfileID(executor.cfg)
+		if fragmentProfile == "" || mode != "article" || entrypoint != "main.typ" || request.ProjectID != "" || request.SourceCommit != "" || request.ControlProjectHash != "" {
+			return typstExecutionFailure("typst.fragments.unavailable", "Isolated fragments profile is unavailable", errors.New("fragments require a private isolated job"))
+		}
+		if err := typstadapter.ValidateFragmentProject(files, request.FragmentIDs); err != nil {
+			return typstExecutionFailure("typst.fragments.invalid", "Fragment project is invalid", err)
+		}
+		if compiler.MaxOutput > 8<<20 {
+			compiler.MaxOutput = 8 << 20
+		}
+	}
+	compiled, err := compiler.Compile(ctx, files, entrypoint, "html")
+	if len(request.FragmentIDs) == 0 && ctx.Err() == nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		if reason := typstadapter.UnsupportedHTML(compiled.Log); reason != "" && (err == nil || strings.Contains(strings.ToLower(compiled.Log), "error:")) {
 			return executor.pdfFallback(ctx, request, project, files, entrypoint, mode, reason)
 		}
@@ -105,6 +128,17 @@ func (executor *typstProjectExecutor) Execute(ctx context.Context, request Proje
 	adapted, err := typstadapter.AdaptHTML(compiled.Output, mode, files)
 	if err != nil {
 		return typstAdaptFailure(err)
+	}
+	if len(request.FragmentIDs) > 0 {
+		if len(adapted.Pages) != 1 {
+			return typstExecutionFailure("typst.fragments.invalid", "Fragments must be one semantic document", errors.New("unexpected page count"))
+		}
+		if err := typstadapter.ValidateFragmentRoots(adapted.Pages[0].HTML, request.FragmentIDs); err != nil {
+			return typstExecutionFailure("typst.fragments.invalid", "Fragment anchors were rejected", err)
+		}
+		if len(adapted.Assets) != 0 {
+			return typstExecutionFailure("typst.fragments.unsupported_asset", "Fragments require semantic HTML and math", errors.New("private fragment assets are not supported yet"))
+		}
 	}
 	mathPresentation := typstMathPresentation(executor.cfg)
 	if executor.cfg.TypstMathRender {
@@ -125,8 +159,9 @@ func (executor *typstProjectExecutor) Execute(ctx context.Context, request Proje
 		JobID: request.JobID, RequestID: request.RequestID,
 		ProjectHash: firstNonEmpty(request.ControlProjectHash, project.Graph.ProjectHash),
 		Entrypoint:  entrypoint, Title: title, Mode: mode,
-		Profile:         executor.profile(mathPresentation),
-		RendererVersion: executor.cfg.RendererVersion, CompilerVersion: executor.cfg.TypstVersion,
+		Profile:           executor.profile(mathPresentation),
+		FragmentProfileID: fragmentProfile,
+		RendererVersion:   executor.cfg.RendererVersion, CompilerVersion: executor.cfg.TypstVersion,
 		SourceCommit: request.SourceCommit, ProjectID: request.ProjectID,
 		Adapted: adapted, ProjectFiles: project.Graph.Files, Knowledge: knowledge,
 	})
@@ -159,20 +194,21 @@ func (executor *typstProjectExecutor) knowledgeIndex(request ProjectExecutionReq
 }
 
 type typstAdaptedInput struct {
-	JobID           string
-	RequestID       string
-	ProjectHash     string
-	Entrypoint      string
-	Title           string
-	Mode            string
-	Profile         typstadapter.Profile
-	RendererVersion string
-	CompilerVersion string
-	SourceCommit    string
-	ProjectID       string
-	Adapted         typstadapter.Result
-	ProjectFiles    []contracts.ProjectGraphFile
-	Knowledge       *contracts.KnowledgeIndex
+	JobID             string
+	RequestID         string
+	ProjectHash       string
+	Entrypoint        string
+	Title             string
+	Mode              string
+	Profile           typstadapter.Profile
+	RendererVersion   string
+	CompilerVersion   string
+	SourceCommit      string
+	ProjectID         string
+	Adapted           typstadapter.Result
+	ProjectFiles      []contracts.ProjectGraphFile
+	Knowledge         *contracts.KnowledgeIndex
+	FragmentProfileID string
 }
 
 // typstAdaptedResult turns one sanitized adapter result into the shared v1
@@ -218,7 +254,7 @@ func typstAdaptedResult(input typstAdaptedInput) ProjectExecutionResult {
 		GeneratedArtifacts: []contracts.ArtifactReference{},
 		Versions: Versions{
 			RinRenderer: input.RendererVersion, Typst: input.CompilerVersion,
-			TypstProfile: input.Profile.ID(), FinalOutput: finaloutput.ContractVersion,
+			TypstProfile: firstNonEmpty(input.FragmentProfileID, input.Profile.ID()), FinalOutput: finaloutput.ContractVersion,
 		},
 	}
 	canonical, err := CanonicalResult(input.JobID, input.ProjectHash, string(contracts.ContentKindTypst), response)
@@ -316,4 +352,16 @@ func typstMathPresentation(cfg Config) string {
 // rejected instead of silently reusing an outdated result.
 func TypstHTMLProfileID(cfg Config) string {
 	return typstProfileID(cfg)
+}
+
+func TypstFragmentsProfileID(cfg Config) string {
+	base := typstProfileID(cfg)
+	if base == "" || strings.TrimSpace(cfg.TypstSandboxBin) == "" || len(cfg.TypstSandboxHash) != 64 {
+		return ""
+	}
+	if _, err := hex.DecodeString(cfg.TypstSandboxHash); err != nil {
+		return ""
+	}
+	digest := sha256.Sum256([]byte(strings.Join([]string{base, typstadapter.FragmentTemplateVersion, typstadapter.FragmentIsolationVersion, cfg.TypstSandboxHash}, "\x00")))
+	return "typst-fragments-" + hex.EncodeToString(digest[:16])
 }

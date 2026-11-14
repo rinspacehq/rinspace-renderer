@@ -24,6 +24,7 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/orchestration"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/renderapi"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/scheduler"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 )
 
 type Scheduler interface {
@@ -370,6 +371,16 @@ func (runner *Runner) render(ctx context.Context, job jobpostgres.Job) (renderap
 		return renderapi.ProjectExecutionResult{}, &renderFailure{Code: "invalid_request_metadata", Status: 400, Message: "job request metadata is invalid"}
 	}
 	disableMarkdownBookReuse := false
+	fragmentIDs := []string(nil)
+	if job.ContentKind == "typst" {
+		options, err := typstadapter.ParseFragmentOptions(metadata.Options)
+		if err != nil {
+			return renderapi.ProjectExecutionResult{}, &renderFailure{Code: "invalid_fragment_options", Status: 400, Message: "Fragment options are invalid"}
+		}
+		if options != nil {
+			fragmentIDs = options.BlockIDs
+		}
+	}
 	if strings.TrimSpace(metadata.DocumentMode) == "book" && strings.TrimSpace(metadata.Options) != "" {
 		var options struct {
 			IncrementalReuse *bool `json:"incrementalReuse"`
@@ -387,7 +398,8 @@ func (runner *Runner) render(ctx context.Context, job jobpostgres.Job) (renderap
 		MetadataMainFile: metadata.MetadataMainFile, ActiveFile: metadata.ActiveFile,
 		ProjectStatus: metadata.ProjectStatus, MathPolicy: metadata.MathPolicy, Renderer: metadata.Renderer,
 		DocumentMode: metadata.DocumentMode, DisableMarkdownBookReuse: disableMarkdownBookReuse,
-		ProjectID: metadata.ControlProjectID, SourceCommit: metadata.SourceCommit, ControlProjectHash: metadata.ControlProjectHash,
+		FragmentIDs: fragmentIDs,
+		ProjectID:   metadata.ControlProjectID, SourceCommit: metadata.SourceCommit, ControlProjectHash: metadata.ControlProjectHash,
 	})
 	if result.Err != nil {
 		status := result.Status

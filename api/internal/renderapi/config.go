@@ -107,6 +107,8 @@ type Config struct {
 	TypstTimeout                time.Duration
 	TypstMaxOutputBytes         int64
 	TypstMathRender             bool
+	TypstSandboxBin             string
+	TypstSandboxHash            string
 	KaTeXScript                 string
 	DiagramWorkerEndpoint       string
 	DiagramWorkerToken          string
@@ -215,6 +217,8 @@ func ConfigFromEnv() Config {
 		TypstTimeout:                envDurationSeconds("RIN_RENDERER_TYPST_TIMEOUT_SECONDS", defaultTypstTimeout),
 		TypstMaxOutputBytes:         envInt64("RIN_RENDERER_TYPST_MAX_OUTPUT_BYTES", defaultTypstOutputSize),
 		TypstMathRender:             envBool("RIN_RENDERER_TYPST_MATH_RENDER", true),
+		TypstSandboxBin:             strings.TrimSpace(os.Getenv("RIN_RENDERER_TYPST_SANDBOX_BIN")),
+		TypstSandboxHash:            strings.ToLower(strings.TrimSpace(os.Getenv("RIN_RENDERER_TYPST_SANDBOX_SHA256"))),
 		KaTeXScript:                 envString("RIN_RENDERER_KATEX_SCRIPT", "../engines/katex/render-katex.mjs"),
 		DiagramWorkerEndpoint:       envString("RIN_RENDERER_TEXSVG_ENDPOINT", ""),
 		DiagramWorkerToken:          strings.TrimSpace(os.Getenv("RIN_RENDERER_TEXSVG_TOKEN")),

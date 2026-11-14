@@ -35,6 +35,7 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectdiagrams"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectmath"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/renderstorage"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 )
 
 type Server struct {
@@ -207,6 +208,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /ready", s.handleReady)
 	s.mux.HandleFunc("GET /metrics", s.handleMetrics)
 	s.mux.HandleFunc("GET /api/render/capabilities", s.handleCapabilities)
+	s.mux.HandleFunc("POST /api/render/fragments", s.handleFragments)
 	if s.localAssets != nil {
 		s.mux.Handle("GET "+renderstorage.LocalAssetPath, s.localAssets)
 		s.mux.Handle("HEAD "+renderstorage.LocalAssetPath, s.localAssets)
@@ -297,6 +299,9 @@ func (s *Server) handleCapabilities(w http.ResponseWriter, r *http.Request) {
 			MaxResponseBytes: s.cfg.MathJaxWarmMaxResponseBytes, MaxTasks: s.cfg.MathJaxWarmMaxTasks,
 			MaxRSSBytes: s.cfg.MathJaxWarmMaxRSSBytes,
 		},
+		Fragments: FragmentCapabilities{Enabled: s.jobs != nil && TypstFragmentsProfileID(s.cfg) != "", ProfileID: TypstFragmentsProfileID(s.cfg),
+			TemplateVersion: typstadapter.FragmentTemplateVersion, IsolationVersion: typstadapter.FragmentIsolationVersion,
+			MaxBlocks: typstadapter.MaxFragmentBlocks, MaxSourceBytes: typstadapter.MaxFragmentSourceBytes, MaxOutputBytes: 8 << 20},
 	})
 }
 

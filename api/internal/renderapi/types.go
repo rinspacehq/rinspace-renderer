@@ -51,6 +51,17 @@ type CapabilitiesResponse struct {
 	Storage      StorageInfo            `json:"storage"`
 	Async        AsyncCapabilities      `json:"async"`
 	NodeWorkers  NodeWorkerCapabilities `json:"nodeWorkers"`
+	Fragments    FragmentCapabilities   `json:"fragments"`
+}
+
+type FragmentCapabilities struct {
+	Enabled          bool   `json:"enabled"`
+	ProfileID        string `json:"profileId,omitempty"`
+	TemplateVersion  string `json:"templateVersion"`
+	IsolationVersion string `json:"isolationVersion"`
+	MaxBlocks        int    `json:"maxBlocks"`
+	MaxSourceBytes   int    `json:"maxSourceBytes"`
+	MaxOutputBytes   int    `json:"maxOutputBytes"`
 }
 
 type NodeWorkerCapabilities struct {
