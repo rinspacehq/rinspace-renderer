@@ -35,6 +35,43 @@ func TestSandboxWorkspaceRejectsLinksBeforeExecution(t *testing.T) {
 	}
 }
 
+func TestSandboxWorkspaceTransfersChildrenBeforeParents(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "project", "blocks")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(nested, "lesson.typ")
+	if err := os.WriteFile(file, []byte("bounded lesson"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	credential := &syscall.Credential{Uid: fragmentSandboxUID, Gid: fragmentSandboxGID, NoSetGroups: true}
+	transferred := []string{}
+	err := prepareSandboxWorkspaceWithChown(root, credential, func(path string, uid, gid int) error {
+		if uid != fragmentSandboxUID || gid != fragmentSandboxGID {
+			t.Fatalf("unexpected sandbox identity: %d:%d", uid, gid)
+		}
+		transferred = append(transferred, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	position := map[string]int{}
+	for index, path := range transferred {
+		position[path] = index
+	}
+	for _, child := range []string{file, nested, filepath.Dir(nested)} {
+		parent := filepath.Dir(child)
+		if position[child] >= position[parent] {
+			t.Fatalf("child %s was transferred after parent %s: %v", child, parent, transferred)
+		}
+	}
+	if transferred[len(transferred)-1] != root {
+		t.Fatalf("workspace root was not transferred last: %v", transferred)
+	}
+}
+
 func configureTestSandbox(t *testing.T, compiler Compiler) Compiler {
 	t.Helper()
 	compiler.SandboxPath = os.Getenv("RIN_TYPST_TEST_SANDBOX")

@@ -27,9 +27,14 @@ func sandboxCredential(euid int) *syscall.Credential {
 }
 
 func prepareSandboxWorkspace(root string, credential *syscall.Credential) error {
+	return prepareSandboxWorkspaceWithChown(root, credential, os.Chown)
+}
+
+func prepareSandboxWorkspaceWithChown(root string, credential *syscall.Credential, chown func(string, int, int) error) error {
 	if credential == nil {
 		return nil
 	}
+	paths := make([]string, 0, 16)
 	if err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -37,9 +42,18 @@ func prepareSandboxWorkspace(root string, credential *syscall.Credential) error 
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("sandbox workspace contains a symbolic link: %s", path)
 		}
-		return os.Chown(path, int(credential.Uid), int(credential.Gid))
+		paths = append(paths, path)
+		return nil
 	}); err != nil {
 		return fmt.Errorf("prepare sandbox workspace ownership: %w", err)
+	}
+	// Keep every parent searchable by the current worker until all of its
+	// children have been inspected and transferred. A root process without
+	// DAC override can otherwise lock itself out after chowning a 0700 parent.
+	for index := len(paths) - 1; index >= 0; index-- {
+		if err := chown(paths[index], int(credential.Uid), int(credential.Gid)); err != nil {
+			return fmt.Errorf("prepare sandbox workspace ownership: %w", err)
+		}
 	}
 	return nil
 }
