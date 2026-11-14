@@ -11,6 +11,12 @@ RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no
 COPY engines/markdown/*.mjs ./
 
 FROM --platform=linux/amd64 ${RENDERER_BASE_IMAGE}
+# Fragment compilation is isolated from the networked queue worker with a
+# separate user/network/mount/PID namespace. The release records the installed
+# binary SHA-256; runtime config remains opt-in until isolation is verified.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends bubblewrap \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=markdown-build /usr/local/bin/node /usr/local/bin/node
 COPY --from=markdown-build /opt/rin-renderer/engines/markdown /opt/rin-renderer/engines/markdown
 ENV RIN_RENDERER_MARKDOWN_NODE_BIN=/usr/local/bin/node \

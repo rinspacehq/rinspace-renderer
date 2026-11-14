@@ -35,6 +35,8 @@ type Profile struct {
 	MathPresentation   string
 	MathJaxVersion     string
 	MathJaxFontVersion string
+	IsolationVersion   string
+	SandboxHash        string
 }
 
 // ID returns a stable, content-addressed profile identifier. Unknown or empty
@@ -54,6 +56,9 @@ func (profile Profile) ID() string {
 	if profile.MathPresentation == MathPresentationMathJax {
 		parts = append(parts, firstNonEmpty(profile.MathJaxVersion, "mathjax-unreported"),
 			firstNonEmpty(profile.MathJaxFontVersion, "mathjax-font-unreported"))
+	}
+	if profile.IsolationVersion != "" || profile.SandboxHash != "" {
+		parts = append(parts, firstNonEmpty(profile.IsolationVersion, "isolation-unreported"), firstNonEmpty(strings.ToLower(profile.SandboxHash), "sandbox-hash-unreported"))
 	}
 	digest := sha256.Sum256([]byte(strings.Join(parts, "\n")))
 	return "typst-html-" + hex.EncodeToString(digest[:16])

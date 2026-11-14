@@ -37,11 +37,17 @@ type Compiler struct {
 	PackageHash string
 	Timeout     time.Duration
 	MaxOutput   int64
+	// Optional for legacy publication callers; mandatory for the new fragments
+	// entrypoint. Uses a pinned bubblewrap and the static pinned Typst binary.
+	SandboxPath string
+	SandboxHash string
 }
 
 type CompileResult struct {
-	Output []byte
-	Log    string
+	Output    []byte
+	Log       string
+	UserCPU   time.Duration
+	SystemCPU time.Duration
 }
 
 func (compiler Compiler) Validate() error {
@@ -50,7 +56,14 @@ func (compiler Compiler) Validate() error {
 		compiler.MaxOutput <= 0 || compiler.MaxOutput > maxCompilerOutputBytes {
 		return errors.New("Typst compiler profile is incomplete")
 	}
-	for _, expected := range []struct{ path, hash string }{{compiler.BinaryPath, compiler.BinaryHash}, {compiler.FontPath, compiler.FontHash}} {
+	artifacts := []struct{ path, hash string }{{compiler.BinaryPath, compiler.BinaryHash}, {compiler.FontPath, compiler.FontHash}}
+	if compiler.SandboxPath != "" || compiler.SandboxHash != "" {
+		if !filepath.IsAbs(compiler.SandboxPath) {
+			return errors.New("Typst sandbox path is invalid")
+		}
+		artifacts = append(artifacts, struct{ path, hash string }{compiler.SandboxPath, compiler.SandboxHash})
+	}
+	for _, expected := range artifacts {
 		if len(expected.hash) != 64 || strings.ToLower(expected.hash) != expected.hash {
 			return errors.New("Typst compiler artifact hash is invalid")
 		}
@@ -112,7 +125,8 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	projectRoot := filepath.Join(base, "project")
 	fontRoot := filepath.Join(base, "fonts")
 	packageRoot := filepath.Join(base, "packages")
-	for _, directory := range []string{projectRoot, fontRoot, packageRoot} {
+	outputRoot := filepath.Join(base, "output")
+	for _, directory := range []string{projectRoot, fontRoot, packageRoot, outputRoot} {
 		if err := os.Mkdir(directory, 0o700); err != nil {
 			return CompileResult{}, err
 		}
@@ -143,7 +157,7 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	if err := os.WriteFile(fontTarget, font, 0o600); err != nil {
 		return CompileResult{}, err
 	}
-	outputPath := filepath.Join(base, "output."+format)
+	outputPath := filepath.Join(outputRoot, "output."+format)
 	args := []string{"compile", "--format", format, "--root", projectRoot, "--ignore-system-fonts",
 		"--font-path", fontRoot, "--package-path", packageRoot, "--package-cache-path", packageRoot,
 		"--jobs", "1", "--creation-timestamp", "0", "--diagnostic-format", "short"}
@@ -156,6 +170,9 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	command := exec.CommandContext(bounded, compiler.BinaryPath, args...)
 	command.Dir = projectRoot
 	command.Env = []string{"HOME=" + base, "TMPDIR=" + base, "LANG=C.UTF-8", "SOURCE_DATE_EPOCH=0", "PATH=/usr/bin:/bin"}
+	if compiler.SandboxPath != "" {
+		command = sandboxCommand(bounded, compiler, projectRoot, fontRoot, packageRoot, outputRoot, entrypoint, format)
+	}
 	var log cappedLog
 	command.Stdout = io.Discard
 	command.Stderr = &log
@@ -179,7 +196,7 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	if format == "pdf" && !bytes.HasPrefix(output, []byte("%PDF-")) {
 		return CompileResult{Log: log.String()}, errors.New("Typst PDF output has an invalid header")
 	}
-	return CompileResult{Output: output, Log: log.String()}, nil
+	return CompileResult{Output: output, Log: log.String(), UserCPU: command.ProcessState.UserTime(), SystemCPU: command.ProcessState.SystemTime()}, nil
 }
 
 type cappedLog struct{ bytes.Buffer }

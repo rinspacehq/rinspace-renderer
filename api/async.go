@@ -228,9 +228,10 @@ func buildAsyncRuntime(ctx context.Context, config renderapi.Config) (*asyncRunt
 		RendererVersion: config.RendererVersion, MaxSourceBytes: config.ProjectArchiveMaxBytes,
 		RejectControlPlaneIdentity: completionMode == "local",
 		ProjectFileMaxCount:        config.ProjectFileMaxCount, ProjectFileMaxBytes: config.ProjectFileMaxBytes,
-		TypstProfileID: renderapi.TypstHTMLProfileID(config),
-		EventPoll:      time.Second,
-		Estimation:     jobpostgres.EstimationPolicy{MinimumSamples: 20, Scheduling: schedulingPolicy},
+		TypstProfileID:          renderapi.TypstHTMLProfileID(config),
+		TypstFragmentsProfileID: renderapi.TypstFragmentsProfileID(config),
+		EventPoll:               time.Second,
+		Estimation:              jobpostgres.EstimationPolicy{MinimumSamples: 20, Scheduling: schedulingPolicy},
 	})
 	if err != nil {
 		return fail(fmt.Errorf("configure renderer job API: %w", err))

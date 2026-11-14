@@ -37,6 +37,7 @@ type ProjectExecutionRequest struct {
 	ProjectID                string
 	SourceCommit             string
 	ControlProjectHash       string
+	FragmentIDs              []string
 }
 
 type ProjectExecutionResult struct {

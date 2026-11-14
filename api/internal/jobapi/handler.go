@@ -24,6 +24,7 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/pdfexecutor"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectcore"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/typstpdfexecutor"
 )
 
@@ -96,13 +97,14 @@ type Config struct {
 	// TypstProfileID is the configured Typst HTML render profile the Control
 	// Plane must request for typst document jobs. It is empty when no Typst
 	// compiler is pinned, in which case typst submissions fail closed.
-	TypstProfileID      string
-	MaxSourceBytes      int64
-	ProjectFileMaxCount int
-	ProjectFileMaxBytes int64
-	EventPoll           time.Duration
-	Estimation          jobpostgres.EstimationPolicy
-	Now                 func() time.Time
+	TypstProfileID          string
+	TypstFragmentsProfileID string
+	MaxSourceBytes          int64
+	ProjectFileMaxCount     int
+	ProjectFileMaxBytes     int64
+	EventPoll               time.Duration
+	Estimation              jobpostgres.EstimationPolicy
+	Now                     func() time.Time
 }
 
 type Handler struct {
@@ -301,12 +303,21 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 		return
 	}
 	renderProfileID := strings.TrimSpace(request.FormValue("renderProfileId"))
+	fragments, fragmentErr := typstadapter.ParseFragmentOptions(request.FormValue("options"))
+	if fragmentErr != nil || fragments != nil && (contentKind != "typst" || outputKind != "document" || documentMode != "article" || controlProjectID != "" || controlSourceCommit != "" || controlProjectHash != "") {
+		writeError(response, http.StatusBadRequest, "invalid_fragment_options", "Fragment options are invalid")
+		return
+	}
 	switch {
 	case contentKind == "typst" && outputKind == "document":
 		// A Typst HTML document job must name the exact profile this Renderer
 		// currently serves. Rejecting an unknown, missing or stale profile is
 		// what stops a same-commit rebuild from silently reusing an old result.
-		if handler.config.TypstProfileID == "" || renderProfileID != handler.config.TypstProfileID {
+		expectedProfile := handler.config.TypstProfileID
+		if fragments != nil {
+			expectedProfile = handler.config.TypstFragmentsProfileID
+		}
+		if expectedProfile == "" || renderProfileID != expectedProfile {
 			writeError(response, http.StatusUnprocessableEntity, "invalid_render_profile", "Typst render profile is not the configured profile")
 			return
 		}
