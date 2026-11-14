@@ -16,6 +16,11 @@ All blocks compile as one trusted wrapper, preserving native Typst equation
 numbering and forward references. IDs are unique lowercase identifiers. The
 runtime requires the pinned compiler/font/package set and reviewed sandbox
 binary/hash; its fragments profile includes the wrapper and isolation identity.
+When the queue worker starts as root so it can use the shared artifact store,
+it owns only the preparation phase: the bubblewrap child and its private
+workspace are transferred to UID/GID 65534 before namespace creation. The
+container therefore needs only `CHOWN`, `SETUID` and `SETGID`; bubblewrap drops
+all capabilities inside the new namespace.
 An ordinary synchronous or unisolated runtime cannot admit these requests.
 
 The Typst worker uses the existing HTML/MathML, MathJax CHTML and final-output

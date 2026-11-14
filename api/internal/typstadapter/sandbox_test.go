@@ -9,9 +9,31 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func TestSandboxCredentialDropsOnlyRoot(t *testing.T) {
+	if credential := sandboxCredential(1000); credential != nil {
+		t.Fatalf("non-root worker unexpectedly changed identity: %+v", credential)
+	}
+	credential := sandboxCredential(0)
+	if credential == nil || credential.Uid != fragmentSandboxUID || credential.Gid != fragmentSandboxGID || !credential.NoSetGroups {
+		t.Fatalf("root worker did not select the bounded sandbox identity: %+v", credential)
+	}
+}
+
+func TestSandboxWorkspaceRejectsLinksBeforeExecution(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Symlink("missing", filepath.Join(root, "link")); err != nil {
+		t.Fatal(err)
+	}
+	credential := &syscall.Credential{Uid: uint32(os.Geteuid()), Gid: uint32(os.Getegid()), NoSetGroups: true}
+	if err := prepareSandboxWorkspace(root, credential); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+		t.Fatalf("linked workspace was accepted: %v", err)
+	}
+}
 
 func configureTestSandbox(t *testing.T, compiler Compiler) Compiler {
 	t.Helper()

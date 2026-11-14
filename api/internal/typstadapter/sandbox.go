@@ -2,16 +2,52 @@ package typstadapter
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 )
 
-const FragmentIsolationVersion = "typst-bwrap/v1"
+const (
+	FragmentIsolationVersion = "typst-bwrap/v2"
+	fragmentSandboxUID       = 65534
+	fragmentSandboxGID       = 65534
+)
+
+func sandboxCredential(euid int) *syscall.Credential {
+	if euid != 0 {
+		return nil
+	}
+	return &syscall.Credential{
+		Uid:         fragmentSandboxUID,
+		Gid:         fragmentSandboxGID,
+		NoSetGroups: true,
+	}
+}
+
+func prepareSandboxWorkspace(root string, credential *syscall.Credential) error {
+	if credential == nil {
+		return nil
+	}
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("sandbox workspace contains a symbolic link: %s", path)
+		}
+		return os.Chown(path, int(credential.Uid), int(credential.Gid))
+	}); err != nil {
+		return fmt.Errorf("prepare sandbox workspace ownership: %w", err)
+	}
+	return nil
+}
 
 // No host root, credentials, network, Docker socket or package cache enters the
 // compiler namespace. The worker's resource limits and context deadline still
 // apply. Namespace creation failures are errors, never an unsandboxed fallback.
-func sandboxCommand(ctx context.Context, compiler Compiler, project, font, packages, output, entrypoint, format string) *exec.Cmd {
+func sandboxCommand(ctx context.Context, compiler Compiler, workspace, project, font, packages, output, entrypoint, format string) (*exec.Cmd, error) {
 	args := []string{"--die-with-parent", "--new-session", "--unshare-all", "--cap-drop", "ALL",
 		"--ro-bind", compiler.BinaryPath, "/typst", "--ro-bind", project, "/workspace",
 		"--ro-bind", font, "/fonts", "--ro-bind", packages, "/packages", "--bind", output, "/output",
@@ -27,5 +63,12 @@ func sandboxCommand(ctx context.Context, compiler Compiler, project, font, packa
 	command := exec.CommandContext(ctx, compiler.SandboxPath, args...)
 	command.Dir = project
 	command.Env = []string{"LANG=C.UTF-8", "PATH=/usr/bin:/bin"}
-	return command
+	credential := sandboxCredential(os.Geteuid())
+	if err := prepareSandboxWorkspace(workspace, credential); err != nil {
+		return nil, err
+	}
+	if credential != nil {
+		command.SysProcAttr = &syscall.SysProcAttr{Credential: credential}
+	}
+	return command, nil
 }
