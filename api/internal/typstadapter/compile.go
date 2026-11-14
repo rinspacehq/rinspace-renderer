@@ -123,10 +123,11 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	}
 	defer os.RemoveAll(base)
 	projectRoot := filepath.Join(base, "project")
+	compilerRoot := filepath.Join(base, "compiler")
 	fontRoot := filepath.Join(base, "fonts")
 	packageRoot := filepath.Join(base, "packages")
 	outputRoot := filepath.Join(base, "output")
-	for _, directory := range []string{projectRoot, fontRoot, packageRoot, outputRoot} {
+	for _, directory := range []string{projectRoot, compilerRoot, fontRoot, packageRoot, outputRoot} {
 		if err := os.Mkdir(directory, 0o700); err != nil {
 			return CompileResult{}, err
 		}
@@ -157,6 +158,17 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	if err := os.WriteFile(fontTarget, font, 0o600); err != nil {
 		return CompileResult{}, err
 	}
+	sandboxCompiler := compiler
+	if compiler.SandboxPath != "" {
+		binary, err := os.ReadFile(compiler.BinaryPath)
+		if err != nil {
+			return CompileResult{}, err
+		}
+		sandboxCompiler.BinaryPath = filepath.Join(compilerRoot, "typst")
+		if err := os.WriteFile(sandboxCompiler.BinaryPath, binary, 0o500); err != nil {
+			return CompileResult{}, err
+		}
+	}
 	outputPath := filepath.Join(outputRoot, "output."+format)
 	args := []string{"compile", "--format", format, "--root", projectRoot, "--ignore-system-fonts",
 		"--font-path", fontRoot, "--package-path", packageRoot, "--package-cache-path", packageRoot,
@@ -171,7 +183,10 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	command.Dir = projectRoot
 	command.Env = []string{"HOME=" + base, "TMPDIR=" + base, "LANG=C.UTF-8", "SOURCE_DATE_EPOCH=0", "PATH=/usr/bin:/bin"}
 	if compiler.SandboxPath != "" {
-		command = sandboxCommand(bounded, compiler, projectRoot, fontRoot, packageRoot, outputRoot, entrypoint, format)
+		command, err = sandboxCommand(bounded, sandboxCompiler, base, projectRoot, fontRoot, packageRoot, outputRoot, entrypoint, format)
+		if err != nil {
+			return CompileResult{}, err
+		}
 	}
 	var log cappedLog
 	command.Stdout = io.Discard
