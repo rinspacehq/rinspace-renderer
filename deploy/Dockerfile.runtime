@@ -1,14 +1,37 @@
 # Complete Linux/amd64 runtime for local and Control Plane profiles.
-# RENDERER_BASE_IMAGE must be the reviewed
-# digest of Dockerfile.latexml's runtime stage from the same source release.
+# RENDERER_BASE_IMAGE is a reviewed immutable LaTeXML dependency layer. The
+# source-owned API and TeX SVG binaries are always rebuilt below, so changing
+# either one never requires rebuilding the unchanged LaTeXML toolchain.
+ARG GO_BASE_IMAGE=docker.io/library/golang@sha256:3b4a11519ad929d1e1d261a12cff056f0c85b735253d7d861346b9c6f8b36437
 ARG NODE_IMAGE=docker.io/library/node@sha256:46e94f8cf91baab69a2deb3153e74eeffd73c20c7cc1d8432f5b96469eaa0322
 ARG RENDERER_BASE_IMAGE
 
+FROM ${GO_BASE_IMAGE} AS api-build
+ARG RENDERER_SOURCE_ROOT=.
+WORKDIR /src/rin-renderer/api
+COPY ${RENDERER_SOURCE_ROOT}/api/go.mod ${RENDERER_SOURCE_ROOT}/api/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY ${RENDERER_SOURCE_ROOT}/api/ ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/rin-renderer-api .
+
+FROM ${GO_BASE_IMAGE} AS texsvg-build
+ARG RENDERER_SOURCE_ROOT=.
+WORKDIR /src/rin-renderer/engines/texsvg
+COPY ${RENDERER_SOURCE_ROOT}/engines/texsvg/go.mod ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY ${RENDERER_SOURCE_ROOT}/engines/texsvg/ ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/rin-renderer-texsvg .
+
 FROM --platform=linux/amd64 ${NODE_IMAGE} AS markdown-build
+ARG RENDERER_SOURCE_ROOT=.
 WORKDIR /opt/rin-renderer/engines/markdown
-COPY engines/markdown/package.json engines/markdown/package-lock.json ./
+COPY ${RENDERER_SOURCE_ROOT}/engines/markdown/package.json ${RENDERER_SOURCE_ROOT}/engines/markdown/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
-COPY engines/markdown/*.mjs ./
+COPY ${RENDERER_SOURCE_ROOT}/engines/markdown/*.mjs ./
 
 FROM --platform=linux/amd64 ${RENDERER_BASE_IMAGE}
 # Fragment compilation is isolated from the networked queue worker with a
@@ -19,6 +42,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=markdown-build /usr/local/bin/node /usr/local/bin/node
 COPY --from=markdown-build /opt/rin-renderer/engines/markdown /opt/rin-renderer/engines/markdown
+COPY --from=api-build /out/rin-renderer-api /usr/local/bin/rin-renderer-api
+COPY --from=texsvg-build /out/rin-renderer-texsvg /usr/local/bin/rin-renderer-texsvg
 ENV RIN_RENDERER_MARKDOWN_NODE_BIN=/usr/local/bin/node \
     RIN_RENDERER_MARKDOWN_SCRIPT=/opt/rin-renderer/engines/markdown/worker.mjs \
     RIN_RENDERER_MATHJAX_NODE_BIN=/usr/local/bin/node \

@@ -65,6 +65,8 @@ test('local image and compose require immutable inputs and bounded runtime', () 
   assert.match(dockerfile, /node@sha256:[a-f0-9]{64}/);
   assert.match(dockerfile, /^ARG RENDERER_BASE_IMAGE$/m);
   assert.match(dockerfile, /^FROM --platform=linux\/amd64 \$\{RENDERER_BASE_IMAGE\}$/m);
+  assert.match(dockerfile, /COPY --from=api-build \/out\/rin-renderer-api \/usr\/local\/bin\/rin-renderer-api/);
+  assert.match(dockerfile, /COPY --from=texsvg-build \/out\/rin-renderer-texsvg \/usr\/local\/bin\/rin-renderer-texsvg/);
   assert.match(compose, /RIN_RENDERER_IMAGE:\?exact reviewed OCI digest required/);
   assert.match(compose, /RIN_RENDERER_COMPLETION_MODE: local/);
   assert.match(compose, /RIN_RENDERER_STORAGE_PROVIDER: local/);

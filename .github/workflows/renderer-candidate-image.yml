@@ -69,14 +69,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Verify runtime base came from this exact source
+      - name: Verify reviewed immutable runtime base
         if: inputs.component == 'runtime'
         env:
           BASE: ${{ steps.inputs.outputs.base }}
         run: |
           docker pull "$BASE"
+          source="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.source" }}' "$BASE")"
           revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$BASE")"
-          test "$revision" = "$GITHUB_SHA"
+          test "$source" = 'https://github.com/rinspacehq/rinspace-renderer'
+          [[ "$revision" =~ ^[a-f0-9]{40}$ ]]
       - name: Build and push candidate by commit tag
         id: build
         uses: docker/build-push-action@v6
