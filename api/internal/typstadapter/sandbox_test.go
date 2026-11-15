@@ -72,6 +72,43 @@ func TestSandboxWorkspaceTransfersChildrenBeforeParents(t *testing.T) {
 	}
 }
 
+func TestSandboxBindsPinnedCompilerOutsideWorkspace(t *testing.T) {
+	root := t.TempDir()
+	compiler := Compiler{
+		BinaryPath:  filepath.Join(root, "pinned", "typst"),
+		SandboxPath: filepath.Join(root, "bwrap"),
+	}
+	for _, path := range []string{compiler.BinaryPath, compiler.SandboxPath} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("pinned"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	workspace := filepath.Join(root, "workspace")
+	project := filepath.Join(workspace, "project")
+	font := filepath.Join(workspace, "fonts")
+	packages := filepath.Join(workspace, "packages")
+	output := filepath.Join(workspace, "output")
+	for _, path := range []string{project, font, packages, output} {
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	command, err := sandboxCommand(t.Context(), compiler, workspace, project, font, packages, output, "main.typ", "html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(command.Args, "\x00")
+	if !strings.Contains(joined, "--ro-bind\x00"+compiler.BinaryPath+"\x00/typst") {
+		t.Fatalf("sandbox did not bind the pinned compiler directly: %q", command.Args)
+	}
+	if strings.Contains(joined, workspace+string(os.PathSeparator)+"compiler") {
+		t.Fatalf("sandbox copied the compiler into the noexec workspace: %q", command.Args)
+	}
+}
+
 func configureTestSandbox(t *testing.T, compiler Compiler) Compiler {
 	t.Helper()
 	compiler.SandboxPath = os.Getenv("RIN_TYPST_TEST_SANDBOX")
