@@ -72,6 +72,54 @@ func TestSandboxWorkspaceTransfersChildrenBeforeParents(t *testing.T) {
 	}
 }
 
+func TestSandboxWorkspaceRestoresParentsBeforeChildren(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "output", "nested")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(nested, "output.html")
+	if err := os.WriteFile(file, []byte("<p>bounded</p>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	credential := &syscall.Credential{Uid: fragmentSandboxUID, Gid: fragmentSandboxGID, NoSetGroups: true}
+	restored := []string{}
+	err := restoreSandboxWorkspaceWithChown(root, credential, func(path string, uid, gid int) error {
+		if uid != os.Geteuid() || gid != os.Getegid() {
+			t.Fatalf("unexpected worker identity: %d:%d", uid, gid)
+		}
+		restored = append(restored, path)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	position := map[string]int{}
+	for index, path := range restored {
+		position[path] = index
+	}
+	if restored[0] != root {
+		t.Fatalf("workspace root was not restored first: %v", restored)
+	}
+	for _, child := range []string{filepath.Join(root, "output"), nested, file} {
+		parent := filepath.Dir(child)
+		if position[parent] >= position[child] {
+			t.Fatalf("parent %s was restored after child %s: %v", parent, child, restored)
+		}
+	}
+}
+
+func TestSandboxWorkspaceRestoreRejectsGeneratedLinks(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Symlink("missing", filepath.Join(root, "output.html")); err != nil {
+		t.Fatal(err)
+	}
+	credential := &syscall.Credential{Uid: fragmentSandboxUID, Gid: fragmentSandboxGID, NoSetGroups: true}
+	if err := restoreSandboxWorkspaceWithChown(root, credential, func(string, int, int) error { return nil }); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+		t.Fatalf("generated link was accepted: %v", err)
+	}
+}
+
 func TestSandboxBindsPinnedCompilerOutsideWorkspace(t *testing.T) {
 	root := t.TempDir()
 	compiler := Compiler{
@@ -179,6 +227,10 @@ func TestPinnedSandboxCompilesSemanticMathAndFailsClosed(t *testing.T) {
 	result, err := CompileFragments(t.Context(), compiler, []FragmentBlock{{ID: "one", Source: "Hello $x+1$"}})
 	if err != nil || !strings.Contains(result.Document.Pages[0].HTML, "<math") {
 		t.Fatalf("isolated native compiler failed: %v %s", err, result.Log)
+	}
+	plain, err := CompileFragments(t.Context(), compiler, []FragmentBlock{{ID: "plain", Source: "只有普通文字的回答也必须产生 HTML。"}})
+	if err != nil || !strings.Contains(plain.Document.Pages[0].HTML, "只有普通文字") {
+		t.Fatalf("isolated plain-text fragment failed: %v %s", err, plain.Log)
 	}
 	compiler.SandboxHash = strings.Repeat("0", 64)
 	if _, err := CompileFragments(t.Context(), compiler, []FragmentBlock{{ID: "one", Source: "Hello"}}); err == nil {

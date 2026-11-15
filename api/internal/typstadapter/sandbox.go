@@ -58,6 +58,59 @@ func prepareSandboxWorkspaceWithChown(root string, credential *syscall.Credentia
 	return nil
 }
 
+func restoreSandboxWorkspace(root string, credential *syscall.Credential) error {
+	return restoreSandboxWorkspaceWithChown(root, credential, os.Lchown)
+}
+
+func restoreSandboxWorkspaceWithChown(root string, credential *syscall.Credential, chown func(string, int, int) error) error {
+	if credential == nil {
+		return nil
+	}
+	uid, gid := os.Geteuid(), os.Getegid()
+	// The sandbox identity owns 0700 directories while the compiler runs. A
+	// root worker with CAP_DAC_OVERRIDE removed cannot even traverse those
+	// directories after wait(2), so restore the root first and each directory
+	// before Walk attempts to read its children.
+	var unsafeLink error
+	var restore func(string) error
+	restore = func(path string) error {
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 && unsafeLink == nil {
+			unsafeLink = fmt.Errorf("sandbox workspace contains a symbolic link: %s", path)
+		}
+		if err := chown(path, uid, gid); err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			return nil
+		}
+		// Read a directory only after its ownership has been restored. This is
+		// intentionally not filepath.Walk: Walk reads the directory before its
+		// callback on current Go versions, which fails for 0700 sandbox paths.
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := restore(filepath.Join(path, entry.Name())); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	err := restore(root)
+	if err != nil {
+		return fmt.Errorf("restore sandbox workspace ownership: %w", err)
+	}
+	if unsafeLink != nil {
+		return unsafeLink
+	}
+	return nil
+}
+
 // No host root, credentials, network, Docker socket or package cache enters the
 // compiler namespace. The worker's resource limits and context deadline still
 // apply. Namespace creation failures are errors, never an unsandboxed fallback.

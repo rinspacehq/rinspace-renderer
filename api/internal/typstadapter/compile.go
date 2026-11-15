@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
@@ -170,6 +171,7 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 	command := exec.CommandContext(bounded, compiler.BinaryPath, args...)
 	command.Dir = projectRoot
 	command.Env = []string{"HOME=" + base, "TMPDIR=" + base, "LANG=C.UTF-8", "SOURCE_DATE_EPOCH=0", "PATH=/usr/bin:/bin"}
+	var sandboxOwner *syscall.Credential
 	if compiler.SandboxPath != "" {
 		// Bind the already hash-verified, read-only compiler directly. Production
 		// intentionally mounts /tmp noexec, so copying the executable into the
@@ -178,15 +180,23 @@ func (compiler Compiler) Compile(ctx context.Context, files map[string][]byte, e
 		if err != nil {
 			return CompileResult{}, err
 		}
+		sandboxOwner = sandboxCredential(os.Geteuid())
 	}
 	var log cappedLog
 	command.Stdout = io.Discard
 	command.Stderr = &log
-	if err := command.Run(); err != nil {
+	runErr := command.Run()
+	// sandboxCommand transfers every 0700 directory to the dropped identity.
+	// Restore ownership before inspecting output or removing the workspace;
+	// production deliberately drops root's DAC override capability.
+	if err := restoreSandboxWorkspace(base, sandboxOwner); err != nil {
+		return CompileResult{Log: log.String()}, err
+	}
+	if runErr != nil {
 		if bounded.Err() != nil {
 			return CompileResult{Log: log.String()}, fmt.Errorf("Typst compilation timed out or was canceled: %w", bounded.Err())
 		}
-		return CompileResult{Log: log.String()}, fmt.Errorf("Typst compilation failed: %w", err)
+		return CompileResult{Log: log.String()}, fmt.Errorf("Typst compilation failed: %w", runErr)
 	}
 	info, err := os.Stat(outputPath)
 	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 {
