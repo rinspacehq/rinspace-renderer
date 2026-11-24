@@ -9,10 +9,6 @@ import (
 	"errors"
 	"fmt"
 	stdhtml "html"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"net/url"
 	"path"
 	"regexp"
@@ -25,16 +21,9 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/operational"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/renderstorage"
-
-	_ "golang.org/x/image/webp"
 )
 
 const markdownRepositoryAssetPromotionVersion = "rin-markdown-repository-assets/v1"
-
-const (
-	markdownPublishedImageMaxDimension = 16384
-	markdownPublishedImageMaxPixels    = 64 * 1024 * 1024
-)
 
 var markdownAssetTagPattern = regexp.MustCompile(`(?is)<(?:img|source)\b[^>]*\bdata-rin-asset-path\s*=\s*(?:"[^"]*"|'[^']*')[^>]*>`)
 var markdownAssetSourcePattern = regexp.MustCompile(`(?is)(\bsrc\s*=\s*)(?:"[^"]*"|'[^']*'|[^\s>]+)`)
@@ -146,7 +135,7 @@ func (executor *markdownProjectExecutor) promoteRepositoryAssets(ctx context.Con
 		if asset.SHA256 != hex.EncodeToString(digest[:]) || asset.Bytes != int64(len(body)) {
 			return nil, markdownAssetFailure("markdown.assets.validation_failed", "Markdown repository asset validation failed.", fmt.Errorf("Markdown asset %q does not match the project graph", assetPath))
 		}
-		storedBody, mediaType, extension, err := verifiedMarkdownAsset(body, asset.MediaType, assetPath)
+		storedBody, mediaType, extension, err := renderstorage.VerifyRepositoryImage(body, asset.MediaType, assetPath)
 		if err != nil {
 			return nil, markdownAssetFailure("markdown.assets.validation_failed", "Markdown repository asset validation failed.", err)
 		}
@@ -231,42 +220,6 @@ func validMarkdownPromotablePath(value string) bool {
 	default:
 		return false
 	}
-}
-
-func verifiedMarkdownAsset(body []byte, mediaType, projectPath string) ([]byte, string, string, error) {
-	mediaType = strings.ToLower(strings.TrimSpace(strings.Split(mediaType, ";")[0]))
-	extension := strings.ToLower(path.Ext(projectPath))
-	valid := false
-	switch extension {
-	case ".png":
-		valid = mediaType == "image/png" && len(body) >= 8 && bytes.Equal(body[:8], []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a})
-	case ".jpg", ".jpeg":
-		valid, extension = mediaType == "image/jpeg" && len(body) >= 3 && body[0] == 0xff && body[1] == 0xd8 && body[2] == 0xff, ".jpg"
-	case ".gif":
-		valid = mediaType == "image/gif" && len(body) >= 6 && (bytes.Equal(body[:6], []byte("GIF87a")) || bytes.Equal(body[:6], []byte("GIF89a")))
-	case ".webp":
-		valid = mediaType == "image/webp" && len(body) >= 12 && bytes.Equal(body[:4], []byte("RIFF")) && bytes.Equal(body[8:12], []byte("WEBP"))
-	case ".svg":
-		if mediaType != "image/svg+xml" {
-			break
-		}
-		normalized, err := renderstorage.NormalizeSVG(body)
-		if err != nil {
-			return nil, "", "", fmt.Errorf("Markdown SVG %q is unsafe: %w", projectPath, err)
-		}
-		return normalized, renderstorage.SVGContentType, extension, nil
-	}
-	if !valid {
-		return nil, "", "", fmt.Errorf("Markdown asset %q does not match its media type", projectPath)
-	}
-	config, format, err := image.DecodeConfig(bytes.NewReader(body))
-	expectedFormat := map[string]string{".png": "png", ".jpg": "jpeg", ".gif": "gif", ".webp": "webp"}[extension]
-	if err != nil || format != expectedFormat || config.Width <= 0 || config.Height <= 0 ||
-		config.Width > markdownPublishedImageMaxDimension || config.Height > markdownPublishedImageMaxDimension ||
-		int64(config.Width)*int64(config.Height) > markdownPublishedImageMaxPixels {
-		return nil, "", "", fmt.Errorf("Markdown asset %q has invalid or excessive dimensions", projectPath)
-	}
-	return body, mediaType, extension, nil
 }
 
 func markdownPrivateRepositoryAssetURL(request ProjectExecutionRequest, assetPath string) (string, error) {

@@ -20,6 +20,7 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/operational"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectcore"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/renderstorage"
 )
 
 func markdownTestPNG(t *testing.T) []byte {
@@ -236,18 +237,18 @@ func TestMarkdownRepositoryAssetPromotionSwitchAndStorageFailurePreserveCandidat
 
 func TestVerifiedMarkdownRepositoryAssets(t *testing.T) {
 	pngBody := markdownTestPNG(t)
-	if body, mediaType, extension, err := verifiedMarkdownAsset(pngBody, "image/png", "assets/images/example.png"); err != nil || string(body) != string(pngBody) || mediaType != "image/png" || extension != ".png" {
+	if body, mediaType, extension, err := renderstorage.VerifyRepositoryImage(pngBody, "image/png", "assets/images/example.png"); err != nil || string(body) != string(pngBody) || mediaType != "image/png" || extension != ".png" {
 		t.Fatalf("valid PNG was not preserved: media=%q extension=%q err=%v", mediaType, extension, err)
 	}
-	if _, _, _, err := verifiedMarkdownAsset(pngBody, "image/jpeg", "assets/images/example.png"); err == nil {
+	if _, _, _, err := renderstorage.VerifyRepositoryImage(pngBody, "image/jpeg", "assets/images/example.png"); err == nil {
 		t.Fatal("expected mismatched image media type to fail")
 	}
 
 	svg := []byte("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><path d=\"M0 0L10 10\"/></svg>\n")
-	if body, mediaType, extension, err := verifiedMarkdownAsset(svg, "image/svg+xml", "assets/quiver/diagram.svg"); err != nil || !strings.Contains(string(body), `<path`) || mediaType != "image/svg+xml; charset=utf-8" || extension != ".svg" {
+	if body, mediaType, extension, err := renderstorage.VerifyRepositoryImage(svg, "image/svg+xml", "assets/quiver/diagram.svg"); err != nil || !strings.Contains(string(body), `<path`) || mediaType != "image/svg+xml; charset=utf-8" || extension != ".svg" {
 		t.Fatalf("valid Quiver SVG was not normalized: media=%q extension=%q body=%q err=%v", mediaType, extension, body, err)
 	}
-	if _, _, _, err := verifiedMarkdownAsset([]byte(`<svg><script>alert(1)</script></svg>`), "image/svg+xml", "assets/quiver/diagram.svg"); err == nil {
+	if _, _, _, err := renderstorage.VerifyRepositoryImage([]byte(`<svg><script>alert(1)</script></svg>`), "image/svg+xml", "assets/quiver/diagram.svg"); err == nil {
 		t.Fatal("expected SVG without visible safe content to fail")
 	}
 }

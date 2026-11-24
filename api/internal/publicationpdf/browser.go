@@ -26,12 +26,25 @@ type BrowserPrinter struct {
 	Chromium string
 }
 
+func (printer BrowserPrinter) Validate() error {
+	if !filepath.IsAbs(printer.Node) || !filepath.IsAbs(printer.Script) || !filepath.IsAbs(printer.Chromium) {
+		return errors.New("Markdown PDF toolchain requires absolute executable and script paths")
+	}
+	for _, path := range []string{printer.Node, printer.Chromium, printer.Script} {
+		info, err := os.Stat(path)
+		if err != nil || !info.Mode().IsRegular() || (path != printer.Script && info.Mode().Perm()&0111 == 0) {
+			return errors.New("Markdown PDF toolchain file is unavailable")
+		}
+	}
+	return nil
+}
+
 // Print renders a final Markdown bundle using the configured local browser
 // toolchain. The caller supplies only verified assets and owns job admission.
 func (printer BrowserPrinter) Print(ctx context.Context, bundle contracts.DocumentBundle, book bool, resolveImage ResolveImage) ([]byte, pdfinspect.Result, error) {
 	empty := pdfinspect.Result{}
-	if !filepath.IsAbs(printer.Node) || !filepath.IsAbs(printer.Script) || !filepath.IsAbs(printer.Chromium) {
-		return nil, empty, errors.New("Markdown PDF toolchain requires absolute executable and script paths")
+	if err := printer.Validate(); err != nil {
+		return nil, empty, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()

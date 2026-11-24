@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/renderstorage"
 )
 
 func canonicalEmbeddedImages(files []AssetFile) ([]contracts.AssetReference, error) {
@@ -30,7 +31,7 @@ func canonicalEmbeddedImages(files []AssetFile) ([]contracts.AssetReference, err
 		if err != nil || int64(len(body)) != file.Bytes {
 			return nil, errors.New("embedded image length is invalid")
 		}
-		verified, media, _, err := verifiedMarkdownAsset(body, file.MIME, file.Path)
+		verified, media, _, err := renderstorage.VerifyRepositoryImage(body, file.MIME, file.Path)
 		if err != nil || !bytes.Equal(verified, body) {
 			return nil, errors.New("embedded image is not validated canonical image output")
 		}

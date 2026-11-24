@@ -63,7 +63,7 @@ func TestMarkdownHTMLRequiresOfflineImages(t *testing.T) {
 	if _, err := MarkdownHTML(context.Background(), bundle, false, nil); err == nil {
 		t.Fatal("accepted network image without a verified offline copy")
 	}
-	doc, err := MarkdownHTML(context.Background(), bundle, false, func(_ context.Context, source string) (string, error) {
+	doc, err := MarkdownHTML(context.Background(), bundle, false, func(_ context.Context, image ImageReference) (string, error) {
 		return "data:image/png;base64,iVBORw0KGgo=", nil
 	})
 	if err != nil {
