@@ -128,8 +128,9 @@ func insertTerminalCompletionTx(
 	}
 	// Committed PDF exports with no document request have their own lifecycle.
 	// Their consumer polls the owner-scoped job and verifies the stored result.
-	if metadata.RequestID == "" && metadata.OutputKind == "typst-pdf-export" &&
-		job.ContentKind == "typst" && job.ResourceClass == "typst-pdf" {
+	typstExport := metadata.OutputKind == "typst-pdf-export" && job.ContentKind == "typst" && job.ResourceClass == "typst-pdf"
+	latexExport := metadata.OutputKind == "latex-pdf-export" && job.ContentKind == "latex" && job.ResourceClass == "latex-pdf"
+	if metadata.RequestID == "" && (typstExport || latexExport) {
 		return nil
 	}
 	if metadata.RequestID == "" {

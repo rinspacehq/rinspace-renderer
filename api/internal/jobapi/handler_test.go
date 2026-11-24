@@ -419,6 +419,53 @@ func TestSubmissionUsesAuthenticatedIdentityAndReturns202(t *testing.T) {
 	}
 }
 
+func TestSubmissionBindsCommittedLaTeXExportToArchive(t *testing.T) {
+	admit := &fakeAdmission{}
+	handler := newTestHandler(t, admit, newFakeRepository(), &fakeStore{})
+	archive := []byte("exact source archive")
+	sum := sha256.Sum256(archive)
+	hash := hex.EncodeToString(sum[:])
+	for _, test := range []struct {
+		name, scope, sourceHash string
+		want                    int
+	}{
+		{"exact scope", "book:42", hash, http.StatusAccepted},
+		{"different scope", "book:43", hash, http.StatusBadRequest},
+		{"different archive", "book:42", strings.Repeat("a", 64), http.StatusUnprocessableEntity},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var body bytes.Buffer
+			form := multipart.NewWriter(&body)
+			for key, value := range map[string]string{
+				"contentKind": "latex", "outputKind": pdfexecutor.ExportOutputKind, "documentEngine": "latexmk",
+				"priorityClass": "publish", "priorityIntent": "publish", "resourceClass": "latex-pdf",
+				"enginePolicyId": pdfexecutor.PolicyID, "imageDigest": "sha256:" + strings.Repeat("b", 64),
+				"entrypoint": "chapters/main.ltx", "documentMode": "book", "controlProjectId": "book:42",
+				"sourceCommit": strings.Repeat("d", 40), "controlProjectHash": test.sourceHash,
+			} {
+				_ = form.WriteField(key, value)
+			}
+			file, _ := form.CreateFormFile("source", "project.zip")
+			_, _ = file.Write(archive)
+			_ = form.Close()
+			request := authorizedRequest(http.MethodPost, "/api/render/jobs", &body)
+			request.Header.Set("Content-Type", form.FormDataContentType())
+			request.Header.Set("Idempotency-Key", strings.Repeat("f", 64))
+			request.Header.Set("X-Rin-Renderer-Owner-Scope", test.scope)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != test.want {
+				t.Fatalf("expected status %d, got %d %s", test.want, response.Code, response.Body)
+			}
+			if response.Code == http.StatusAccepted &&
+				(admit.request.ProjectHash != hash || admit.request.SourceMediaType != "application/zip" ||
+					admit.request.SourceSchemaVersion != "rin-project-archive/v1" || admit.request.ResourceClass != "latex-pdf") {
+				t.Fatalf("LaTeX export mapped to incorrect source or resource: %#v", admit.request)
+			}
+		})
+	}
+}
+
 func TestSubmissionValidatesAndMapsLatexPDFPreview(t *testing.T) {
 	admit := &fakeAdmission{}
 	handler := newTestHandler(t, admit, newFakeRepository(), &fakeStore{})

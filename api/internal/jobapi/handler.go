@@ -224,7 +224,9 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 	}
 	isPreview := outputKind == "latex-pdf-preview" || outputKind == "typst-pdf-preview"
 	isTypstExport := outputKind == "typst-pdf-export"
-	if outputKind != "document" && !isPreview && !isTypstExport {
+	isLatexExport := outputKind == pdfexecutor.ExportOutputKind
+	isExport := isTypstExport || isLatexExport
+	if outputKind != "document" && !isPreview && !isExport {
 		writeError(response, http.StatusBadRequest, "invalid_job_request", "outputKind is invalid")
 		return
 	}
@@ -239,10 +241,10 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 		writeError(response, http.StatusBadRequest, "invalid_source", "unsupported contentKind")
 		return
 	}
-	if isPreview || isTypstExport {
+	if isPreview || isExport {
 		resourceClass = previewResourceClassFor(contentKind)
 	}
-	if !validDocumentEngine(contentKind, documentEngine) && !(isPreview && contentKind == "latex" && documentEngine == "latexmk") {
+	if !validDocumentEngine(contentKind, documentEngine) && !((isPreview || isLatexExport) && contentKind == "latex" && documentEngine == "latexmk") {
 		writeError(response, http.StatusBadRequest, "invalid_document_engine", "documentEngine is not supported for contentKind")
 		return
 	}
@@ -274,20 +276,21 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 			writeError(response, http.StatusUnprocessableEntity, "invalid_preview_identity", "PDF preview identity or policy is invalid")
 			return
 		}
-	} else if isTypstExport {
-		// A committed export runs the same pinned compiler image under the same
-		// fixed isolation policy as a preview; only the identity differs, so the
-		// image digest and policy id are required rather than optional.
-		if documentEngine != "typst" || (priorityIntent != "publish" && priorityIntent != "rebuild") ||
+	} else if isExport {
+		validEntry := contentKind == "typst" && documentEngine == "typst" && canonicalTypstEntrypoint(entrypoint)
+		if isLatexExport {
+			validEntry = contentKind == "latex" && documentEngine == "latexmk" && pdfexecutor.CanonicalExportEntrypoint(entrypoint) &&
+				previewEnginePolicyID == pdfexecutor.PolicyID && controlRequestID == ""
+		}
+		if !validEntry || (priorityIntent != "publish" && priorityIntent != "rebuild") ||
 			request.FormValue("priorityClass") != priorityIntent || request.FormValue("resourceClass") != resourceClass ||
 			previewSnapshotHash != "" || previewSessionID != "" || previewContractVersion != "" ||
-			!previewPolicyPattern.MatchString(previewEnginePolicyID) || !previewImagePattern.MatchString(previewImageDigest) ||
-			!canonicalTypstEntrypoint(entrypoint) {
-			writeError(response, http.StatusUnprocessableEntity, "invalid_export_identity", "Typst PDF export identity is invalid")
+			!previewPolicyPattern.MatchString(previewEnginePolicyID) || !previewImagePattern.MatchString(previewImageDigest) {
+			writeError(response, http.StatusUnprocessableEntity, "invalid_export_identity", "PDF export identity is invalid")
 			return
 		}
 		if controlProjectID == "" || controlSourceCommit == "" || controlProjectHash == "" {
-			writeError(response, http.StatusUnprocessableEntity, "invalid_export_identity", "Typst PDF export requires the published source commit identity")
+			writeError(response, http.StatusUnprocessableEntity, "invalid_export_identity", "PDF export requires the exact source commit identity")
 			return
 		}
 	} else if jobpostgres.IsPreviewResourceClass(request.FormValue("resourceClass")) || priorityIntent == "preview" {
@@ -296,7 +299,7 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 	}
 	if controlProjectID != "" || controlRequestID != "" || controlSourceCommit != "" || controlProjectHash != "" {
 		if controlProjectID != identity.OwnerScope || !controlProjectIDPattern.MatchString(controlProjectID) ||
-			(controlRequestID == "" && !isTypstExport) || (controlRequestID != "" && !controlRequestIDPattern.MatchString(controlRequestID)) ||
+			(controlRequestID == "" && !isExport) || (controlRequestID != "" && !controlRequestIDPattern.MatchString(controlRequestID)) ||
 			!controlCommitPattern.MatchString(controlSourceCommit) ||
 			strings.Trim(controlSourceCommit, "0") == "" || !controlHashPattern.MatchString(controlProjectHash) {
 			writeError(response, http.StatusBadRequest, "invalid_publication_identity", "Control Plane publication identity is invalid")
@@ -344,6 +347,10 @@ func (handler *Handler) submit(response http.ResponseWriter, request *http.Reque
 	}
 	digest := sha256.Sum256(body)
 	projectHash := hex.EncodeToString(digest[:])
+	if isLatexExport && projectHash != controlProjectHash {
+		writeError(response, http.StatusUnprocessableEntity, "invalid_export_identity", "LaTeX export archive digest does not match the admitted source")
+		return
+	}
 	if isPreview {
 		projectHash = previewSnapshotHash
 	}
@@ -598,12 +605,22 @@ func (handler *Handler) previewArtifactReference(ctx context.Context, job jobpos
 	if err != nil {
 		return contracts.ArtifactReference{}, err
 	}
-	if job.State == "succeeded" && artifact.SchemaVersion == pdfexecutor.PreviewSchemaVersion {
-		var result pdfexecutor.PreviewResult
-		if json.Unmarshal(body, &result) != nil || result.Validate() != nil || result.JobID != job.ID {
-			return contracts.ArtifactReference{}, errors.New("stored PDF result is invalid")
+	if job.State == "succeeded" && (artifact.SchemaVersion == pdfexecutor.PreviewSchemaVersion || artifact.SchemaVersion == pdfexecutor.ExportSchemaVersion) {
+		var artifacts []pdfexecutor.PreviewArtifact
+		if artifact.SchemaVersion == pdfexecutor.ExportSchemaVersion {
+			var result pdfexecutor.ExportResult
+			if json.Unmarshal(body, &result) != nil || result.Validate() != nil || result.JobID != job.ID {
+				return contracts.ArtifactReference{}, errors.New("stored LaTeX export result is invalid")
+			}
+			artifacts = result.Artifacts
+		} else {
+			var result pdfexecutor.PreviewResult
+			if json.Unmarshal(body, &result) != nil || result.Validate() != nil || result.JobID != job.ID {
+				return contracts.ArtifactReference{}, errors.New("stored PDF result is invalid")
+			}
+			artifacts = result.Artifacts
 		}
-		for _, candidate := range result.Artifacts {
+		for _, candidate := range artifacts {
 			if candidate.Kind == kind {
 				return contracts.ArtifactReference{
 					ArtifactID: candidate.ArtifactID, SHA256: candidate.SHA256, Bytes: candidate.Bytes,
@@ -797,8 +814,7 @@ func previewArtifactKind(value string) bool {
 }
 
 // pdfArtifactJob reports whether the job exposes a private PDF artifact
-// download. Draft previews and committed Typst exports share the endpoint but
-// never share a result contract or a resource class.
+// download. The result contract supplies each preview or export's artifacts.
 func pdfArtifactJob(job jobpostgres.Job) bool {
 	if previewJob(job) {
 		return true
@@ -808,11 +824,11 @@ func pdfArtifactJob(job jobpostgres.Job) bool {
 		return false
 	}
 	outputKind, _ := metadata["outputKind"].(string)
-	return outputKind == typstpdfexecutor.ExportOutputKind
+	return outputKind == typstpdfexecutor.ExportOutputKind || outputKind == pdfexecutor.ExportOutputKind
 }
 
 // pdfArtifactKind bounds the downloadable artifact kinds per output contract.
-// A committed Typst export never carries TeX aux, fls or synctex files.
+// A committed export exposes the PDF and an optional compiler log.
 func pdfArtifactKind(job jobpostgres.Job, kind string) bool {
 	if previewJob(job) {
 		return previewArtifactKind(kind)

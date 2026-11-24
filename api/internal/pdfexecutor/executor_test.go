@@ -2,6 +2,7 @@ package pdfexecutor
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -225,6 +226,74 @@ func TestExecutorStoresSuccessfulPreviewAndCleansRuntime(t *testing.T) {
 	}
 	if fixture.broker.stopCalls == 0 || fixture.broker.removeCalls == 0 {
 		t.Fatalf("broker cleanup calls: stop=%d remove=%d", fixture.broker.stopCalls, fixture.broker.removeCalls)
+	}
+}
+
+func TestExecutorStoresOnlyCommittedLaTeXPDFArtifacts(t *testing.T) {
+	fixture := newExecutorFixture(t, 100*time.Millisecond)
+	const entrypoint = "chapters/main.ltx"
+	const chapter = "\\section{Final chapter}\n"
+	var archive bytes.Buffer
+	zipped := zip.NewWriter(&archive)
+	for name, body := range map[string]string{
+		"repo/" + entrypoint:    "\\documentclass{book}\\begin{document}\\input{chapters/end.tex}\\end{document}",
+		"repo/chapters/end.tex": chapter,
+	} {
+		file, err := zipped.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := file.Write([]byte(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zipped.Close(); err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(archive.Bytes())
+	job := fixture.job
+	job.PriorityClass = "publish"
+	job.OwnerScope = "book:42"
+	job.ProjectHash = hex.EncodeToString(digest[:])
+	input := requestMetadata{
+		exportSource: exportSource{ControlProjectID: job.OwnerScope, SourceCommit: strings.Repeat("a", 40), ControlProjectHash: job.ProjectHash},
+		OutputKind:   ExportOutputKind, Entrypoint: entrypoint, EnginePolicyID: PolicyID, ImageDigest: "sha256:" + strings.Repeat("b", 64),
+	}
+	var err error
+	job.RequestMetadata, err = json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := fixture.repository.artifacts[job.SourceArtifactID]
+	source.SchemaVersion = "rin-project-archive/v1"
+	source.MediaType = "application/zip"
+	source.SHA256 = job.ProjectHash
+	source.ByteSize = int64(archive.Len())
+	fixture.repository.artifacts[job.SourceArtifactID] = source
+	fixture.store.bodies[job.SourceArtifactID] = archive.Bytes()
+	fixture.broker.onStart = func(id string) error {
+		body, err := os.ReadFile(filepath.Join(fixture.root, id, "workspace", "chapters", "end.tex"))
+		if err != nil || string(body) != chapter {
+			return fmt.Errorf("LaTeX chapter did not survive committed archive import: %v", err)
+		}
+		return writeSuccessfulOutput(filepath.Join(fixture.root, id, "output"), false)
+	}
+	outcome := fixture.executor.Execute(t.Context(), job)
+	if outcome.Failure != nil {
+		t.Fatalf("committed LaTeX failed: %#v", outcome.Failure)
+	}
+	var result ExportResult
+	raw := fixture.store.bodies[outcome.ResultReference.ArtifactID]
+	if err := json.Unmarshal(raw, &result); err != nil || result.Validate() != nil ||
+		result.exportSource != input.exportSource || result.Entrypoint != entrypoint ||
+		len(result.Artifacts) != 2 || result.Artifacts[0].Path != "chapters/.rinspace/main.pdf" {
+		t.Fatalf("invalid LaTeX export result: %s %v", raw, err)
+	}
+	source.SHA256 = strings.Repeat("9", 64)
+	fixture.repository.artifacts[job.SourceArtifactID] = source
+	invalid := fixture.executor.Execute(t.Context(), job)
+	if invalid.Failure == nil || invalid.Failure.Code != "invalid_pdf_archive" || fixture.broker.startCalls != 1 {
+		t.Fatalf("mismatched archive digest reached compiler: %#v", invalid)
 	}
 }
 
