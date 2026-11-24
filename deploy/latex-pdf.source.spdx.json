@@ -27,7 +27,7 @@
     "SPDXRef-Package-texlive-xetex"
   ],
   "packages": [
-    { "name": "ca-certificates", "SPDXID": "SPDXRef-Package-ca-certificates", "versionInfo": "20250419~deb12u1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "ca-certificates", "SPDXID": "SPDXRef-Package-ca-certificates", "versionInfo": "20250419~deb12u2", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
     { "name": "fonts-lmodern", "SPDXID": "SPDXRef-Package-fonts-lmodern", "versionInfo": "2.005-1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
     { "name": "fonts-noto-cjk", "SPDXID": "SPDXRef-Package-fonts-noto-cjk", "versionInfo": "1:20220127+repack1-1", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
     { "name": "fonts-texgyre", "SPDXID": "SPDXRef-Package-fonts-texgyre", "versionInfo": "20180621-6", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
