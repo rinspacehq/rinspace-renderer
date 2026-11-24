@@ -2397,6 +2397,101 @@ func TestPostgresTypstPDFPreviewQueueSemantics(t *testing.T) {
 	}
 }
 
+func TestPostgresTypstExportCanFinishWithoutDocumentRequest(t *testing.T) {
+	dsn := os.Getenv("RIN_RENDERER_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("RIN_RENDERER_TEST_DATABASE_URL is not set")
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	repository, err := Open(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer repository.Close()
+	if _, err := repository.db.ExecContext(ctx, `DROP SCHEMA IF EXISTS rin_renderer CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	if err := repository.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	leader, err := repository.AcquireResourceLeadership(ctx, "typst-pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer leader.Close()
+	now := time.Now().UTC().Truncate(time.Second)
+	limits := AdmissionLimits{GlobalNonTerminal: 10, PrincipalQueued: 5, PreviewQueued: 5, PrivateSourceBytes: 1 << 20}
+	for i, state := range []string{"succeeded", "failed", "canceled"} {
+		t.Run(state, func(t *testing.T) {
+			id := fmt.Sprintf("90200000-0000-4000-8000-%012d", i+1)
+			input := testTypstPreviewAdmissionInput(id, testDigest([]byte(id)), "article:42", "b", now)
+			input.Job.PriorityClass = "publish"
+			input.Job.RequestMetadata = json.RawMessage(fmt.Sprintf(
+				`{"outputKind":"typst-pdf-export","controlProjectId":"article:42","sourceCommit":"%s","controlProjectHash":"%s","entrypoint":"main.typ"}`,
+				strings.Repeat("c", 40), input.Job.ProjectHash))
+			input.Workload, err = AdmissionWorkload(WorkloadAdmission{
+				ContentKind: "typst", DocumentEngine: "typst", ResourceClass: "typst-pdf", PriorityClass: "publish", ProjectBytes: 3,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			reservation, err := repository.ReserveAdmission(ctx, input, limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			commit := testPreviewCommitInput(reservation, input, now)
+			commit.Artifact.MediaType = "application/zip"
+			commit.Artifact.SchemaVersion = "rin-project-archive/v1"
+			if _, err := repository.CommitAdmission(ctx, commit); err != nil {
+				t.Fatal(err)
+			}
+			if state == "canceled" {
+				canceled, err := repository.RequestCancellation(ctx, id, now.Add(time.Second))
+				if err != nil || canceled.Job.State != state {
+					t.Fatalf("cancel Typst export: state=%s error=%v", canceled.Job.State, err)
+				}
+			} else {
+				leaseToken := testDigest([]byte("lease-" + id))
+				attemptID := fmt.Sprintf("90400000-0000-4000-8000-%012d", i+1)
+				lease, err := repository.ClaimNext(ctx, leader, ClaimInput{
+					AttemptID: attemptID, WorkerID: "export-worker", LeaseTokenHash: leaseToken, Now: now.Add(time.Second),
+					LeaseExpiresAt: now.Add(time.Minute), Policy: testSchedulingPolicy(), ResourceClass: "typst-pdf",
+				})
+				if err != nil || lease.Job.ID != id {
+					t.Fatalf("claim Typst export: %#v %v", lease, err)
+				}
+				finish := FinishInput{AttemptID: attemptID, LeaseTokenHash: leaseToken, Now: now.Add(2 * time.Second)}
+				if state == "succeeded" {
+					digest := strings.Repeat("a", 64)
+					artifactID := "render-jobs/v1/result/" + id + "/" + digest + ".json"
+					expires := now.Add(time.Hour)
+					finish.Succeeded = true
+					finish.ResultArtifact = &Artifact{
+						ID: artifactID, StorageKey: artifactID, SHA256: digest, Kind: "result", Visibility: "private",
+						ByteSize: 42, MediaType: "application/json", SchemaVersion: "rin-typst-pdf/v1", ExpiresAt: &expires,
+					}
+					finish.CompletionResult = &CompletionResultEvidence{RendererProjectHash: input.Job.ProjectHash, ResultHash: digest}
+				} else {
+					finish.ErrorCode = "typst_pdf_compile_failed"
+				}
+				finished, err := repository.FinishAttempt(ctx, finish)
+				if err != nil || finished.State != state {
+					t.Fatalf("finish Typst export: state=%s error=%v", finished.State, err)
+				}
+				if finish.Succeeded && finished.ResultArtifactID != finish.ResultArtifact.ID {
+					t.Fatal("Typst result was not committed with terminal state")
+				}
+			}
+			var completionCount int
+			err = repository.db.QueryRowContext(ctx, `SELECT count(*) FROM rin_renderer.renderer_completion_outbox WHERE job_id=$1`, id).Scan(&completionCount)
+			if err != nil || completionCount != 0 {
+				t.Fatalf("Typst export emitted a document completion: count=%d error=%v", completionCount, err)
+			}
+		})
+	}
+}
+
 func testPreviewAdmissionInput(id, idempotencyKey, ownerScope, snapshotNibble string, now time.Time) AdmissionReservationInput {
 	workload, err := AdmissionWorkload(WorkloadAdmission{
 		ContentKind: "latex", DocumentEngine: "latexmk", ResourceClass: "latex-pdf",
