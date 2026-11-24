@@ -38,6 +38,8 @@ For Rinspace product use, keep `RIN_RENDERER_COMPLETION_MODE=control-plane` and 
 
 PDF and Typst compiler workers use a restricted broker profile and their own pinned image and toolchain locks. A local installation may leave those optional workers disabled; the API does not claim a compiler is available merely because its protocol exists.
 
+The Renderer command `rin-renderer-api markdown-pdf` prints a final Markdown document bundle locally. It reads a JSON object with `bundle`, `book`, and an optional `images` map of exact source keys to verified data URLs from standard input, and writes the inspected PDF to standard output. Install the pinned Playwright package from `engines/markdown-pdf`. Set `RIN_RENDERER_MARKDOWN_NODE_BIN`, `RIN_RENDERER_MARKDOWN_PDF_SCRIPT`, and `RIN_RENDERER_MARKDOWN_PDF_CHROMIUM` to absolute paths. The browser documented in `deploy/markdown-pdf-browser.lock.json` needs an unprivileged account with Chromium namespace sandbox support.
+
 ## Lightweight source checks
 
 Use Node.js 22 and Go 1.25 for the API (Go 1.24 for the TeX SVG module). Install the three pinned Node engine graphs before running the complete Go tests, since the Go suite starts Node workers:

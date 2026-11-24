@@ -12,6 +12,8 @@ This is the source-level dependency review for the initial Renderer candidate. I
 | Go API dependencies | `api/go.mod` and `api/go.sum` | Direct and transitive module license files were checked at pinned versions: MIT, ISC, BSD-style, Apache-2.0, and the MIT/Apache dual license of the YAML modules. `github.com/pdfcpu/pdfcpu@v0.14.0` is Apache-2.0; `github.com/jackc/pgx/v5@v5.8.0` is MIT. The binary release notice bundle must include each module's actual license and any `NOTICE`. |
 | TeX SVG Go module | `engines/texsvg/go.mod` | No external Go module requirements in this module. The external TeX/diagram tools it invokes belong to the image package closure above. |
 | Markdown Node graph | `engines/markdown/package-lock.json` | 126 pinned packages: 124 MIT, 1 ISC, 1 BSD-2-Clause according to lock metadata. Includes Shiki 4.4.2 (MIT). |
+| Markdown PDF print driver | `engines/markdown-pdf/package-lock.json` | Microsoft Playwright Core 1.65.1 (Apache-2.0). The npm package includes its license and notice. |
+| Markdown PDF test browser | `deploy/markdown-pdf-browser.lock.json` | Reviewed Linux headless shell archive for browser tests. Its archive contains `LICENSE.headless_shell`. The browser itself is not bundled in the runtime image. |
 | MathJax Node graph | `engines/mathjax/package-lock.json` | 17 pinned packages: 5 Apache-2.0, 5 MIT, 7 BlueOak-1.0.0 according to lock metadata. `@mathjax/src` is Apache-2.0. |
 | KaTeX Node graph | `engines/katex/package-lock.json` | 2 pinned packages, both MIT according to lock metadata. KaTeX's checked package `LICENSE` contains the MIT copyright and permission notice. |
 

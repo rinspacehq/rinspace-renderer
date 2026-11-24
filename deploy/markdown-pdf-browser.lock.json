@@ -1,0 +1,9 @@
+{
+  "platform": "linux/amd64",
+  "version": "159.0.8154.6",
+  "release": "https://cdn.playwright.dev/builds/cft/159.0.8154.6/linux64/chrome-headless-shell-linux64.zip",
+  "archiveSha256": "77a6442fd3c8acd3bef9e1067fc26f5ef464277d22f0e8cb58dc3e4077a3e458",
+  "executable": "chrome-headless-shell-linux64/chrome-headless-shell",
+  "executableSha256": "24eb0a14de64ab0c9c2e283a5512ca817db64af8fd853cdb4d818f19a8e23b9b",
+  "notice": "chrome-headless-shell-linux64/LICENSE.headless_shell"
+}

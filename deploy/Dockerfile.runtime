@@ -33,6 +33,11 @@ COPY ${RENDERER_SOURCE_ROOT}/engines/markdown/package.json ${RENDERER_SOURCE_ROO
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
 COPY ${RENDERER_SOURCE_ROOT}/engines/markdown/*.mjs ./
 
+WORKDIR /opt/rin-renderer/engines/markdown-pdf
+COPY ${RENDERER_SOURCE_ROOT}/engines/markdown-pdf/package.json ${RENDERER_SOURCE_ROOT}/engines/markdown-pdf/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
+COPY ${RENDERER_SOURCE_ROOT}/engines/markdown-pdf/print.mjs ./
+
 FROM --platform=linux/amd64 ${RENDERER_BASE_IMAGE}
 # Fragment compilation is isolated from the networked queue worker with a
 # separate user/network/mount/PID namespace. The release records the installed
@@ -42,10 +47,12 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=markdown-build /usr/local/bin/node /usr/local/bin/node
 COPY --from=markdown-build /opt/rin-renderer/engines/markdown /opt/rin-renderer/engines/markdown
+COPY --from=markdown-build /opt/rin-renderer/engines/markdown-pdf /opt/rin-renderer/engines/markdown-pdf
 COPY --from=api-build /out/rin-renderer-api /usr/local/bin/rin-renderer-api
 COPY --from=texsvg-build /out/rin-renderer-texsvg /usr/local/bin/rin-renderer-texsvg
 ENV RIN_RENDERER_MARKDOWN_NODE_BIN=/usr/local/bin/node \
     RIN_RENDERER_MARKDOWN_SCRIPT=/opt/rin-renderer/engines/markdown/worker.mjs \
+    RIN_RENDERER_MARKDOWN_PDF_SCRIPT=/opt/rin-renderer/engines/markdown-pdf/print.mjs \
     RIN_RENDERER_MATHJAX_NODE_BIN=/usr/local/bin/node \
     RIN_RENDERER_KATEX_NODE_BIN=/usr/local/bin/node
 WORKDIR /opt/rin-renderer
