@@ -206,6 +206,7 @@ func TestPublicationPDFChromium(t *testing.T) {
 	}
 	handler, input := publicationPDFFixture(t, publicationpdf.BrowserPrinter{
 		Node: os.Getenv("RIN_RENDERER_MARKDOWN_NODE_BIN"), Chromium: chromium, Script: script,
+		Isolate: os.Getenv("RIN_RENDERER_TEST_PDF_ISOLATION") == "1",
 	})
 	response := requestPublicationPDF(t, handler, "token-a", input)
 	if response.Code != http.StatusOK {

@@ -20,6 +20,12 @@ func TestBrowserPrinter(t *testing.T) {
 		t.Fatal(err)
 	}
 	printer := BrowserPrinter{Node: os.Getenv("RIN_RENDERER_MARKDOWN_NODE_BIN"), Script: script, Chromium: chromium}
+	if os.Getenv("RIN_RENDERER_TEST_PDF_ISOLATION") == "1" {
+		printer.Isolate = true
+		if err := printer.CheckIsolation(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	pdf, inspection, err := printer.Print(context.Background(), markdownBundle(
 		`<h1 id="intro">First chapter</h1><a href="chapters/last.md#intro">Next chapter</a>`,
 		`<h1 id="intro">样书终章</h1><p>终章正文</p><a href="chapters/first.md#intro">Back</a>`,

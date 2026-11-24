@@ -201,6 +201,38 @@ jobs:
               if grep -Fq "not found" <<< "$libraries"; then exit 1; fi
               fc-list :lang=zh family | grep -F "Noto Serif CJK SC"
             ' | tee evidence/markdown-pdf-runtime.txt
+      - name: Exercise the publication sandbox from a root Renderer runtime
+        if: inputs.component == 'runtime'
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline="$PWD/evidence/docker-seccomp-base.json"
+          profile="$PWD/evidence/markdown-pdf-seccomp.json"
+          curl -fsS --proto '=https' --max-time 30 \
+            'https://raw.githubusercontent.com/moby/profiles/9ee3204f0d0cfa19ca2c6a7b0fcf5a2b353954ae/seccomp/default.json' -o "$baseline"
+          printf '3320527d4568265ac97a077609b1bfd4cfd0d789eeb9239b7e094b1526675406  %s\n' "$baseline" | sha256sum -c -
+          node --input-type=module - "$baseline" "$profile" <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const [baseline,output] = process.argv.slice(2);
+          const profile = JSON.parse(readFileSync(baseline));
+          profile.syscalls.push({
+            names:['clone','setns','unshare'],action:'SCMP_ACT_ALLOW',
+            comment:'Allow Chromium to create its user and network namespaces',
+          }, {
+            names:['chroot'],action:'SCMP_ACT_ALLOW',
+            comment:'Allow Chromium to restrict the filesystem in its own user namespace',
+          });
+          writeFileSync(output, JSON.stringify(profile, null, 2) + '\n');
+          NODE
+          (cd api && CGO_ENABLED=0 go test -c -o ../evidence/browser.test ./internal/publicationpdf)
+          docker run --rm --network none --read-only --user 0 --cap-drop SYS_CHROOT \
+            --ipc none --init --security-opt no-new-privileges --security-opt "seccomp=$profile" \
+            --cpus 1 --memory 1024m --memory-swap 1024m --pids-limit 128 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
+            --mount "type=bind,src=$PWD/evidence/browser.test,dst=/browser.test,readonly" \
+            --workdir /opt/rin-renderer/engines/markdown-pdf/chromium \
+            --env RIN_RENDERER_TEST_PDF_ISOLATION=1 --entrypoint /browser.test "$REFERENCE" \
+            -test.run '^TestBrowserPrinter$' -test.v | tee evidence/markdown-pdf-sandbox.txt
       - name: Native math SVG contract in the exact runtime image
         if: inputs.component == 'runtime'
         shell: bash
@@ -270,4 +302,5 @@ jobs:
             evidence/*.spdx.json
             evidence/*.NOTICES.tar.gz
             evidence/image-evidence.json
+            evidence/markdown-pdf-sandbox.txt
           if-no-files-found: error
