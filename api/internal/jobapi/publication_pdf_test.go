@@ -67,10 +67,6 @@ func TestPublicationTagPDFBindsPublicFieldsAndProjectScope(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := contracts.PublicationPDFInput{PublicationPDFEdition: edition, ProfileSHA256: previous.ProfileSHA256}
-	_, key, err := input.Identity()
-	if err != nil {
-		t.Fatal(err)
-	}
 	for _, test := range []struct {
 		name, scope, title string
 		code               int
@@ -82,15 +78,7 @@ func TestPublicationTagPDFBindsPublicFieldsAndProjectScope(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fields := snapshot
 			fields.Title = test.title
-			raw, err := json.Marshal(map[string]any{"snapshot": fields, "input": input})
-			if err != nil {
-				t.Fatal(err)
-			}
-			request := authorizedRequest(http.MethodPost, "/api/render/publication-pdf/tag-snapshot", bytes.NewReader(raw))
-			request.Header.Set("Idempotency-Key", key)
-			request.Header.Set("X-Rin-Renderer-Owner-Scope", test.scope)
-			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, request)
+			response := requestTagPublicationPDF(t, handler, test.scope, input, fields)
 			if response.Code != test.code {
 				t.Fatalf("tag PDF = %d %s", response.Code, response.Body)
 			}
@@ -99,6 +87,24 @@ func TestPublicationTagPDFBindsPublicFieldsAndProjectScope(t *testing.T) {
 			}
 		})
 	}
+}
+
+func requestTagPublicationPDF(t *testing.T, handler *Handler, scope string, input contracts.PublicationPDFInput, snapshot contracts.PublicationTagPDFSnapshot) *httptest.ResponseRecorder {
+	t.Helper()
+	_, key, err := input.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := json.Marshal(map[string]any{"snapshot": snapshot, "input": input})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := authorizedRequest(http.MethodPost, "/api/render/publication-pdf/tag-snapshot", bytes.NewReader(raw))
+	request.Header.Set("Idempotency-Key", key)
+	request.Header.Set("X-Rin-Renderer-Owner-Scope", scope)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	return response
 }
 
 func TestPublicationPDFChromium(t *testing.T) {
@@ -118,11 +124,25 @@ func TestPublicationPDFChromium(t *testing.T) {
 		t.Fatalf("real publication PDF = %d %s", response.Code, response.Body.String())
 	}
 	assertPDFReceipt(t, response, input, 2)
+	snapshot := contracts.PublicationTagPDFSnapshot{Title: "样本标签", Excerpt: "用于验证中文标签的公开用法。"}
+	tagEdition, err := snapshot.Edition("tag-wiki:42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag := contracts.PublicationPDFInput{PublicationPDFEdition: tagEdition, ProfileSHA256: input.ProfileSHA256}
+	tagResponse := requestTagPublicationPDF(t, handler, tagEdition.ProjectID, tag, snapshot)
+	if tagResponse.Code != http.StatusOK {
+		t.Fatalf("real tag PDF = %d %s", tagResponse.Code, tagResponse.Body)
+	}
+	assertPDFReceipt(t, tagResponse, tag, 1)
 	if sample := os.Getenv("RIN_PUBLICATION_PDF_TEST_OUTPUT"); sample != "" {
 		if err := os.WriteFile(sample, response.Body.Bytes(), 0600); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(sample+".receipt", []byte(response.Header().Get(publicationPDFReceiptHeader)), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(sample+".tag.pdf", tagResponse.Body.Bytes(), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
