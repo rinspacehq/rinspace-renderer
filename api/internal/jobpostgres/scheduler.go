@@ -750,14 +750,14 @@ func (repository *Repository) RecoverExpiredLeases(ctx context.Context, leadersh
 }
 
 func queuedPreviewSuccessor(ctx context.Context, tx *sql.Tx, job Job, successorID *string) (bool, error) {
-	if !previewResourceClass(job.ResourceClass) {
+	if !previewResourceClass(job.ResourceClass) || job.PriorityClass != "preview" {
 		return false, nil
 	}
 	err := tx.QueryRowContext(ctx, `
 		SELECT id::text
 		FROM rin_renderer.render_jobs
 		WHERE principal_id = $1 AND owner_scope = $2
-			AND resource_class = $4 AND state = 'queued'
+			AND resource_class = $4 AND state = 'queued' AND priority_class = 'preview'
 			AND cancel_requested = false AND id <> $3::uuid
 		ORDER BY created_at DESC, id DESC
 		LIMIT 1`, job.PrincipalID, job.OwnerScope, job.ID, job.ResourceClass).Scan(successorID)

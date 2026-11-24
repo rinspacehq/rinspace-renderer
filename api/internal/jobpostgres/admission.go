@@ -123,7 +123,7 @@ func (repository *Repository) ReserveAdmission(ctx context.Context, input Admiss
 
 	// Preview results are private and context-bound. A content cache hit is trusted
 	// only when both the successful job and its result artifact are still retained.
-	if previewResourceClass(input.Job.ResourceClass) {
+	if previewResourceClass(input.Job.ResourceClass) && input.Job.PriorityClass == "preview" {
 		var cachedJobID string
 		err := tx.QueryRowContext(ctx, `
 			SELECT jobs.id::text
@@ -131,7 +131,7 @@ func (repository *Repository) ReserveAdmission(ctx context.Context, input Admiss
 			JOIN rin_renderer.render_artifacts AS artifacts
 				ON artifacts.id = jobs.result_artifact_id
 			WHERE jobs.principal_id = $1 AND jobs.owner_scope = $2
-				AND jobs.resource_class = $7 AND jobs.state = 'succeeded'
+				AND jobs.resource_class = $7 AND jobs.state = 'succeeded' AND jobs.priority_class = 'preview'
 				AND jobs.project_hash = $3 AND jobs.options_hash = $4
 				AND jobs.renderer_version = $5 AND jobs.expires_at > $6
 				AND artifacts.kind = 'result' AND artifacts.visibility = 'private'
@@ -192,8 +192,8 @@ func (repository *Repository) ReserveAdmission(ctx context.Context, input Admiss
 			FROM rin_renderer.render_jobs
 			WHERE resource_class = $3 AND state = 'queued'
 				AND cancel_requested = false
-				AND NOT (principal_id = $1 AND owner_scope = $2)`, input.Job.PrincipalID,
-			input.Job.OwnerScope, input.Job.ResourceClass).Scan(&previewQueued); err != nil {
+				AND ($4 <> 'preview' OR NOT (principal_id = $1 AND owner_scope = $2 AND priority_class = 'preview'))`,
+			input.Job.PrincipalID, input.Job.OwnerScope, input.Job.ResourceClass, input.Job.PriorityClass).Scan(&previewQueued); err != nil {
 			return AdmissionReservation{}, fmt.Errorf("count renderer preview queue: %w", err)
 		}
 		if previewQueued >= limits.PreviewQueued {
@@ -369,19 +369,21 @@ func (repository *Repository) CommitAdmission(ctx context.Context, input CommitA
 			FROM rin_renderer.render_jobs
 			WHERE resource_class = $3 AND state = 'queued'
 				AND cancel_requested = false
-				AND NOT (principal_id = $1 AND owner_scope = $2)`, job.PrincipalID,
-			job.OwnerScope, job.ResourceClass).Scan(&previewQueued); err != nil {
+				AND ($4 <> 'preview' OR NOT (principal_id = $1 AND owner_scope = $2 AND priority_class = 'preview'))`,
+			job.PrincipalID, job.OwnerScope, job.ResourceClass, job.PriorityClass).Scan(&previewQueued); err != nil {
 			return Job{}, fmt.Errorf("count renderer preview queue at commit: %w", err)
 		}
 		if previewQueued >= input.PreviewQueueLimit {
 			return Job{}, ErrPreviewQueueCapacity
 		}
+	}
+	if previewResourceClass(job.ResourceClass) && job.PriorityClass == "preview" {
 		var newerQueuedID string
 		err := tx.QueryRowContext(ctx, `
 			SELECT id::text
 			FROM rin_renderer.render_jobs
 			WHERE principal_id = $1 AND owner_scope = $2
-				AND resource_class = $5 AND state = 'queued'
+				AND resource_class = $5 AND state = 'queued' AND priority_class = 'preview'
 				AND cancel_requested = false
 				AND (created_at, id) > ($3, $4::uuid)
 			ORDER BY created_at DESC, id DESC
@@ -422,7 +424,7 @@ func (repository *Repository) CommitAdmission(ctx context.Context, input CommitA
 				SET state = 'canceled', cancel_requested = true, available_at = NULL,
 					finished_at = $3, superseded_by = $4::uuid, updated_at = clock_timestamp()
 				WHERE principal_id = $1 AND owner_scope = $2
-					AND resource_class = $5 AND state = 'queued'
+					AND resource_class = $5 AND state = 'queued' AND priority_class = 'preview'
 					AND cancel_requested = false
 				RETURNING id
 			)

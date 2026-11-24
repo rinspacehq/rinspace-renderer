@@ -25,6 +25,7 @@ var (
 	jobIDPattern     = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 	sha256Pattern    = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	debugNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
+	typstNamePattern = regexp.MustCompile(`^(?:pdf-[0-9a-f]{64}\.pdf|log-[0-9a-f]{64}\.log)$`)
 )
 
 var (
@@ -418,9 +419,6 @@ func parsePrivateID(artifactID string) (kind string, jobID string, leaf string, 
 		return "", "", "", ErrPrivateOnly
 	}
 	kind, jobID, leaf = parts[2], parts[3], parts[4]
-	if kind != "source" && kind != "result" && kind != "debug" {
-		return "", "", "", ErrPrivateOnly
-	}
 	switch kind {
 	case "source":
 		if !sha256Pattern.MatchString(leaf) {
@@ -434,6 +432,12 @@ func parsePrivateID(artifactID string) (kind string, jobID string, leaf string, 
 		if !debugNamePattern.MatchString(leaf) || leaf == "." || leaf == ".." {
 			return "", "", "", ErrInvalidPath
 		}
+	case "typst":
+		if !typstNamePattern.MatchString(leaf) {
+			return "", "", "", ErrInvalidPath
+		}
+	default:
+		return "", "", "", ErrPrivateOnly
 	}
 	return kind, jobID, leaf, nil
 }
@@ -448,6 +452,13 @@ func validatePrivateDigest(kind string, artifactID string, digest string) error 
 	}
 	if kind == "result" && strings.TrimSuffix(leaf, ".json") != digest {
 		return ErrMetadata
+	}
+	if kind == "typst" {
+		_, nameDigest, _ := strings.Cut(leaf, "-")
+		nameDigest, _, _ = strings.Cut(nameDigest, ".")
+		if nameDigest != digest {
+			return ErrMetadata
+		}
 	}
 	return nil
 }

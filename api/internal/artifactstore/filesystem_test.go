@@ -17,6 +17,32 @@ import (
 
 const testJobID = "11111111-1111-4111-8111-111111111111"
 
+func TestFileStoreTypstArtifactsArePrivateAndBoundToTheirDigest(t *testing.T) {
+	store := newTestStore(t)
+	body := []byte("Typst compiler PDF fixture")
+	prefix := "render-jobs/v1/typst/" + testJobID + "/"
+	expiresAt := store.now().Add(time.Hour)
+	write := orchestration.ArtifactWrite{
+		ArtifactID: prefix + "pdf-" + testSHA256(body) + ".pdf", Body: body,
+		MediaType: "application/pdf", SchemaVersion: "rin-typst-pdf-artifact/v1", ExpiresAt: &expiresAt,
+	}
+	reference, err := store.PutPrivate(t.Context(), write)
+	if err != nil || reference.Visibility != "private" {
+		t.Fatalf("write Typst PDF: %#v %v", reference, err)
+	}
+	if loaded, err := store.GetPrivate(t.Context(), reference); err != nil || string(loaded) != string(body) {
+		t.Fatalf("read Typst PDF: %q %v", loaded, err)
+	}
+	write.Body = []byte("bytes for a different document")
+	if _, err := store.PutPrivate(t.Context(), write); !errors.Is(err, ErrMetadata) {
+		t.Fatalf("wrong Typst artifact digest: %v", err)
+	}
+	write.ArtifactID = prefix + "log-" + testSHA256(body) + ".pdf"
+	if _, err := store.PutPrivate(t.Context(), write); !errors.Is(err, ErrInvalidPath) {
+		t.Fatalf("unrecognized Typst artifact name: %v", err)
+	}
+}
+
 func TestFileStorePrivateLifecycleAndMetadata(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()

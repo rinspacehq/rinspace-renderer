@@ -293,7 +293,12 @@ func TestExecutorStoresCommittedExportWithProjectIdentity(t *testing.T) {
 		if body, err := os.ReadFile(filepath.Join(workspace, "chapters", "one.typ")); err != nil || !bytes.Equal(body, files["chapters/one.typ"]) {
 			return fmt.Errorf("nested Typst chapter was not extracted: %v", err)
 		}
-		return writeSuccessfulOutput(filepath.Join(fixture.root, id, "output"), false)
+		output := filepath.Join(fixture.root, id, "output")
+		if err := writeSuccessfulOutput(output, false); err != nil {
+			return err
+		}
+		// A warning-free Typst compilation leaves an empty compiler log.
+		return os.Truncate(filepath.Join(output, outputLogFilename), 0)
 	}
 	outcome := fixture.executor.Execute(context.Background(), fixture.job)
 	if outcome.Failure != nil {
@@ -317,6 +322,9 @@ func TestExecutorStoresCommittedExportWithProjectIdentity(t *testing.T) {
 	}
 	if result.SessionID != "" || result.SnapshotHash != "" || result.DraftRevision != nil {
 		t.Fatalf("export result carried a session identity = %#v", result)
+	}
+	if len(result.Artifacts) != 1 || result.Artifacts[0].Kind != "pdf" {
+		t.Fatalf("export artifacts for a silent compiler = %#v", result.Artifacts)
 	}
 	if result.IdempotencyKey != ExportIdempotencyKey("book:77", strings.Repeat("a", 40), "main.typ", PolicyID, fixture.digest) {
 		t.Fatalf("export idempotency key = %q", result.IdempotencyKey)

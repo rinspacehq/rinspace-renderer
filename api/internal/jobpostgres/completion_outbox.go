@@ -90,6 +90,7 @@ func (health CompletionHealth) Ready() error {
 }
 
 type controlPlaneJobMetadata struct {
+	OutputKind         string `json:"outputKind"`
 	RequestID          string `json:"requestId"`
 	ControlProjectID   string `json:"controlProjectId"`
 	SourceCommit       string `json:"sourceCommit"`
@@ -122,15 +123,21 @@ func insertTerminalCompletionTx(
 	if !hasControlPlaneIdentity {
 		return nil
 	}
+	if metadata.ControlProjectID != job.OwnerScope {
+		return errors.New("Renderer Control Plane project identity does not match the job owner scope")
+	}
+	// Committed PDF exports with no document request have their own lifecycle.
+	// Their consumer polls the owner-scoped job and verifies the stored result.
+	if metadata.RequestID == "" && metadata.OutputKind == "typst-pdf-export" &&
+		job.ContentKind == "typst" && job.ResourceClass == "typst-pdf" {
+		return nil
+	}
 	if metadata.RequestID == "" {
 		requestID, err := legacyControlPlaneRequestID(ctx, tx, job.ID)
 		if err != nil {
 			return err
 		}
 		metadata.RequestID = requestID
-	}
-	if metadata.ControlProjectID != job.OwnerScope {
-		return errors.New("Renderer Control Plane project identity does not match the job owner scope")
 	}
 	input := CompletionOutboxInput{
 		JobID: job.ID, RequestID: metadata.RequestID, ControlProjectID: metadata.ControlProjectID,
