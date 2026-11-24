@@ -59,6 +59,48 @@ func TestPublicationPDFIdentityAndAssets(t *testing.T) {
 	}
 }
 
+func TestPublicationTagPDFBindsPublicFieldsAndProjectScope(t *testing.T) {
+	handler, previous := publicationPDFFixture(t, printFixture{})
+	snapshot := contracts.PublicationTagPDFSnapshot{Title: "中文标签", Excerpt: "A <script> example is plain text."}
+	edition, err := snapshot.Edition("tag-wiki:42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := contracts.PublicationPDFInput{PublicationPDFEdition: edition, ProfileSHA256: previous.ProfileSHA256}
+	_, key, err := input.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name, scope, title string
+		code               int
+	}{
+		{"published fields", edition.ProjectID, snapshot.Title, http.StatusOK},
+		{"changed fields", edition.ProjectID, "新名称", http.StatusUnprocessableEntity},
+		{"wrong scope", "tag-wiki:43", snapshot.Title, http.StatusUnprocessableEntity},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fields := snapshot
+			fields.Title = test.title
+			raw, err := json.Marshal(map[string]any{"snapshot": fields, "input": input})
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := authorizedRequest(http.MethodPost, "/api/render/publication-pdf/tag-snapshot", bytes.NewReader(raw))
+			request.Header.Set("Idempotency-Key", key)
+			request.Header.Set("X-Rin-Renderer-Owner-Scope", test.scope)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != test.code {
+				t.Fatalf("tag PDF = %d %s", response.Code, response.Body)
+			}
+			if test.code == http.StatusOK {
+				assertPDFReceipt(t, response, input, 2)
+			}
+		})
+	}
+}
+
 func TestPublicationPDFChromium(t *testing.T) {
 	chromium := os.Getenv("RIN_RENDERER_MARKDOWN_PDF_CHROMIUM")
 	if chromium == "" {

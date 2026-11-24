@@ -142,6 +142,7 @@ func New(auth Authenticator, admit Admission, repository Repository, store Priva
 			return nil, err
 		}
 		handler.mux.HandleFunc("POST /api/render/jobs/{jobId}/publication-pdf", handler.publicationPDF)
+		handler.mux.HandleFunc("POST /api/render/publication-pdf/tag-snapshot", handler.publicationTagPDF)
 	}
 	handler.mux.HandleFunc("POST /api/render/jobs", handler.submit)
 	handler.mux.HandleFunc("GET /api/render/jobs/{jobId}", handler.status)

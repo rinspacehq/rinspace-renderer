@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"html"
 	"io"
 	"net/http"
 	"strconv"
@@ -107,7 +108,67 @@ func (handler *Handler) publicationPDF(response http.ResponseWriter, request *ht
 		return
 	}
 	resolver := handler.publicationImageResolver(job, output.Result)
-	pdf, inspected, err := handler.config.PublicationPDF.Printer.Print(ctx, *output.Result.Inline, book, resolver)
+	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, *output.Result.Inline, book, resolver)
+}
+
+func (handler *Handler) publicationTagPDF(response http.ResponseWriter, request *http.Request) {
+	identity, ok := handler.identity(response, request)
+	if !ok {
+		return
+	}
+	var payload struct {
+		Input    contracts.PublicationPDFInput       `json:"input"`
+		Snapshot contracts.PublicationTagPDFSnapshot `json:"snapshot"`
+	}
+	decoder := json.NewDecoder(http.MaxBytesReader(response, request.Body, 32<<10))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil || decoder.Decode(new(json.RawMessage)) != io.EOF {
+		writeError(response, http.StatusBadRequest, "invalid_publication_pdf_input", "tag PDF input is invalid")
+		return
+	}
+	input := payload.Input
+	edition, editionErr := payload.Snapshot.Edition(identity.OwnerScope)
+	readVersion, jobKey, identityErr := input.Identity()
+	if editionErr != nil || identityErr != nil || input.PublicationPDFEdition != edition ||
+		request.Header.Get("Idempotency-Key") != jobKey {
+		writeError(response, http.StatusUnprocessableEntity, "invalid_publication_pdf_identity", "tag fields do not match the admitted edition")
+		return
+	}
+	if input.ProfileSHA256 != handler.config.PublicationPDF.ProfileSHA256 {
+		writeError(response, http.StatusConflict, "publication_pdf_profile_mismatch", "publication PDF profile is unavailable")
+		return
+	}
+	select {
+	case handler.printSlot <- struct{}{}:
+		defer func() { <-handler.printSlot }()
+	default:
+		response.Header().Set("Retry-After", "2")
+		writeError(response, http.StatusServiceUnavailable, "publication_pdf_busy", "publication PDF printer is busy")
+		return
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), 80*time.Second)
+	defer cancel()
+	title := payload.Snapshot.Title
+	fragment := "<h1>" + html.EscapeString(title) + "</h1>"
+	if payload.Snapshot.Excerpt != "" {
+		fragment += "<p>" + html.EscapeString(payload.Snapshot.Excerpt) + "</p>"
+	}
+	bundle := contracts.DocumentBundle{
+		SchemaVersion: contracts.DocumentBundleSchemaVersionV1, State: contracts.DocumentBundleStateFinal,
+		ContentKind: contracts.ContentKindMarkdown, DocumentEngine: "markdown",
+		Title: title, ProjectHash: input.SourceSHA256, BundleHash: input.ReadingSHA256,
+		Pages: []contracts.DocumentPage{{
+			ID: "tag", SourcePath: "tag.md", Title: title, Fragment: fragment, FragmentFormat: contracts.FragmentFormatHTML,
+		}},
+		Provenance: contracts.Provenance{
+			Adapter: "markdown", AdapterVersion: "1", EngineVersion: "1", ProjectGraphSchemaVersion: contracts.ProjectGraphSchemaVersion,
+		},
+	}
+	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, bundle, false, nil)
+}
+
+func (handler *Handler) printPublicationPDF(ctx context.Context, response http.ResponseWriter, input contracts.PublicationPDFInput, readVersion, jobKey string, bundle contracts.DocumentBundle, book bool, resolver publicationpdf.ResolveImage) {
+	pdf, inspected, err := handler.config.PublicationPDF.Printer.Print(ctx, bundle, book, resolver)
 	if err != nil {
 		if ctx.Err() != nil || errors.Is(err, context.DeadlineExceeded) {
 			writeError(response, http.StatusGatewayTimeout, "publication_pdf_timeout", "publication PDF printing timed out")
