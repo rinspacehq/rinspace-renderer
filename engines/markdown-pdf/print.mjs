@@ -3,6 +3,9 @@ import { chromium } from 'playwright-core';
 
 const [executablePath, inputPath] = process.argv.slice(2);
 const maxPDFBytes = 32 * 1024 * 1024;
+const printOrigin = 'https://rinspace-pdf.invalid';
+const documentURL = `${printOrigin}/document`;
+const mathJaxFonts = new URL('../mathjax/node_modules/@mathjax/mathjax-newcm-font/chtml/woff2/', import.meta.url);
 
 async function print() {
   if (!executablePath || !inputPath || process.argv.length !== 4) {
@@ -24,14 +27,31 @@ async function print() {
       serviceWorkers: 'block',
       viewport: { width: 650, height: 972 },
     });
+    let documentServed = false;
     let attemptedRequest = false;
-    await context.route('**/*', (route) => {
+    await context.route('**/*', async (route) => {
+      const request = route.request();
+      if (!documentServed && request.isNavigationRequest() && request.url() === documentURL) {
+        documentServed = true;
+        return route.fulfill({ contentType: 'text/html; charset=utf-8', body: html });
+      }
+      // Serve the same locked NewCM files used by the Markdown finalizer from disk.
+      const url = new URL(request.url());
+      if (request.resourceType() === 'font' && url.origin === printOrigin && !url.search && !url.hash) {
+        const font = /^\/fonts\/mathjax-newcm\/woff2\/(mjx-ncm-[a-z0-9-]+\.woff2)$/.exec(url.pathname);
+        if (font) {
+          const body = await readFile(new URL(font[1], mathJaxFonts)).catch(() => null);
+          if (body) {
+            return route.fulfill({ contentType: 'font/woff2', body });
+          }
+        }
+      }
       attemptedRequest = true;
       return route.abort();
     });
     const page = await context.newPage();
     await page.emulateMedia({ media: 'print' });
-    await page.setContent(html, { waitUntil: 'load', timeout: 20000 });
+    await page.goto(documentURL, { waitUntil: 'load', timeout: 20000 });
     const assetsLoaded = await page.evaluate(async () => {
       await document.fonts.ready;
       await Promise.all(Array.from(document.images, (image) => image.decode()));

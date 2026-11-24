@@ -116,12 +116,15 @@ jobs:
         with:
           node-version: '22.22.3'
           cache: npm
-          cache-dependency-path: engines/markdown-pdf/package-lock.json
+          cache-dependency-path: |
+            engines/markdown-pdf/package-lock.json
+            engines/mathjax/package-lock.json
       - name: Prepare the pinned print toolchain
         shell: bash
         run: |
           set -euo pipefail
           npm --prefix engines/markdown-pdf ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
+          npm --prefix engines/mathjax ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
           lock=deploy/markdown-pdf-browser.lock.json
           browser_dir="$(mktemp -d "$RUNNER_TEMP/markdown-pdf.XXXXXX")"
           bash deploy/install-markdown-pdf-browser.sh "$lock" "$browser_dir"

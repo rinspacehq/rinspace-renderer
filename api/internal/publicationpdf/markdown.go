@@ -52,7 +52,7 @@ func MarkdownHTML(ctx context.Context, bundle contracts.DocumentBundle, book boo
 	}
 
 	var doc strings.Builder
-	doc.WriteString(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>`)
+	doc.WriteString(`<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; font-src 'self' data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><title>`)
 	doc.WriteString(stdhtml.EscapeString(bundle.Title))
 	doc.WriteString("</title><style>")
 	doc.WriteString(printCSS)

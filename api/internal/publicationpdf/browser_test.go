@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
@@ -26,8 +27,9 @@ func TestBrowserPrinter(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	const formula = `<style>@font-face { font-family: MarkdownMath; src: url('/fonts/mathjax-newcm/woff2/mjx-ncm-n.woff2') format('woff2'); }</style><p style="font-family: MarkdownMath">π</p>`
 	pdf, inspection, err := printer.Print(context.Background(), markdownBundle(
-		`<h1 id="intro">First chapter</h1><a href="chapters/last.md#intro">Next chapter</a>`,
+		`<h1 id="intro">First chapter</h1><a href="chapters/last.md#intro">Next chapter</a>`+formula,
 		`<h1 id="intro">样书终章</h1><p>终章正文</p><a href="chapters/first.md#intro">Back</a>`,
 	), true, nil)
 	if err != nil {
@@ -45,10 +47,16 @@ func TestBrowserPrinter(t *testing.T) {
 		bookmarks[0].Kids[1].Title != "样书终章" {
 		t.Fatalf("unexpected bookmarks: %+v", bookmarks)
 	}
-	pdf, _, err = printer.Print(context.Background(), markdownBundle(
-		`<p>Missing image</p><img alt="fixture" src="data:image/png;base64,iVBORw0KGgo=">`,
-	), false, nil)
-	if err == nil || len(pdf) != 0 {
-		t.Fatal("an undecodable image produced a PDF")
+	for name, fragment := range map[string]string{
+		"undecodable image": `<img alt="fixture" src="data:image/png;base64,iVBORw0KGgo=">`,
+		"unavailable font":  strings.Replace(formula, "mjx-ncm-n.woff2", "mjx-ncm-missing.woff2", 1),
+		"external font":     strings.Replace(formula, "/fonts/", "https://example.invalid/fonts/", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			pdf, _, err := printer.Print(t.Context(), markdownBundle(fragment), false, nil)
+			if err == nil || len(pdf) != 0 {
+				t.Fatal("unavailable asset produced a PDF")
+			}
+		})
 	}
 }
