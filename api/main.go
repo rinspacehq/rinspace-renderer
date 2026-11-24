@@ -22,14 +22,22 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if len(os.Args) == 2 && os.Args[1] == "migrate" {
-		if err := runMigrations(ctx); err != nil {
-			log.Fatal(err)
+	if len(os.Args) == 2 {
+		switch os.Args[1] {
+		case "migrate":
+			if err := runMigrations(ctx); err != nil {
+				log.Fatal(err)
+			}
+			return
+		case "markdown-pdf":
+			if err := runMarkdownPDF(ctx, os.Stdin, os.Stdout); err != nil {
+				log.Fatal(err)
+			}
+			return
 		}
-		return
 	}
 	if len(os.Args) != 1 {
-		log.Fatalf("usage: %s [migrate]", os.Args[0])
+		log.Fatalf("usage: %s [migrate|markdown-pdf]", os.Args[0])
 	}
 	if err := run(ctx); err != nil {
 		log.Fatal(err)

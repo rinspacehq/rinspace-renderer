@@ -43,7 +43,7 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
       const name = spec.slice(0, at), version = spec.slice(at + 1);
       packages.push(packageRecord('Go', name, version, 'NOASSERTION', `pkg:golang/${name}@${version}`));
     }
-    for (const engine of ['markdown', 'mathjax', 'katex']) {
+    for (const engine of ['markdown', 'markdown-pdf', 'mathjax', 'katex']) {
       const lock = JSON.parse(await readFile(join(root, 'engines', engine, 'package-lock.json'), 'utf8'));
       for (const [path, item] of Object.entries(lock.packages)) {
         if (!path) continue;

@@ -99,10 +99,48 @@ jobs:
         working-directory: engines/texsvg
         run: go test ./... -count=1
 
+  markdown_pdf:
+    name: Markdown PDF browser checks
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      GOMAXPROCS: '1'
+      GOFLAGS: -p=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache-dependency-path: api/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+          cache: npm
+          cache-dependency-path: engines/markdown-pdf/package-lock.json
+      - name: Prepare the pinned print toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix engines/markdown-pdf ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
+          lock=deploy/markdown-pdf-browser.lock.json
+          browser_dir="$(mktemp -d "$RUNNER_TEMP/markdown-pdf.XXXXXX")"
+          curl --fail --silent --show-error --location --retry 2 --max-time 120 \
+            "$(jq -er .release "$lock")" -o "$browser_dir/browser.zip"
+          printf '%s  %s\n' "$(jq -er .archiveSha256 "$lock")" "$browser_dir/browser.zip" | sha256sum -c -
+          unzip -q "$browser_dir/browser.zip" -d "$browser_dir"
+          browser="$browser_dir/$(jq -er .executable "$lock")"
+          printf '%s  %s\n' "$(jq -er .executableSha256 "$lock")" "$browser" | sha256sum -c -
+          test -s "$browser_dir/$(jq -er .notice "$lock")"
+          printf 'RIN_RENDERER_MARKDOWN_PDF_CHROMIUM=%s\n' "$browser" >> "$GITHUB_ENV"
+          printf 'RIN_RENDERER_MARKDOWN_NODE_BIN=%s\n' "$(command -v node)" >> "$GITHUB_ENV"
+      - name: Print and inspect a book in sandboxed Chromium
+        working-directory: api
+        run: go test ./internal/publicationpdf -count=1 -run TestBrowserPrinter -v
+
   source:
     name: source
     if: ${{ always() }}
-    needs: [source_policy, markdown, api, tex_svg]
+    needs: [source_policy, markdown, api, tex_svg, markdown_pdf]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
@@ -112,8 +150,9 @@ jobs:
           MARKDOWN_RESULT: ${{ needs.markdown.result }}
           API_RESULT: ${{ needs.api.result }}
           TEX_SVG_RESULT: ${{ needs.tex_svg.result }}
+          MARKDOWN_PDF_RESULT: ${{ needs.markdown_pdf.result }}
         run: |
-          for result in "${SOURCE_POLICY_RESULT}" "${MARKDOWN_RESULT}" "${API_RESULT}" "${TEX_SVG_RESULT}"; do
+          for result in "${SOURCE_POLICY_RESULT}" "${MARKDOWN_RESULT}" "${API_RESULT}" "${TEX_SVG_RESULT}" "${MARKDOWN_PDF_RESULT}"; do
             if [ "${result}" != 'success' ]; then
               echo '::error title=Renderer checks failed::Open the named failed check above for its focused log.'
               exit 1

@@ -19,9 +19,9 @@ test('image and source checks replace mirror download hosts without changing fro
   const workflow = await readFile(new URL('../.github/workflows/renderer-check.yml', import.meta.url), 'utf8');
   const commands = [
     ...dockerfiles.flatMap(text => text.split('\n').filter(line => /npm (?:--prefix \S+ )?ci(?:\s|$)/.test(line))),
-    ...workflow.split('\n').filter(line => /npm --prefix engines\/(markdown|mathjax|katex) ci /.test(line)),
+    ...workflow.split('\n').filter(line => /npm --prefix engines\/(markdown|markdown-pdf|mathjax|katex) ci /.test(line)),
   ];
-  assert.equal(commands.length, 7);
+  assert.equal(commands.length, 9);
   for (const command of commands) {
     for (const flag of [official, replacement, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--fetch-timeout=60000', '--fetch-retries=2']) {
       assert(command.includes(flag), `frozen install command lacks ${flag}`);
