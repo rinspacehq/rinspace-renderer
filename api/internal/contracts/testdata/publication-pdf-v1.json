@@ -1,0 +1,59 @@
+[
+  {
+    "name": "markdown-article",
+    "result": {
+      "schemaVersion": "rin-publication-pdf-result/v1",
+      "input": {
+        "projectId": "article:287",
+        "sourceRevision": "git:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sourceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "readingSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "profileSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "readVersion": "v1-af66f8794c33f6be94a0b847249ebe98aa14cfa6c2939147887eafa4c6e414bf",
+      "jobKey": "8de377d23e8244df915f27a8a981b96876122d748c009c37b85543cd67765b50",
+      "sha256": "6cae4e03bbbcfa20db81de6898f4c6aff6965b5b9c6a0adfaa5478b641887441",
+      "bytes": 12184,
+      "pages": 2,
+      "mediaType": "application/pdf"
+    }
+  },
+  {
+    "name": "original-book",
+    "result": {
+      "schemaVersion": "rin-publication-pdf-result/v1",
+      "input": {
+        "projectId": "pdf:340",
+        "sourceRevision": "snapshot:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "sourceSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "readingSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "profileSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "readVersion": "v1-eb15ad4c70b652f8d8e33c51b1873f8995d97dc72ffe0e33c9a948232601ae49",
+      "jobKey": "a102b51d771b82640d8282bc92b11228d4a2d4e175b8b67033de2b5e588f6ddd",
+      "sha256": "45a90b50381e4fc88d5976e7a6c380701f429093cf15e0549fcaef57c8217c4c",
+      "bytes": 12184,
+      "pages": 2,
+      "mediaType": "application/pdf"
+    }
+  },
+  {
+    "name": "title-tag",
+    "result": {
+      "schemaVersion": "rin-publication-pdf-result/v1",
+      "input": {
+        "projectId": "tag-wiki:10975",
+        "sourceRevision": "snapshot:8888888888888888888888888888888888888888888888888888888888888888",
+        "sourceSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+        "readingSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+        "profileSha256": "9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "readVersion": "v1-168c52ea5149a82f9db0a29eb15d882620ca700cddbe32217b6fda58e831fd38",
+      "jobKey": "69f2a3d27fe5590d5caefa6e6d79c0afb19bb5c263a036bdd92ef23d884c9d1a",
+      "sha256": "46fc7c26c5f8f325f2c3d7394cc18b0886cdd3db6e2c40e70250ab7d7093ad2c",
+      "bytes": 12184,
+      "pages": 2,
+      "mediaType": "application/pdf"
+    }
+  }
+]

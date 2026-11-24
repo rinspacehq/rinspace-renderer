@@ -23,7 +23,9 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/operational"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/pdfexecutor"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/pdfworker"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/publicationpdf"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/renderapi"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/renderstorage"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/scheduler"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/typstpdfexecutor"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/typstpdfworker"
@@ -224,6 +226,33 @@ func buildAsyncRuntime(ctx context.Context, config renderapi.Config) (*asyncRunt
 	for _, resourceClass := range jobpostgres.ResourceClasses() {
 		operations.Gauge("resource_in_use", 0, resourceClass)
 	}
+	var publicationPDF *jobapi.PublicationPDFConfig
+	profile := strings.TrimSpace(os.Getenv("RIN_RENDERER_PUBLICATION_PDF_PROFILE_SHA256"))
+	if profile != "" && (role == "api" || role == "all") {
+		if os.Geteuid() == 0 {
+			return fail(errors.New("the publication PDF printer requires an unprivileged Renderer API process"))
+		}
+		printer := publicationpdf.BrowserPrinter{
+			Node: os.Getenv("RIN_RENDERER_MARKDOWN_NODE_BIN"), Script: os.Getenv("RIN_RENDERER_MARKDOWN_PDF_SCRIPT"),
+			Chromium: os.Getenv("RIN_RENDERER_MARKDOWN_PDF_CHROMIUM"),
+		}
+		if err := printer.Validate(); err != nil {
+			return fail(err)
+		}
+		publicationPDF = &jobapi.PublicationPDFConfig{
+			ProfileSHA256: profile, Printer: printer,
+			PublicAssets: renderstorage.CloudBaseClient{
+				EnvID: config.StorageEnvID, AccessToken: config.StorageAccessToken, Bucket: config.StorageBucket,
+				BaseURL: config.StorageBaseURL, PublicBaseURL: config.StoragePublicBaseURL,
+			},
+		}
+		if config.StorageProvider == "local" {
+			publicationPDF.PublicAssets, err = renderstorage.NewLocalFileStore(config.LocalAssetRoot, config.LocalPublicBaseURL)
+			if err != nil {
+				return fail(err)
+			}
+		}
+	}
 	handler, err := jobapi.New(authenticator, admissionService, repository, store, jobapi.Config{
 		RendererVersion: config.RendererVersion, MaxSourceBytes: config.ProjectArchiveMaxBytes,
 		RejectControlPlaneIdentity: completionMode == "local",
@@ -232,6 +261,7 @@ func buildAsyncRuntime(ctx context.Context, config renderapi.Config) (*asyncRunt
 		TypstFragmentsProfileID: renderapi.TypstFragmentsProfileID(config),
 		EventPoll:               time.Second,
 		Estimation:              jobpostgres.EstimationPolicy{MinimumSamples: 20, Scheduling: schedulingPolicy},
+		PublicationPDF:          publicationPDF,
 	})
 	if err != nil {
 		return fail(fmt.Errorf("configure renderer job API: %w", err))

@@ -21,7 +21,13 @@ var printCSS string
 
 // ResolveImage returns the offline data URL for a verified source or renderer
 // artifact. The caller binds it to the immutable publication input.
-type ResolveImage func(ctx context.Context, source string) (string, error)
+type ResolveImage func(ctx context.Context, image ImageReference) (string, error)
+
+type ImageReference struct {
+	Source          string
+	RepositoryPath  string
+	DiagramObjectID string
+}
 
 // MarkdownHTML assembles the final fragments in the published order. It keeps
 // artifact resolution outside Chromium so printing requires no network.
@@ -109,6 +115,17 @@ func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages
 			root.DataAtom, root.Data = atom.H2, "h2"
 		}
 		hasImageSource := false
+		image := ImageReference{}
+		if root.DataAtom == atom.Img {
+			for _, attr := range root.Attr {
+				switch attr.Key {
+				case "data-rin-asset-path":
+					image.RepositoryPath = attr.Val
+				case "data-rin-diagram-object-id":
+					image.DiagramObjectID = attr.Val
+				}
+			}
+		}
 		for index := range root.Attr {
 			attr := &root.Attr[index]
 			switch attr.Key {
@@ -134,14 +151,15 @@ func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages
 					if resolveImage == nil {
 						return errors.New("print image has no offline asset")
 					}
-					image, err := resolveImage(ctx, attr.Val)
+					image.Source = attr.Val
+					resolved, err := resolveImage(ctx, image)
 					if err != nil {
 						return err
 					}
-					if !isDataImage(image) {
+					if !isDataImage(resolved) {
 						return errors.New("invalid offline print image")
 					}
-					attr.Val = image
+					attr.Val = resolved
 				}
 			case "srcset":
 				return errors.New("responsive image sources must be resolved before printing")

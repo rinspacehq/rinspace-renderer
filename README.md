@@ -40,6 +40,8 @@ PDF and Typst compiler workers use a restricted broker profile and their own pin
 
 The Renderer command `rin-renderer-api markdown-pdf` prints a final Markdown document bundle locally. It reads a JSON object with `bundle`, `book`, and an optional `images` map of exact source keys to verified data URLs from standard input, and writes the inspected PDF to standard output. Install the pinned Playwright package from `engines/markdown-pdf`. Set `RIN_RENDERER_MARKDOWN_NODE_BIN`, `RIN_RENDERER_MARKDOWN_PDF_SCRIPT`, and `RIN_RENDERER_MARKDOWN_PDF_CHROMIUM` to absolute paths. The browser documented in `deploy/markdown-pdf-browser.lock.json` needs an unprivileged account with Chromium namespace sandbox support.
 
+An unprivileged Renderer API process can also enable `POST /api/render/jobs/{jobId}/publication-pdf` by setting `RIN_RENDERER_PUBLICATION_PDF_PROFILE_SHA256` to the reviewed print profile digest. The endpoint uses job authentication and accepts the publication PDF identity for a completed Markdown job. It verifies the source archive and reading result against that identity, and resolves repository images and diagrams from verified resources. One print can run at a time. The PDF response includes the base64url JSON receipt in `X-Rin-Publication-PDF-Receipt`. The publication service owns the durable lease and must verify the received bytes before activating the edition.
+
 ## Lightweight source checks
 
 Use Node.js 22 and Go 1.25 for the API (Go 1.24 for the TeX SVG module). Install the three pinned Node engine graphs before running the complete Go tests, since the Go suite starts Node workers:

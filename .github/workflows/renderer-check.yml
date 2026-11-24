@@ -135,7 +135,7 @@ jobs:
           printf 'RIN_RENDERER_MARKDOWN_NODE_BIN=%s\n' "$(command -v node)" >> "$GITHUB_ENV"
       - name: Print and inspect a book in sandboxed Chromium
         working-directory: api
-        run: go test ./internal/publicationpdf -count=1 -run TestBrowserPrinter -v
+        run: go test ./internal/publicationpdf ./internal/jobapi -count=1 -run 'Test(BrowserPrinter|PublicationPDFChromium)' -v
 
   source:
     name: source

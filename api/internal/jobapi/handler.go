@@ -105,6 +105,7 @@ type Config struct {
 	EventPoll               time.Duration
 	Estimation              jobpostgres.EstimationPolicy
 	Now                     func() time.Time
+	PublicationPDF          *PublicationPDFConfig
 }
 
 type Handler struct {
@@ -114,6 +115,7 @@ type Handler struct {
 	store      PrivateStore
 	config     Config
 	mux        *http.ServeMux
+	printSlot  chan struct{}
 }
 
 func New(auth Authenticator, admit Admission, repository Repository, store PrivateStore, config Config) (*Handler, error) {
@@ -134,6 +136,13 @@ func New(auth Authenticator, admit Admission, repository Repository, store Priva
 		config.ProjectFileMaxBytes = config.MaxSourceBytes
 	}
 	handler := &Handler{auth: auth, admission: admit, repository: repository, store: store, config: config, mux: http.NewServeMux()}
+	if config.PublicationPDF != nil {
+		if err := config.PublicationPDF.validate(); err != nil {
+			return nil, err
+		}
+		handler.printSlot = make(chan struct{}, 1)
+		handler.mux.HandleFunc("POST /api/render/jobs/{jobId}/publication-pdf", handler.publicationPDF)
+	}
 	handler.mux.HandleFunc("POST /api/render/jobs", handler.submit)
 	handler.mux.HandleFunc("GET /api/render/jobs/{jobId}", handler.status)
 	handler.mux.HandleFunc("GET /api/render/jobs/{jobId}/result", handler.result)
@@ -608,10 +617,14 @@ func (handler *Handler) previewArtifactReference(ctx context.Context, job jobpos
 }
 
 func (handler *Handler) resultArtifactBody(ctx context.Context, job jobpostgres.Job) ([]byte, jobpostgres.Artifact, error) {
-	if job.ResultArtifactID == "" {
-		return nil, jobpostgres.Artifact{}, errors.New("job has no stored result")
+	return handler.privateArtifactBody(ctx, job.ResultArtifactID)
+}
+
+func (handler *Handler) privateArtifactBody(ctx context.Context, artifactID string) ([]byte, jobpostgres.Artifact, error) {
+	if artifactID == "" {
+		return nil, jobpostgres.Artifact{}, errors.New("job has no private artifact")
 	}
-	artifact, err := handler.repository.Artifact(ctx, job.ResultArtifactID)
+	artifact, err := handler.repository.Artifact(ctx, artifactID)
 	if err != nil || artifact.Visibility != "private" || artifact.StorageKey == "" || artifact.ByteSize <= 0 {
 		return nil, jobpostgres.Artifact{}, errors.New("stored result artifact is unavailable")
 	}
