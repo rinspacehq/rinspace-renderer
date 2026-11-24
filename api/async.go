@@ -240,7 +240,7 @@ func buildAsyncRuntime(ctx context.Context, config renderapi.Config) (*asyncRunt
 			return fail(err)
 		}
 		publicationPDF = &jobapi.PublicationPDFConfig{
-			ProfileSHA256: profile, Printer: printer,
+			ProfileSHA256: profile, Printer: printer, PublicationPrincipal: principal,
 			PublicAssets: renderstorage.CloudBaseClient{
 				EnvID: config.StorageEnvID, AccessToken: config.StorageAccessToken, Bucket: config.StorageBucket,
 				BaseURL: config.StorageBaseURL, PublicBaseURL: config.StoragePublicBaseURL,

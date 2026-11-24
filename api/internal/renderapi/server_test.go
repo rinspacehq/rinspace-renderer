@@ -214,6 +214,13 @@ func TestCanonicalJobHandlerMountAndCapabilities(t *testing.T) {
 	if queueResponse.Code != http.StatusAccepted {
 		t.Fatalf("mounted job handler status = %d", queueResponse.Code)
 	}
+	for _, path := range []string{"/api/render/publication-pdf/tag-snapshot", "/api/render/publication-pdf/markdown-backfill"} {
+		response := httptest.NewRecorder()
+		server.ServeHTTP(response, httptest.NewRequest(http.MethodPost, path, nil))
+		if response.Code != http.StatusAccepted {
+			t.Fatalf("publication route %s = %d", path, response.Code)
+		}
+	}
 	capabilitiesRequest := httptest.NewRequest(http.MethodGet, "/api/render/capabilities", nil)
 	capabilitiesResponse := httptest.NewRecorder()
 	server.ServeHTTP(capabilitiesResponse, capabilitiesRequest)

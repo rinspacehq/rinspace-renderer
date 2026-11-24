@@ -143,6 +143,9 @@ func New(auth Authenticator, admit Admission, repository Repository, store Priva
 		}
 		handler.mux.HandleFunc("POST /api/render/jobs/{jobId}/publication-pdf", handler.publicationPDF)
 		handler.mux.HandleFunc("POST /api/render/publication-pdf/tag-snapshot", handler.publicationTagPDF)
+		if config.PublicationPDF.PublicationPrincipal != "" {
+			handler.mux.HandleFunc("POST /api/render/publication-pdf/markdown-backfill", handler.publicationMarkdownBackfill)
+		}
 	}
 	handler.mux.HandleFunc("POST /api/render/jobs", handler.submit)
 	handler.mux.HandleFunc("GET /api/render/jobs/{jobId}", handler.status)

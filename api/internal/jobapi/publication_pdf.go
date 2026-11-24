@@ -35,7 +35,10 @@ type PublicationPDFPrinter interface {
 type PublicationPDFConfig struct {
 	ProfileSHA256 string
 	Printer       PublicationPDFPrinter
-	PublicAssets  interface {
+	// PublicationPrincipal may submit an archived result after the original
+	// Renderer job has expired. The primary product owns that reading binding.
+	PublicationPrincipal string
+	PublicAssets         interface {
 		ReadPublicObject(context.Context, string, int64) ([]byte, error)
 	}
 }
@@ -81,14 +84,10 @@ func (handler *Handler) publicationPDF(response http.ResponseWriter, request *ht
 		writeError(response, http.StatusConflict, "publication_pdf_source_mismatch", "publication PDF source is not the completed edition")
 		return
 	}
-	select {
-	case handler.printSlot <- struct{}{}:
-		defer func() { <-handler.printSlot }()
-	default:
-		response.Header().Set("Retry-After", "2")
-		writeError(response, http.StatusServiceUnavailable, "publication_pdf_busy", "publication PDF printer is busy")
+	if !handler.takePublicationPDFSlot(response) {
 		return
 	}
+	defer func() { <-handler.printSlot }()
 
 	source, err := handler.repository.Artifact(ctx, job.SourceArtifactID)
 	if err != nil || source.Visibility != "private" || source.SHA256 != input.SourceSHA256 ||
@@ -107,7 +106,10 @@ func (handler *Handler) publicationPDF(response http.ResponseWriter, request *ht
 		writeError(response, http.StatusConflict, "publication_pdf_result_mismatch", "completed output does not match the reading edition")
 		return
 	}
-	resolver := handler.publicationImageResolver(job, output.Result)
+	resolver := handler.publicationImageResolver(output.Result, func(ctx context.Context) ([]byte, error) {
+		raw, _, err := handler.privateArtifactBody(ctx, job.SourceArtifactID)
+		return raw, err
+	})
 	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, *output.Result.Inline, book, resolver)
 }
 
@@ -138,14 +140,10 @@ func (handler *Handler) publicationTagPDF(response http.ResponseWriter, request 
 		writeError(response, http.StatusConflict, "publication_pdf_profile_mismatch", "publication PDF profile is unavailable")
 		return
 	}
-	select {
-	case handler.printSlot <- struct{}{}:
-		defer func() { <-handler.printSlot }()
-	default:
-		response.Header().Set("Retry-After", "2")
-		writeError(response, http.StatusServiceUnavailable, "publication_pdf_busy", "publication PDF printer is busy")
+	if !handler.takePublicationPDFSlot(response) {
 		return
 	}
+	defer func() { <-handler.printSlot }()
 	ctx, cancel := context.WithTimeout(request.Context(), 80*time.Second)
 	defer cancel()
 	title := payload.Snapshot.Title
@@ -165,6 +163,17 @@ func (handler *Handler) publicationTagPDF(response http.ResponseWriter, request 
 		},
 	}
 	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, bundle, false, nil)
+}
+
+func (handler *Handler) takePublicationPDFSlot(response http.ResponseWriter) bool {
+	select {
+	case handler.printSlot <- struct{}{}:
+		return true
+	default:
+		response.Header().Set("Retry-After", "2")
+		writeError(response, http.StatusServiceUnavailable, "publication_pdf_busy", "publication PDF printer is busy")
+		return false
+	}
 }
 
 func (handler *Handler) printPublicationPDF(ctx context.Context, response http.ResponseWriter, input contracts.PublicationPDFInput, readVersion, jobKey string, bundle contracts.DocumentBundle, book bool, resolver publicationpdf.ResolveImage) {
@@ -221,7 +230,7 @@ func publicationMarkdownJob(job jobpostgres.Job, input contracts.PublicationPDFI
 	return meta.DocumentMode == "book", nil
 }
 
-func (handler *Handler) publicationImageResolver(job jobpostgres.Job, result contracts.RenderResult) publicationpdf.ResolveImage {
+func (handler *Handler) publicationImageResolver(result contracts.RenderResult, source func(context.Context) ([]byte, error)) publicationpdf.ResolveImage {
 	repositoryAssets := make(map[string]contracts.AssetReference)
 	for _, asset := range result.Inline.Assets {
 		if asset.Kind == "project-file" {
@@ -243,7 +252,7 @@ func (handler *Handler) publicationImageResolver(job jobpostgres.Job, result con
 				return "", errors.New("repository image is not in the completed result")
 			}
 			if files == nil {
-				raw, _, err := handler.privateArtifactBody(ctx, job.SourceArtifactID)
+				raw, err := source(ctx)
 				if err != nil {
 					return "", errors.Join(errPublicationPDFAssetUnavailable, err)
 				}
