@@ -21,7 +21,7 @@ test('image and source checks replace mirror download hosts without changing fro
     ...dockerfiles.flatMap(text => text.split('\n').filter(line => /npm (?:--prefix \S+ )?ci(?:\s|$)/.test(line))),
     ...workflow.split('\n').filter(line => /npm --prefix engines\/(markdown|markdown-pdf|mathjax|katex) ci /.test(line)),
   ];
-  assert.equal(commands.length, 9);
+  assert.equal(commands.length, 10);
   for (const command of commands) {
     for (const flag of [official, replacement, '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--fetch-timeout=60000', '--fetch-retries=2']) {
       assert(command.includes(flag), `frozen install command lacks ${flag}`);
