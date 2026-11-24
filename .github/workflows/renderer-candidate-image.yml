@@ -179,11 +179,28 @@ jobs:
           fi
           cp LICENSE THIRD_PARTY_NOTICES.md evidence/notices/renderer-source/
           if [ "$COMPONENT" = runtime ]; then
-            cp engines/latexml/latexml.lock deploy/Dockerfile.runtime evidence/notices/renderer-source/
+            cp engines/latexml/latexml.lock deploy/Dockerfile.runtime deploy/markdown-pdf-browser.lock.json evidence/notices/renderer-source/
           else
             cp "deploy/${COMPONENT}.lock.json" evidence/notices/renderer-source/
           fi
           node deploy/fetch-notice-sources.mjs deploy/notice-sources.lock.json evidence/notices/upstream
+      - name: Verify installed Chromium and CJK fonts in the exact runtime image
+        if: inputs.component == 'runtime'
+        shell: bash
+        run: |
+          set -euo pipefail
+          browser_hash="$(jq -er .executableSha256 deploy/markdown-pdf-browser.lock.json)"
+          docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 256m --pids-limit 64 \
+            --env "EXPECTED_BROWSER_SHA256=$browser_hash" --entrypoint /bin/bash "$REFERENCE" -ec '
+              path="$RIN_RENDERER_MARKDOWN_PDF_CHROMIUM"
+              printf "%s  %s\n" "$EXPECTED_BROWSER_SHA256" "$path" | sha256sum -c -
+              test -s "$(dirname "$path")/LICENSE.headless_shell"
+              libraries="$(ldd "$path")"
+              printf "%s\n" "$libraries"
+              if grep -Fq "not found" <<< "$libraries"; then exit 1; fi
+              fc-list :lang=zh family | grep -F "Noto Serif CJK SC"
+            ' | tee evidence/markdown-pdf-runtime.txt
       - name: Native math SVG contract in the exact runtime image
         if: inputs.component == 'runtime'
         shell: bash
