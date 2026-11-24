@@ -61,7 +61,7 @@ func (executor *Executor) collectAndStore(
 		required bool
 	}{
 		{kind: "pdf", filename: stem + ".pdf", logical: path.Join(logicalRoot, stem+".pdf"), required: true},
-		{kind: "log", filename: outputLogFilename, logical: path.Join(logicalRoot, stem+".log"), required: true},
+		{kind: "log", filename: outputLogFilename, logical: path.Join(logicalRoot, stem+".log"), required: !metadata.isExport()},
 	}
 	if failure := validateOutputDirectory(outputDirectory); failure != nil {
 		return nil, []renderapi.Diagnostic{}, failure
