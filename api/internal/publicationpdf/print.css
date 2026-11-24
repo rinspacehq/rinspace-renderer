@@ -1,0 +1,20 @@
+@page { size: A4; margin: 19mm 19mm 20mm; }
+
+html { color: #26333b; background: white; }
+body { margin: 0; font: 11pt/1.6 "DejaVu Serif", "WenQuanYi Zen Hei", serif; }
+h1, h2, h3, h4 { color: #122d40; line-height: 1.32; break-after: avoid; }
+h1 { font-size: 21pt; margin: 0 0 9mm; padding-bottom: 5mm; border-bottom: 1px solid #a7b9c3; }
+h2 { font-size: 14pt; margin: 7mm 0 3mm; }
+p { margin: 0 0 3mm; orphans: 3; widows: 3; overflow-wrap: anywhere; }
+.print-chapter + .print-chapter { break-before: page; }
+img, figure, svg { max-width: 100%; }
+img { height: auto; }
+figure, .rin-math-display { break-inside: avoid; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 4mm 0; }
+thead { display: table-header-group; background: #edf2f6; }
+tr { break-inside: avoid; }
+td, th { border: 1px solid #bac7cf; text-align: left; padding: 1.6mm 2mm; overflow-wrap: anywhere; }
+pre { margin: 3mm 0; padding: 3mm; border: 1px solid #bfcbd3; border-radius: 2mm; white-space: pre-wrap !important; overflow-wrap: anywhere; max-width: 100%; box-sizing: border-box; }
+pre code { font: 9pt/1.5 "DejaVu Sans Mono", "WenQuanYi Zen Hei Mono", monospace; white-space: inherit; }
+a { color: #165674; }
+.footnotes { border-top: 1px solid #a7b9c3; padding-top: 1mm; font-size: 9pt; }
