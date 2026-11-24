@@ -13,7 +13,7 @@ This is the source-level dependency review for the initial Renderer candidate. I
 | TeX SVG Go module | `engines/texsvg/go.mod` | No external Go module requirements in this module. The external TeX/diagram tools it invokes belong to the image package closure above. |
 | Markdown Node graph | `engines/markdown/package-lock.json` | 126 pinned packages: 124 MIT, 1 ISC, 1 BSD-2-Clause according to lock metadata. Includes Shiki 4.4.2 (MIT). |
 | Markdown PDF print driver | `engines/markdown-pdf/package-lock.json` | Microsoft Playwright Core 1.65.1 (Apache-2.0). The npm package includes its license and notice. |
-| Markdown PDF test browser | `deploy/markdown-pdf-browser.lock.json` | Reviewed Linux headless shell archive for browser tests. Its archive contains `LICENSE.headless_shell`. The browser itself is not bundled in the runtime image. |
+| Markdown PDF browser | `deploy/markdown-pdf-browser.lock.json` | Reviewed Linux Chromium headless shell archive used by browser tests and the runtime image. The image retains the browser's `LICENSE.headless_shell`, and Debian publishes the system library and Noto CJK font notices with their packages. |
 | MathJax Node graph | `engines/mathjax/package-lock.json` | 17 pinned packages: 5 Apache-2.0, 5 MIT, 7 BlueOak-1.0.0 according to lock metadata. `@mathjax/src` is Apache-2.0. |
 | KaTeX Node graph | `engines/katex/package-lock.json` | 2 pinned packages, both MIT according to lock metadata. KaTeX's checked package `LICENSE` contains the MIT copyright and permission notice. |
 

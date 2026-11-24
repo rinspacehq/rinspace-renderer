@@ -54,6 +54,13 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
       }
     }
     const latexml = JSON.parse(await readFile(join(root, 'engines/latexml/latexml.lock'), 'utf8'));
+    const chromium = JSON.parse(await readFile(join(root, 'deploy/markdown-pdf-browser.lock.json'), 'utf8'));
+    packages.push({
+      ...packageRecord('Engine', 'Chromium Headless Shell', chromium.version, 'NOASSERTION',
+        `pkg:generic/chromium-headless-shell@${chromium.version}`),
+      downloadLocation: chromium.release,
+      checksums: [{ algorithm: 'SHA256', checksumValue: chromium.archiveSha256 }],
+    });
     packages.push(packageRecord('Engine', 'LaTeXML', latexml.commit, 'NOASSERTION', `pkg:github/brucemiller/LaTeXML@${latexml.commit}`));
     packages.push(packageRecord('Engine', 'Node.js', '22.22.3', 'NOASSERTION', 'pkg:generic/node@22.22.3'));
   } else if (component === 'latex-pdf') {

@@ -124,13 +124,8 @@ jobs:
           npm --prefix engines/markdown-pdf ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
           lock=deploy/markdown-pdf-browser.lock.json
           browser_dir="$(mktemp -d "$RUNNER_TEMP/markdown-pdf.XXXXXX")"
-          curl --fail --silent --show-error --location --retry 2 --max-time 120 \
-            "$(jq -er .release "$lock")" -o "$browser_dir/browser.zip"
-          printf '%s  %s\n' "$(jq -er .archiveSha256 "$lock")" "$browser_dir/browser.zip" | sha256sum -c -
-          unzip -q "$browser_dir/browser.zip" -d "$browser_dir"
-          browser="$browser_dir/$(jq -er .executable "$lock")"
-          printf '%s  %s\n' "$(jq -er .executableSha256 "$lock")" "$browser" | sha256sum -c -
-          test -s "$browser_dir/$(jq -er .notice "$lock")"
+          bash deploy/install-markdown-pdf-browser.sh "$lock" "$browser_dir"
+          browser="$browser_dir/$(basename "$(jq -er .executable "$lock")")"
           printf 'RIN_RENDERER_MARKDOWN_PDF_CHROMIUM=%s\n' "$browser" >> "$GITHUB_ENV"
           printf 'RIN_RENDERER_MARKDOWN_NODE_BIN=%s\n' "$(command -v node)" >> "$GITHUB_ENV"
       - name: Print and inspect a book in sandboxed Chromium

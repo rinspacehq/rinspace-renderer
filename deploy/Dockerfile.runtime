@@ -38,21 +38,34 @@ COPY ${RENDERER_SOURCE_ROOT}/engines/markdown-pdf/package.json ${RENDERER_SOURCE
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org --replace-registry-host=always --fetch-timeout=60000 --fetch-retries=2
 COPY ${RENDERER_SOURCE_ROOT}/engines/markdown-pdf/print.mjs ./
 
+FROM --platform=linux/amd64 ${NODE_IMAGE} AS markdown-pdf-browser
+ARG RENDERER_SOURCE_ROOT=.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+    && rm -rf /var/lib/apt/lists/*
+COPY ${RENDERER_SOURCE_ROOT}/deploy/markdown-pdf-browser.lock.json /tmp/markdown-pdf-browser.lock.json
+COPY ${RENDERER_SOURCE_ROOT}/deploy/install-markdown-pdf-browser.sh /tmp/install-markdown-pdf-browser.sh
+RUN bash /tmp/install-markdown-pdf-browser.sh /tmp/markdown-pdf-browser.lock.json /out/browser
+
 FROM --platform=linux/amd64 ${RENDERER_BASE_IMAGE}
 # Fragment compilation is isolated from the networked queue worker with a
 # separate user/network/mount/PID namespace. The release records the installed
 # binary SHA-256; runtime config remains opt-in until isolation is verified.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends bubblewrap \
+    && apt-get install -y --no-install-recommends bubblewrap fontconfig fonts-noto-cjk \
+      libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libgbm1 libnspr4 libnss3 \
+      libxcomposite1 libxdamage1 libxfixes3 libxkbcommon0 libxrandr2 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=markdown-build /usr/local/bin/node /usr/local/bin/node
 COPY --from=markdown-build /opt/rin-renderer/engines/markdown /opt/rin-renderer/engines/markdown
 COPY --from=markdown-build /opt/rin-renderer/engines/markdown-pdf /opt/rin-renderer/engines/markdown-pdf
+COPY --from=markdown-pdf-browser /out/browser /opt/rin-renderer/engines/markdown-pdf/chromium
 COPY --from=api-build /out/rin-renderer-api /usr/local/bin/rin-renderer-api
 COPY --from=texsvg-build /out/rin-renderer-texsvg /usr/local/bin/rin-renderer-texsvg
 ENV RIN_RENDERER_MARKDOWN_NODE_BIN=/usr/local/bin/node \
     RIN_RENDERER_MARKDOWN_SCRIPT=/opt/rin-renderer/engines/markdown/worker.mjs \
     RIN_RENDERER_MARKDOWN_PDF_SCRIPT=/opt/rin-renderer/engines/markdown-pdf/print.mjs \
+    RIN_RENDERER_MARKDOWN_PDF_CHROMIUM=/opt/rin-renderer/engines/markdown-pdf/chromium/chrome-headless-shell \
     RIN_RENDERER_MATHJAX_NODE_BIN=/usr/local/bin/node \
     RIN_RENDERER_KATEX_NODE_BIN=/usr/local/bin/node
 WORKDIR /opt/rin-renderer
