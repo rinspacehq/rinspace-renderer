@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 const PublicationPDFResultSchemaV1 = "rin-publication-pdf-result/v1"
@@ -25,6 +27,30 @@ type PublicationPDFEdition struct {
 type PublicationPDFInput struct {
 	PublicationPDFEdition
 	ProfileSHA256 string `json:"profileSha256"`
+}
+
+// PublicationTagPDFSnapshot contains only the public fields of a name-only tag.
+type PublicationTagPDFSnapshot struct {
+	Title   string `json:"title"`
+	Excerpt string `json:"excerpt,omitempty"`
+}
+
+func (snapshot PublicationTagPDFSnapshot) Edition(projectID string) (PublicationPDFEdition, error) {
+	if !strings.HasPrefix(projectID, "tag-wiki:") || snapshot.Title == "" ||
+		strings.TrimSpace(snapshot.Title) != snapshot.Title || strings.TrimSpace(snapshot.Excerpt) != snapshot.Excerpt ||
+		len(snapshot.Title) > 1024 || len(snapshot.Excerpt) > 4096 ||
+		!utf8.ValidString(snapshot.Title) || !utf8.ValidString(snapshot.Excerpt) ||
+		strings.IndexFunc(snapshot.Title, unicode.IsControl) >= 0 || strings.ContainsRune(snapshot.Excerpt, '\x00') {
+		return PublicationPDFEdition{}, errors.New("public tag PDF fields are invalid")
+	}
+	digest := publicationPDFDigest("rin-publication-tag-snapshot/v1", snapshot.Title, snapshot.Excerpt)
+	edition := PublicationPDFEdition{
+		ProjectID: projectID, SourceRevision: "snapshot:" + digest, SourceSHA256: digest, ReadingSHA256: digest,
+	}
+	if _, err := edition.ReadVersion(); err != nil {
+		return PublicationPDFEdition{}, err
+	}
+	return edition, nil
 }
 
 // ReadVersion is the URL-safe identity of an edition, independent of the
