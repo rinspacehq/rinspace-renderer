@@ -6,12 +6,12 @@ fail() {
   exit 64
 }
 
-[ "$#" -eq 1 ] || fail "exactly one relative .tex entrypoint is required"
+[ "$#" -eq 1 ] || fail "exactly one relative LaTeX entrypoint is required"
 entrypoint="$1"
 case "$entrypoint" in
   ''|/*|-*|*\\*|*..*|*//*|*/.|*.|*~|*.tex/) fail "unsafe entrypoint" ;;
-  *.tex) ;;
-  *) fail "entrypoint must end in .tex" ;;
+  *.[tT][eE][xX]|*.[lL][tT][xX]) ;;
+  *) fail "entrypoint must end in .tex or .ltx" ;;
 esac
 
 workspace="$(realpath -e /workspace)" || fail "workspace is unavailable"
@@ -64,7 +64,8 @@ fi
 
 [ "$status" -eq 0 ] || exit "$status"
 
-stem="$(basename "$entrypoint" .tex)"
+stem="$(basename "$entrypoint")"
+stem="${stem%.*}"
 pdf="$output/$stem.pdf"
 [ -f "$pdf" ] || fail "compiler completed without the expected PDF"
 pdf_bytes="$(wc -c < "$pdf")"

@@ -2,8 +2,10 @@ package pdfexecutor
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -16,6 +18,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/rinspacehq/rinspace-renderer/api/internal/projectcore"
 )
 
 const (
@@ -53,8 +57,64 @@ func prepareSpool(root, jobID, entrypoint string, archive []byte, expectedSnapsh
 	if snapshotHash != expectedSnapshotHash {
 		return preparedSpool{}, errors.New("snapshot hash does not match the queued PDF job")
 	}
+	return writeSpool(absoluteRoot, jobID, entrypoint, entries)
+}
+
+// prepareExportSpool applies the LaTeX project importer's file policy to an
+// exact commit archive while enforcing the compiler's cumulative limits.
+func prepareExportSpool(root, jobID, entrypoint string, archive []byte) (preparedSpool, error) {
+	if !jobIDPattern.MatchString(jobID) || !CanonicalExportEntrypoint(entrypoint) ||
+		len(archive) == 0 || len(archive) > snapshotTotalBytes {
+		return preparedSpool{}, errors.New("LaTeX PDF export spool identity is invalid")
+	}
+	zipped, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil || len(zipped.File) > snapshotFileLimit {
+		return preparedSpool{}, errors.New("LaTeX project archive is invalid or contains too many entries")
+	}
+	seen := make(map[string]bool, len(zipped.File))
+	total := uint64(0)
+	for _, file := range zipped.File {
+		if file.FileInfo().IsDir() {
+			continue
+		}
+		name, canonical := projectcore.CleanProjectPath(file.Name)
+		if !file.Mode().IsRegular() || !canonical || name != file.Name || seen[name] ||
+			file.UncompressedSize64 > snapshotFileBytes || file.UncompressedSize64 > snapshotTotalBytes-total {
+			return preparedSpool{}, errors.New("LaTeX project archive contains an invalid or oversized file")
+		}
+		seen[name] = true
+		total += file.UncompressedSize64
+	}
+	files, _, err := projectcore.ImportArchive("project.zip", archive, projectcore.Limits{
+		ArchiveMaxBytes: snapshotTotalBytes, FileMaxCount: snapshotFileLimit, FileMaxBytes: snapshotFileBytes,
+	})
+	if err != nil {
+		return preparedSpool{}, err
+	}
+	entries := make(map[string]snapshotEntry, len(files))
+	for _, file := range files {
+		if !canonicalSnapshotPath(file.Path) {
+			return preparedSpool{}, errors.New("LaTeX project file path is not canonical")
+		}
+		body := []byte(file.Body)
+		if file.Encoding == "base64" {
+			body, err = base64.StdEncoding.DecodeString(file.Body)
+			if err != nil {
+				return preparedSpool{}, err
+			}
+		}
+		entries[file.Path] = snapshotEntry{path: file.Path, body: body}
+	}
+	absoluteRoot, err := secureSpoolRoot(root)
+	if err != nil {
+		return preparedSpool{}, err
+	}
+	return writeSpool(absoluteRoot, jobID, entrypoint, entries)
+}
+
+func writeSpool(absoluteRoot, jobID, entrypoint string, entries map[string]snapshotEntry) (preparedSpool, error) {
 	if _, ok := entries[entrypoint]; !ok {
-		return preparedSpool{}, errors.New("PDF entrypoint is absent from the snapshot")
+		return preparedSpool{}, errors.New("PDF entrypoint is absent from the source archive")
 	}
 	finalDirectory := filepath.Join(absoluteRoot, jobID)
 	if err := removeExactSpoolPath(absoluteRoot, finalDirectory); err != nil {

@@ -20,7 +20,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "23131000332ad9039bce7845c23399ca0bb66cd2d296d7f6de138b1c816e34d4",
+    "sha256": "3ce0ffccab80a955683b147e5b9b027d8203acc297589beae98052b5b358d79a",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",

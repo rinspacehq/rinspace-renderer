@@ -86,6 +86,9 @@ func (executor *Executor) collectAndStore(
 	candidates := make([]artifactCandidate, 0, len(specifications))
 	var compileLog []byte
 	for _, specification := range specifications {
+		if metadata.isExport() && specification.kind != "pdf" && specification.kind != "log" {
+			continue
+		}
 		_, mediaType, maximum, _ := artifactPolicy(specification.kind)
 		body, present, readErr := readOutputFile(outputDirectory, specification.filename, maximum)
 		if readErr != nil {
@@ -96,7 +99,7 @@ func (executor *Executor) collectAndStore(
 			return nil, parseLatexDiagnostics(compileLog), failure
 		}
 		if !present || len(body) == 0 {
-			if requireComplete && specification.required {
+			if requireComplete && specification.required && (!metadata.isExport() || specification.kind == "pdf") {
 				return nil, parseLatexDiagnostics(compileLog), invalidFailure("invalid_pdf_artifact", "PDF compiler omitted a required artifact")
 			}
 			continue

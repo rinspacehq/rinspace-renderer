@@ -62,6 +62,7 @@ type Executor struct {
 }
 
 type requestMetadata struct {
+	exportSource
 	RequestID              string `json:"requestId"`
 	Entrypoint             string `json:"entrypoint"`
 	OutputKind             string `json:"outputKind"`
@@ -72,6 +73,8 @@ type requestMetadata struct {
 	ImageDigest            string `json:"imageDigest"`
 	PreviewContractVersion string `json:"previewContractVersion"`
 }
+
+func (metadata requestMetadata) isExport() bool { return metadata.OutputKind == ExportOutputKind }
 
 func New(repository Repository, store Store, broker Broker, config Config) (*Executor, error) {
 	if repository == nil || store == nil || broker == nil || strings.TrimSpace(config.SpoolRoot) == "" ||
@@ -90,16 +93,22 @@ func (executor *Executor) Execute(ctx context.Context, job jobpostgres.Job) Outc
 	if failure != nil {
 		return Outcome{Failure: failure}
 	}
-	source, failure := executor.source(ctx, job)
+	source, failure := executor.source(ctx, job, metadata)
 	if failure != nil {
 		return Outcome{Failure: failure}
 	}
 	if failure := executor.recoverStale(ctx, job.ID); failure != nil {
 		return Outcome{Failure: failure}
 	}
-	spool, err := prepareSpool(executor.config.SpoolRoot, job.ID, metadata.Entrypoint, source, metadata.SnapshotHash)
+	var spool preparedSpool
+	var err error
+	if metadata.isExport() {
+		spool, err = prepareExportSpool(executor.config.SpoolRoot, job.ID, metadata.Entrypoint, source)
+	} else {
+		spool, err = prepareSpool(executor.config.SpoolRoot, job.ID, metadata.Entrypoint, source, metadata.SnapshotHash)
+	}
 	if err != nil {
-		return Outcome{Failure: invalidFailure("invalid_pdf_snapshot", "PDF source snapshot is invalid")}
+		return Outcome{Failure: invalidFailure("invalid_pdf_snapshot", "PDF source archive is invalid")}
 	}
 	started := false
 	defer func() {
@@ -170,25 +179,45 @@ func (executor *Executor) Execute(ctx context.Context, job jobpostgres.Job) Outc
 func (executor *Executor) validateJob(job jobpostgres.Job) (requestMetadata, *Failure) {
 	var metadata requestMetadata
 	if !jobIDPattern.MatchString(job.ID) || job.ContentKind != "latex" || job.DocumentEngine != "latexmk" ||
-		job.ResourceClass != "latex-pdf" || job.PriorityClass != "preview" || job.RendererVersion != executor.config.RendererVersion ||
-		len(job.RequestMetadata) == 0 || json.Unmarshal(job.RequestMetadata, &metadata) != nil || job.ProjectHash != metadata.SnapshotHash {
+		job.ResourceClass != "latex-pdf" || job.RendererVersion != executor.config.RendererVersion ||
+		len(job.RequestMetadata) == 0 || json.Unmarshal(job.RequestMetadata, &metadata) != nil ||
+		metadata.EnginePolicyID != PolicyID || !imageDigestPattern.MatchString(metadata.ImageDigest) ||
+		!sha256Pattern.MatchString(job.OptionsHash) {
 		return requestMetadata{}, invalidFailure("invalid_pdf_job", "PDF job contract is invalid")
 	}
-	if metadata.OutputKind != "latex-pdf-preview" || metadata.PreviewContractVersion != PreviewSchemaVersion ||
-		!sha256Pattern.MatchString(metadata.SnapshotHash) || !sessionPattern.MatchString(metadata.SessionID) ||
-		metadata.DraftRevision < 0 || metadata.EnginePolicyID != PolicyID ||
-		!imageDigestPattern.MatchString(metadata.ImageDigest) || !canonicalEntrypoint(metadata.Entrypoint) ||
-		!sha256Pattern.MatchString(job.OptionsHash) {
-		return requestMetadata{}, invalidFailure("invalid_pdf_job", "PDF job identity is invalid")
+	switch metadata.OutputKind {
+	case ExportOutputKind:
+		if (job.PriorityClass != "publish" && job.PriorityClass != "rebuild") ||
+			metadata.PreviewContractVersion != "" || metadata.SnapshotHash != "" || metadata.SessionID != "" ||
+			metadata.DraftRevision != 0 || !metadata.exportSource.valid() || metadata.ControlProjectID != job.OwnerScope ||
+			job.ProjectHash != metadata.ControlProjectHash || !CanonicalExportEntrypoint(metadata.Entrypoint) {
+			return requestMetadata{}, invalidFailure("invalid_pdf_job", "LaTeX PDF export identity is invalid")
+		}
+	case "latex-pdf-preview":
+		if job.PriorityClass != "preview" || job.ProjectHash != metadata.SnapshotHash ||
+			metadata.PreviewContractVersion != PreviewSchemaVersion || !sha256Pattern.MatchString(metadata.SnapshotHash) ||
+			!sessionPattern.MatchString(metadata.SessionID) || metadata.DraftRevision < 0 || !canonicalEntrypoint(metadata.Entrypoint) {
+			return requestMetadata{}, invalidFailure("invalid_pdf_job", "PDF preview identity is invalid")
+		}
+	default:
+		return requestMetadata{}, invalidFailure("invalid_pdf_job", "PDF job output kind is invalid")
 	}
 	return metadata, nil
 }
 
-func (executor *Executor) source(ctx context.Context, job jobpostgres.Job) ([]byte, *Failure) {
+func (executor *Executor) source(ctx context.Context, job jobpostgres.Job, metadata requestMetadata) ([]byte, *Failure) {
 	artifact, err := executor.repository.Artifact(ctx, job.SourceArtifactID)
 	if err != nil || artifact.Kind != "source" || artifact.Visibility != "private" || artifact.ExpiresAt == nil ||
-		artifact.MediaType != "application/x-tar" || artifact.SchemaVersion != SnapshotSchemaVersion ||
-		!artifact.ExpiresAt.After(executor.config.Now()) || artifact.ByteSize <= 0 || artifact.ByteSize > snapshotTotalBytes+snapshotFileLimit*512+1024 {
+		!artifact.ExpiresAt.After(executor.config.Now()) || artifact.ByteSize <= 0 {
+		return nil, retryableFailure("pdf_source_unavailable", "PDF source snapshot is unavailable")
+	}
+	if metadata.isExport() {
+		if artifact.MediaType != "application/zip" || artifact.SchemaVersion != "rin-project-archive/v1" ||
+			artifact.SHA256 != job.ProjectHash || artifact.ByteSize > snapshotTotalBytes {
+			return nil, invalidFailure("invalid_pdf_archive", "LaTeX PDF source does not match the committed archive")
+		}
+	} else if artifact.MediaType != "application/x-tar" || artifact.SchemaVersion != SnapshotSchemaVersion ||
+		artifact.ByteSize > snapshotTotalBytes+snapshotFileLimit*512+1024 {
 		return nil, retryableFailure("pdf_source_unavailable", "PDF source snapshot is unavailable")
 	}
 	reference := contracts.ArtifactReference{
@@ -284,6 +313,25 @@ func artifactReferences(artifacts []PreviewArtifact) []contracts.ArtifactReferen
 }
 
 func (executor *Executor) storeResult(ctx context.Context, job jobpostgres.Job, metadata requestMetadata, artifacts []PreviewArtifact, diagnostics []renderapi.Diagnostic) Outcome {
+	versions := PreviewVersions{RinRenderer: executor.config.RendererVersion, Latexmk: LatexmkVersion, TeXLive: TeXLiveVersion, CompilerImage: metadata.ImageDigest}
+	var artifactBytes int64
+	for _, artifact := range artifacts {
+		artifactBytes += artifact.Bytes
+	}
+	if metadata.isExport() {
+		result := ExportResult{
+			exportSource: metadata.exportSource, SchemaVersion: ExportSchemaVersion, JobID: job.ID,
+			ContentKind: "latex", OutputKind: ExportOutputKind, DocumentEngine: "latexmk",
+			ResourceClass: "latex-pdf", PriorityClass: job.PriorityClass, Entrypoint: metadata.Entrypoint,
+			EnginePolicyID: metadata.EnginePolicyID, ImageDigest: metadata.ImageDigest,
+			IdempotencyKey: metadata.exportSource.key(metadata.Entrypoint, metadata.EnginePolicyID, metadata.ImageDigest),
+			Artifacts:      artifacts, TotalArtifactBytes: artifactBytes, Diagnostics: diagnostics, Versions: versions,
+		}
+		if err := result.Validate(); err != nil {
+			return Outcome{Failure: invalidFailure("invalid_pdf_result", "LaTeX PDF export result is invalid")}
+		}
+		return executor.persistResult(ctx, job, ExportSchemaVersion, result)
+	}
 	identity := sha256.Sum256([]byte(metadata.SessionID + metadata.SnapshotHash + metadata.Entrypoint + metadata.EnginePolicyID + metadata.ImageDigest))
 	result := PreviewResult{
 		SchemaVersion: PreviewSchemaVersion, JobID: job.ID, RequestID: firstNonEmpty(metadata.RequestID, job.ID),
@@ -292,14 +340,15 @@ func (executor *Executor) storeResult(ctx context.Context, job jobpostgres.Job, 
 		SessionID: metadata.SessionID, DraftRevision: metadata.DraftRevision, EnginePolicyID: metadata.EnginePolicyID,
 		ImageDigest: metadata.ImageDigest, IdempotencyKey: hex.EncodeToString(identity[:]), Entrypoint: metadata.Entrypoint,
 		WorkspaceRoot: "/workspace", Artifacts: artifacts, Diagnostics: diagnostics, Cache: PreviewCache{Hit: false},
-		Versions: PreviewVersions{RinRenderer: executor.config.RendererVersion, Latexmk: LatexmkVersion, TeXLive: TeXLiveVersion, CompilerImage: metadata.ImageDigest},
-	}
-	for _, artifact := range artifacts {
-		result.TotalArtifactBytes += artifact.Bytes
+		Versions: versions, TotalArtifactBytes: artifactBytes,
 	}
 	if err := result.Validate(); err != nil {
 		return Outcome{Failure: invalidFailure("invalid_pdf_result", "PDF result contract is invalid")}
 	}
+	return executor.persistResult(ctx, job, PreviewSchemaVersion, result)
+}
+
+func (executor *Executor) persistResult(ctx context.Context, job jobpostgres.Job, schemaVersion string, result any) Outcome {
 	body, err := json.Marshal(result)
 	if err != nil {
 		return Outcome{Failure: retryableFailure("pdf_result_storage_failed", "PDF result could not be encoded")}
@@ -309,7 +358,7 @@ func (executor *Executor) storeResult(ctx context.Context, job jobpostgres.Job, 
 	expiresAt := executor.config.Now().UTC().Truncate(time.Second).Add(artifactTTL)
 	reference, err := executor.store.PutPrivate(ctx, orchestration.ArtifactWrite{
 		ArtifactID: "render-jobs/v1/result/" + job.ID + "/" + resultHash + ".json", Body: body,
-		MediaType: "application/json", SchemaVersion: PreviewSchemaVersion, ExpiresAt: &expiresAt,
+		MediaType: "application/json", SchemaVersion: schemaVersion, ExpiresAt: &expiresAt,
 	})
 	if err != nil {
 		return Outcome{Failure: retryableFailure("pdf_result_storage_failed", "PDF result could not be stored")}
@@ -317,9 +366,9 @@ func (executor *Executor) storeResult(ctx context.Context, job jobpostgres.Job, 
 	artifact := jobpostgres.Artifact{
 		ID: reference.ArtifactID, SHA256: reference.SHA256, Kind: "result", Visibility: reference.Visibility,
 		StorageKey: reference.ArtifactID, ByteSize: reference.Bytes, MediaType: reference.MediaType,
-		SchemaVersion: PreviewSchemaVersion, ExpiresAt: &expiresAt,
+		SchemaVersion: schemaVersion, ExpiresAt: &expiresAt,
 	}
-	return Outcome{ResultReference: reference, ResultArtifact: artifact, Evidence: jobpostgres.CompletionResultEvidence{RendererProjectHash: metadata.SnapshotHash, ResultHash: resultHash}}
+	return Outcome{ResultReference: reference, ResultArtifact: artifact, Evidence: jobpostgres.CompletionResultEvidence{RendererProjectHash: job.ProjectHash, ResultHash: resultHash}}
 }
 
 func firstNonEmpty(values ...string) string {
