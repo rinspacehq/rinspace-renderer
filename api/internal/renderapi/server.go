@@ -224,6 +224,7 @@ func (s *Server) routes() {
 		s.mux.Handle("/api/render/jobs", s.jobs)
 		s.mux.Handle("/api/render/jobs/", s.jobs)
 		s.mux.Handle("/api/render/queue", s.jobs)
+		s.mux.Handle("/api/render/publication-pdf/", s.jobs)
 		s.mux.Handle("/internal/v1/render/completion-health", s.jobs)
 	}
 }

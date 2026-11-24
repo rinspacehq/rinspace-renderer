@@ -11,6 +11,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -89,6 +90,93 @@ func TestPublicationTagPDFBindsPublicFieldsAndProjectScope(t *testing.T) {
 	}
 }
 
+func TestArchivedMarkdownPublicationPDFUsesPersistedResult(t *testing.T) {
+	handler, input := publicationPDFFixture(t, printFixture{})
+	reading, archive := expirePublicationFixture(t, handler)
+	wrongReading := input
+	wrongReading.ReadingSHA256 = strings.Repeat("1", 64)
+	for _, test := range []struct {
+		name, token, scope string
+		input              contracts.PublicationPDFInput
+		archive            []byte
+		code               int
+	}{
+		{"expired original job", "token-a", input.ProjectID, input, archive, http.StatusOK},
+		{"migration principal", "token-b", input.ProjectID, input, archive, http.StatusForbidden},
+		{"different project", "token-a", "book:42", input, archive, http.StatusUnprocessableEntity},
+		{"different source", "token-a", input.ProjectID, input, []byte("different archive"), http.StatusConflict},
+		{"different reading", "token-a", input.ProjectID, wrongReading, archive, http.StatusConflict},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			response := requestArchivedMarkdownPDF(t, handler, test.token, test.scope, test.input, reading, test.archive)
+			if response.Code != test.code {
+				t.Fatalf("archived PDF = %d %s", response.Code, response.Body.String())
+			}
+			if test.code == http.StatusOK {
+				assertPDFReceipt(t, response, test.input, 2)
+			}
+		})
+	}
+}
+
+func expirePublicationFixture(t *testing.T, handler *Handler) (json.RawMessage, []byte) {
+	t.Helper()
+	store := handler.store.(*fakeStore)
+	output, err := jobresult.Decode(store.bodies["fixture/result.json"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	reading, err := json.Marshal(output.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive := store.bodies["fixture/source.zip"]
+	clear(store.bodies)
+	clear(handler.repository.(*fakeRepository).artifacts)
+	if len(archive) == 0 {
+		t.Fatal("source fixture is missing")
+	}
+	return reading, archive
+}
+
+func requestArchivedMarkdownPDF(t *testing.T, handler *Handler, token, scope string, input contracts.PublicationPDFInput, reading json.RawMessage, archive []byte) *httptest.ResponseRecorder {
+	t.Helper()
+	_, key, err := input.Identity()
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	if err := form.WriteField("input", string(metadata)); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.WriteField("result", string(reading)); err != nil {
+		t.Fatal(err)
+	}
+	part, err := form.CreateFormFile("source", "archive.zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write(archive); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+	request := authorizedRequest(http.MethodPost, "/api/render/publication-pdf/markdown-backfill", &body)
+	request.Header.Set("Content-Type", form.FormDataContentType())
+	request.Header.Set("X-Rin-Renderer-Token", token)
+	request.Header.Set("Idempotency-Key", key)
+	request.Header.Set("X-Rin-Renderer-Owner-Scope", scope)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	return response
+}
+
 func requestTagPublicationPDF(t *testing.T, handler *Handler, scope string, input contracts.PublicationPDFInput, snapshot contracts.PublicationTagPDFSnapshot) *httptest.ResponseRecorder {
 	t.Helper()
 	_, key, err := input.Identity()
@@ -135,6 +223,12 @@ func TestPublicationPDFChromium(t *testing.T) {
 		t.Fatalf("real tag PDF = %d %s", tagResponse.Code, tagResponse.Body)
 	}
 	assertPDFReceipt(t, tagResponse, tag, 1)
+	reading, archive := expirePublicationFixture(t, handler)
+	archived := requestArchivedMarkdownPDF(t, handler, "token-a", input.ProjectID, input, reading, archive)
+	if archived.Code != http.StatusOK {
+		t.Fatalf("real archived publication PDF = %d %s", archived.Code, archived.Body)
+	}
+	assertPDFReceipt(t, archived, input, 2)
 	if sample := os.Getenv("RIN_PUBLICATION_PDF_TEST_OUTPUT"); sample != "" {
 		if err := os.WriteFile(sample, response.Body.Bytes(), 0600); err != nil {
 			t.Fatal(err)
@@ -241,7 +335,7 @@ func publicationPDFFixture(t *testing.T, printer PublicationPDFPrinter) (*Handle
 	handler := newTestHandler(t, &fakeAdmission{}, repository, store)
 	config := handler.config
 	config.PublicationPDF = &PublicationPDFConfig{
-		ProfileSHA256: input.ProfileSHA256, Printer: printer,
+		ProfileSHA256: input.ProfileSHA256, Printer: printer, PublicationPrincipal: "principal-a",
 		PublicAssets: fixturePublicImage{id: diagramID, body: diagram},
 	}
 	config.Now = func() time.Time { return repository.job.CreatedAt }
