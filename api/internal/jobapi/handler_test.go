@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -923,6 +924,79 @@ func TestTypstPDFPreviewArtifactReferenceUsesTypstResult(t *testing.T) {
 }
 
 func int64Pointer(value int64) *int64 { return &value }
+
+func TestCommittedTypstExportReportsVerifiedPagesOnRequest(t *testing.T) {
+	var pdf bytes.Buffer
+	pdf.WriteString("%PDF-1.4\n")
+	var offsets []int
+	for i, object := range []string{
+		"<< /Type /Catalog /Pages 2 0 R >>",
+		"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+		"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+	} {
+		offsets = append(offsets, pdf.Len())
+		fmt.Fprintf(&pdf, "%d 0 obj\n%s\nendobj\n", i+1, object)
+	}
+	xref := pdf.Len()
+	pdf.WriteString("xref\n0 4\n0000000000 65535 f \n")
+	for _, offset := range offsets {
+		fmt.Fprintf(&pdf, "%010d 00000 n \n", offset)
+	}
+	fmt.Fprintf(&pdf, "trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", xref)
+
+	repository := newFakeRepository()
+	job := &repository.job
+	job.OwnerScope, job.State = "book:77", "succeeded"
+	job.RequestMetadata = json.RawMessage(`{"outputKind":"typst-pdf-export"}`)
+	job.ResultArtifactID = "typst-export-result"
+	expires := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	commit, image := strings.Repeat("c", 40), "sha256:"+strings.Repeat("d", 64)
+	digest := sha256Hex(pdf.Bytes())
+	artifactID := "render-jobs/v1/typst/" + testJobID + "/pdf-" + digest + ".pdf"
+	result := typstpdfexecutor.Result{
+		SchemaVersion: typstpdfexecutor.ResultSchemaVersion, JobID: testJobID, RequestID: testJobID,
+		ContentKind: "typst", OutputKind: typstpdfexecutor.ExportOutputKind, DocumentEngine: "typst",
+		ResourceClass: "typst-pdf", PriorityClass: "publish", RenderProfileID: "typst-web.v1",
+		Entrypoint: "main.typ", WorkspaceRoot: "/workspace", EnginePolicyID: typstpdfexecutor.PolicyID,
+		ImageDigest: image, ControlProjectID: job.OwnerScope, SourceCommit: commit, ControlProjectHash: strings.Repeat("b", 64),
+		IdempotencyKey: typstpdfexecutor.ExportIdempotencyKey(job.OwnerScope, commit, "main.typ", typstpdfexecutor.PolicyID, image),
+		Artifacts: []typstpdfexecutor.Artifact{{ArtifactID: artifactID, Kind: "pdf", Path: ".rinspace/typst/main.pdf",
+			SHA256: digest, Bytes: int64(pdf.Len()), MediaType: "application/pdf", Visibility: "private", ExpiresAt: expires.Format(time.RFC3339)}},
+		TotalArtifactBytes: int64(pdf.Len()), Diagnostics: []renderapi.Diagnostic{},
+		Versions: typstpdfexecutor.Versions{RinRenderer: "test", Typst: "0.15.1", CompilerImage: image},
+	}
+	raw, err := json.Marshal(result)
+	if err != nil || result.Validate() != nil {
+		t.Fatalf("invalid test export: %v, %v", err, result.Validate())
+	}
+	repository.artifacts[job.ResultArtifactID] = jobpostgres.Artifact{
+		ID: job.ResultArtifactID, StorageKey: job.ResultArtifactID, SHA256: sha256Hex(raw),
+		Kind: "result", Visibility: "private", ByteSize: int64(len(raw)), MediaType: "application/json",
+		SchemaVersion: typstpdfexecutor.ResultSchemaVersion, ExpiresAt: &expires,
+	}
+	repository.artifacts[artifactID] = jobpostgres.Artifact{
+		ID: artifactID, StorageKey: artifactID, SHA256: digest, Kind: "debug", Visibility: "private",
+		ByteSize: int64(pdf.Len()), MediaType: "application/pdf", ExpiresAt: &expires,
+	}
+	handler := newTestHandler(t, &fakeAdmission{}, repository, &fakeStore{bodies: map[string][]byte{
+		job.ResultArtifactID: raw, artifactID: pdf.Bytes(),
+	}})
+	for _, inspect := range []string{"", "pages"} {
+		request := authorizedRequest(http.MethodGet, "/api/render/jobs/"+testJobID+"/artifacts/pdf", nil)
+		request.Header.Set("X-Rin-Renderer-Owner-Scope", job.OwnerScope)
+		request.Header.Set("X-Rinspace-PDF-Inspection", inspect)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		wantPages := ""
+		if inspect == "pages" {
+			wantPages = "1"
+		}
+		if response.Code != http.StatusOK || !bytes.Equal(response.Body.Bytes(), pdf.Bytes()) ||
+			response.Header().Get("X-Rinspace-Artifact-Pages") != wantPages {
+			t.Fatalf("export with %q inspection: status %d, headers %v", inspect, response.Code, response.Header())
+		}
+	}
+}
 
 func sha256Hex(body []byte) string {
 	digest := sha256.Sum256(body)
