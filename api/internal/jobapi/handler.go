@@ -22,6 +22,7 @@ import (
 	"github.com/rinspacehq/rinspace-renderer/api/internal/jobresult"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/operational"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/pdfexecutor"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/pdfinspect"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectcore"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/projectidentity"
 	"github.com/rinspacehq/rinspace-renderer/api/internal/typstadapter"
@@ -135,12 +136,11 @@ func New(auth Authenticator, admit Admission, repository Repository, store Priva
 	if config.ProjectFileMaxBytes <= 0 {
 		config.ProjectFileMaxBytes = config.MaxSourceBytes
 	}
-	handler := &Handler{auth: auth, admission: admit, repository: repository, store: store, config: config, mux: http.NewServeMux()}
+	handler := &Handler{auth: auth, admission: admit, repository: repository, store: store, config: config, mux: http.NewServeMux(), printSlot: make(chan struct{}, 1)}
 	if config.PublicationPDF != nil {
 		if err := config.PublicationPDF.validate(); err != nil {
 			return nil, err
 		}
-		handler.printSlot = make(chan struct{}, 1)
 		handler.mux.HandleFunc("POST /api/render/jobs/{jobId}/publication-pdf", handler.publicationPDF)
 	}
 	handler.mux.HandleFunc("POST /api/render/jobs", handler.submit)
@@ -477,6 +477,22 @@ func (handler *Handler) artifact(response http.ResponseWriter, request *http.Req
 		writeError(response, http.StatusNotFound, "artifact_not_found", "job artifact is not available")
 		return
 	}
+	inspect := request.Header.Get("X-Rinspace-PDF-Inspection")
+	if inspect != "" {
+		if inspect != "pages" || kind != "pdf" || previewJob(job) || job.State != "succeeded" ||
+			!controlProjectIDPattern.MatchString(identity.OwnerScope) {
+			writeError(response, http.StatusBadRequest, "invalid_pdf_inspection", "page inspection requires a completed project PDF export")
+			return
+		}
+		select {
+		case handler.printSlot <- struct{}{}:
+			defer func() { <-handler.printSlot }()
+		default:
+			response.Header().Set("Retry-After", "2")
+			writeError(response, http.StatusServiceUnavailable, "publication_pdf_busy", "publication PDF inspection is busy")
+			return
+		}
+	}
 	reference, err := handler.previewArtifactReference(request.Context(), job, kind)
 	if err != nil {
 		writeError(response, http.StatusNotFound, "artifact_not_found", "job artifact is not available")
@@ -498,6 +514,14 @@ func (handler *Handler) artifact(response http.ResponseWriter, request *http.Req
 	if err != nil || int64(len(body)) != reference.Bytes || hex.EncodeToString(digest[:]) != reference.SHA256 {
 		writeError(response, http.StatusNotFound, "artifact_not_found", "job artifact is not available")
 		return
+	}
+	if inspect == "pages" {
+		inspection, err := pdfinspect.Inspect(body)
+		if err != nil || reference.MediaType != "application/pdf" {
+			writeError(response, http.StatusUnprocessableEntity, "invalid_pdf_inspection", "PDF artifact could not be verified")
+			return
+		}
+		response.Header().Set("X-Rinspace-Artifact-Pages", strconv.Itoa(inspection.PageCount))
 	}
 	response.Header().Set("Content-Type", reference.MediaType)
 	response.Header().Set("Content-Length", strconv.FormatInt(reference.Bytes, 10))
