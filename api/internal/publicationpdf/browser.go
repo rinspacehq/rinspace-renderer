@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
@@ -16,14 +17,16 @@ import (
 )
 
 const (
-	MaxPrintInputBytes = 64 << 20
-	maxPDFBytes        = 32 << 20
+	MaxPrintInputBytes  = 64 << 20
+	maxPDFBytes         = 32 << 20
+	publicationPrintUID = 65532
 )
 
 type BrowserPrinter struct {
 	Node     string
 	Script   string
 	Chromium string
+	Isolate  bool
 }
 
 func (printer BrowserPrinter) Validate() error {
@@ -37,6 +40,32 @@ func (printer BrowserPrinter) Validate() error {
 		}
 	}
 	return nil
+}
+
+// CheckIsolation probes the production sandbox before enabling the print route.
+func (printer BrowserPrinter) CheckIsolation(ctx context.Context) error {
+	if !printer.Isolate {
+		return errors.New("Markdown PDF publication requires a network namespace")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	probe := publicationPrintCommand("/usr/bin/true")
+	probe.Env = []string{"LANG=C.UTF-8"}
+	if err := processcontrol.Run(ctx, probe, time.Second); err != nil {
+		return fmt.Errorf("start unprivileged Markdown PDF network namespace: %w", err)
+	}
+	return nil
+}
+
+func publicationPrintCommand(program string, args ...string) *exec.Cmd {
+	flags := []string{"--no-new-privs"}
+	if os.Geteuid() == 0 {
+		id := strconv.Itoa(publicationPrintUID)
+		flags = append(flags, "--reuid="+id, "--regid="+id, "--clear-groups",
+			"--inh-caps=-all", "--ambient-caps=-all", "--bounding-set=-all")
+	}
+	flags = append(flags, "--", "/usr/bin/unshare", "--user", "--map-current-user", "--net", "--", program)
+	return exec.Command("/usr/bin/setpriv", append(flags, args...)...)
 }
 
 // Print renders a final Markdown bundle using the configured local browser
@@ -69,7 +98,20 @@ func (printer BrowserPrinter) Print(ctx context.Context, bundle contracts.Docume
 		return nil, empty, err
 	}
 	defer output.Close()
-	cmd := exec.Command(printer.Node, printer.Script, printer.Chromium, input)
+	args := []string{printer.Script, printer.Chromium, input}
+	var cmd *exec.Cmd
+	if printer.Isolate {
+		if os.Geteuid() == 0 {
+			for _, path := range []string{input, dir} {
+				if err := os.Chown(path, publicationPrintUID, publicationPrintUID); err != nil {
+					return nil, empty, fmt.Errorf("prepare unprivileged Markdown PDF input: %w", err)
+				}
+			}
+		}
+		cmd = publicationPrintCommand(printer.Node, args...)
+	} else {
+		cmd = exec.Command(printer.Node, args...)
+	}
 	cmd.Dir = dir
 	cmd.Env = []string{"HOME=" + dir, "TMPDIR=" + dir, "PATH=/usr/bin:/bin", "LANG=C.UTF-8", "TZ=UTC"}
 	cmd.Stdout = output

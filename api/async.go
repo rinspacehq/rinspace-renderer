@@ -229,14 +229,15 @@ func buildAsyncRuntime(ctx context.Context, config renderapi.Config) (*asyncRunt
 	var publicationPDF *jobapi.PublicationPDFConfig
 	profile := strings.TrimSpace(os.Getenv("RIN_RENDERER_PUBLICATION_PDF_PROFILE_SHA256"))
 	if profile != "" && (role == "api" || role == "all") {
-		if os.Geteuid() == 0 {
-			return fail(errors.New("the publication PDF printer requires an unprivileged Renderer API process"))
-		}
 		printer := publicationpdf.BrowserPrinter{
 			Node: os.Getenv("RIN_RENDERER_MARKDOWN_NODE_BIN"), Script: os.Getenv("RIN_RENDERER_MARKDOWN_PDF_SCRIPT"),
 			Chromium: os.Getenv("RIN_RENDERER_MARKDOWN_PDF_CHROMIUM"),
+			Isolate:  true,
 		}
 		if err := printer.Validate(); err != nil {
+			return fail(err)
+		}
+		if err := printer.CheckIsolation(ctx); err != nil {
 			return fail(err)
 		}
 		publicationPDF = &jobapi.PublicationPDFConfig{
