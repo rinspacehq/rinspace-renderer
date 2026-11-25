@@ -303,6 +303,31 @@ jobs:
           grep -Fxq 'Rinspace legacy package: tikz-cd' "$sample/legacy-output/compile.log"
           test "$(head -c 5 "$sample/legacy-output/legacy.pdf")" = '%PDF-'
           sha256sum "$sample/legacy-output/legacy.pdf" | tee evidence/latex-legacy-package-pdf.sha256
+          mkdir "$sample/theorem-output"
+          chmod 0777 "$sample/theorem-output"
+          cat > "$sample/workspace/theorems.tex" <<'TEX'
+          \documentclass{article}
+          \usepackage{amsmath,amsthm}
+          \newtheorem{lemma}{Author lemma}
+          \begin{document}
+          中文测试。
+          \begin{lemma} Keep the declared theorem. \end{lemma}
+          \ifnum\value{lemma}=1\else\errmessage{Lost the original theorem counter}\fi
+          \begin{definition} An unnumbered definition. \end{definition}
+          \ifcsname c@definition\endcsname\errmessage{Invented a definition number}\fi
+          \[\begin{tikzcd} A \arrow[r] & B \end{tikzcd}\]
+          \end{document}
+          TEX
+          docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 256 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
+            --mount "type=bind,src=$sample/workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$sample/theorem-output,dst=/output" \
+            "$REFERENCE" theorems.tex
+          grep -Fxq 'Rinspace legacy format: unnumbered-theorems' "$sample/theorem-output/compile.log"
+          ! grep -Fq 'Missing character:' "$sample/theorem-output/compile.log"
+          test "$(head -c 5 "$sample/theorem-output/theorems.pdf")" = '%PDF-'
+          sha256sum "$sample/theorem-output/theorems.pdf" | tee evidence/latex-legacy-theorem-pdf.sha256
           mkdir "$sample/bibliography-output"
           chmod 0777 "$sample/bibliography-output"
           cat > "$sample/workspace/bibliography.tex" <<'TEX'

@@ -81,26 +81,52 @@ compile_log="$output/compile.log"
 status=0
 compile "$output" "$pretex" >"$compile_log" 2>&1 || status=$?
 
-# Some legacy sources rely on these bundled packages without declaring them.
-# Retry only a recognized failure, using the same read-only source and sandbox.
-package=''
+# Retry a recognized legacy failure with the same read-only source and sandbox.
+recipe=''
 if [ "$status" -ne 0 ]; then
   if grep -Fq 'LaTeX Error: Environment tikzcd undefined.' "$compile_log"; then
-    package='tikz-cd'
+    recipe='tikz-cd'
   elif awk '/Undefined control sequence\./ {
     if (getline && $0 ~ /\\coloneqq([^[:alpha:]@]|$)/) known=1
   } END { exit !known }' "$compile_log"; then
-    package='mathtools'
+    recipe='mathtools'
+  elif grep -Eq 'LaTeX Error: Environment (definition|example|lemma|proposition|theorem) undefined\.' "$compile_log"; then
+    recipe='unnumbered-theorems'
   fi
 fi
-if [ -n "$package" ]; then
+if [ -n "$recipe" ]; then
+  case "$recipe" in
+    unnumbered-theorems)
+      # Run after the source preamble so its own environments take precedence.
+      retry_prelude="$(printf '%s' '\AddToHook{begindocument/before}{\RequirePackage{amsthm}
+        {\theoremstyle{definition}
+        \ifcsname definition\endcsname\else\newtheorem*{definition}{Definition}\fi
+        \ifcsname example\endcsname\else\newtheorem*{example}{Example}\fi
+        \theoremstyle{plain}
+        \ifcsname lemma\endcsname\else\newtheorem*{lemma}{Lemma}\fi
+        \ifcsname proposition\endcsname\else\newtheorem*{proposition}{Proposition}\fi
+        \ifcsname theorem\endcsname\else\newtheorem*{theorem}{Theorem}\fi}}' | tr -d '\n')"
+      if grep -rFqs --include='*.[tT][eE][xX]' --include='*.[lL][tT][xX]' '\begin{tikzcd}' "$workspace"; then
+        retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\RequirePackage{tikz-cd}}'
+      fi
+      if grep -Eq 'Missing character: .*\(U\+[4-9][0-9A-F]{3}\)' "$compile_log" &&
+        ! grep -Fq 'xeCJK.sty' "$compile_log"; then
+        retry_prelude="$retry_prelude"'\AddToHook{class/article/after}{\RequirePackage{xeCJK}\setCJKmainfont{Noto Serif CJK SC}}'
+      fi
+      retry_label='Rinspace legacy format: unnumbered-theorems'
+      ;;
+    *)
+      retry_prelude="\RequirePackage{$recipe}"
+      retry_label="Rinspace legacy package: $recipe"
+      ;;
+  esac
   retry_directory="$(mktemp -d "$output/.compatibility.XXXXXX")"
   trap 'rm -rf -- "$retry_directory"' EXIT
   status=0
-  compile "$retry_directory" "\RequirePackage{$package}$pretex" \
+  compile "$retry_directory" "$retry_prelude$pretex" \
     "-jobname=$stem" >"$retry_directory/compile.log" 2>&1 || status=$?
   {
-    printf 'Rinspace legacy package: %s\n' "$package"
+    printf '%s\n' "$retry_label"
     cat "$retry_directory/compile.log"
   } >"$compile_log"
   if [ "$status" -eq 0 ]; then
