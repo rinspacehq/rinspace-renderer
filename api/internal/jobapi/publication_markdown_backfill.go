@@ -9,13 +9,24 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/rinspacehq/rinspace-renderer/api/internal/contracts"
+	"github.com/rinspacehq/rinspace-renderer/api/internal/publicationpdf"
 )
 
 const maxPublicationReadingBytes = 64 << 20
+const maxPublicationImageManifestBytes = 8 << 20
+
+type publicationArchiveImage struct {
+	Source    string `json:"source"`
+	SHA256    string `json:"sha256"`
+	Bytes     int64  `json:"bytes"`
+	MediaType string `json:"mediaType"`
+	Body      []byte `json:"body"`
+}
 
 func (handler *Handler) publicationMarkdownBackfill(response http.ResponseWriter, request *http.Request) {
 	identity, ok := handler.identity(response, request)
@@ -36,7 +47,7 @@ func (handler *Handler) publicationMarkdownBackfill(response http.ResponseWriter
 	controller := http.NewResponseController(response)
 	_ = controller.SetReadDeadline(deadline)
 	defer controller.SetReadDeadline(time.Time{})
-	request.Body = http.MaxBytesReader(response, request.Body, handler.config.MaxSourceBytes+maxPublicationReadingBytes+(64<<10))
+	request.Body = http.MaxBytesReader(response, request.Body, handler.config.MaxSourceBytes+maxPublicationReadingBytes+maxPublicationImageManifestBytes+(64<<10))
 	form, err := request.MultipartReader()
 	if err != nil {
 		writeError(response, http.StatusBadRequest, "invalid_publication_pdf_input", "archived publication input is invalid")
@@ -73,12 +84,65 @@ func (handler *Handler) publicationMarkdownBackfill(response http.ResponseWriter
 		return
 	}
 	digest := sha256.Sum256(archive)
-	if _, err := form.NextPart(); err != io.EOF || hex.EncodeToString(digest[:]) != input.SourceSHA256 {
+	if hex.EncodeToString(digest[:]) != input.SourceSHA256 {
 		writeError(response, http.StatusConflict, "publication_pdf_source_mismatch", "archived source does not match the reading edition")
 		return
 	}
+	images, err := readPublicationArchiveImages(form)
+	if err != nil {
+		writeError(response, http.StatusUnprocessableEntity, "invalid_publication_pdf_images", "archived publication images are invalid")
+		return
+	}
 	resolver := handler.publicationImageResolver(reading, func(context.Context) ([]byte, error) { return archive, nil })
-	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, *reading.Inline, strings.HasPrefix(input.ProjectID, "book:"), resolver)
+	resolveImage := func(ctx context.Context, ref publicationpdf.ImageReference) (string, error) {
+		if ref.RepositoryPath == "" && ref.DiagramObjectID == "" {
+			if value, ok := images[ref.Source]; ok {
+				return value, nil
+			}
+		}
+		return resolver(ctx, ref)
+	}
+	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, *reading.Inline, strings.HasPrefix(input.ProjectID, "book:"), resolveImage)
+}
+
+func readPublicationArchiveImages(form *multipart.Reader) (map[string]string, error) {
+	part, err := form.NextPart()
+	if err == io.EOF {
+		return nil, nil
+	}
+	if err != nil || part.FormName() != "verifiedImages" {
+		return nil, errors.New("unexpected publication image field")
+	}
+	limiter := &io.LimitedReader{R: part, N: maxPublicationImageManifestBytes + 1}
+	decoder := json.NewDecoder(limiter)
+	decoder.DisallowUnknownFields()
+	var records []publicationArchiveImage
+	if err := decoder.Decode(&records); err != nil || len(records) == 0 || len(records) > 32 {
+		return nil, errors.New("invalid publication image manifest")
+	}
+	if err := decoder.Decode(new(json.RawMessage)); err != io.EOF || limiter.N == 0 {
+		return nil, errors.New("publication image manifest exceeds its limit or has trailing content")
+	}
+	if _, err := form.NextPart(); err != io.EOF {
+		return nil, errors.New("unexpected field after the publication image manifest")
+	}
+	images := make(map[string]string, len(records))
+	for _, record := range records {
+		location, err := url.Parse(record.Source)
+		if err != nil || len(record.Source) > 1024 || location.Scheme != "https" || location.Hostname() == "" ||
+			location.User != nil || location.RawQuery != "" || location.Fragment != "" || record.Bytes <= 0 || record.Bytes > 4<<20 {
+			return nil, errors.New("invalid archive image identity")
+		}
+		if _, duplicate := images[record.Source]; duplicate {
+			return nil, errors.New("duplicate archive image source")
+		}
+		image, err := printAssetDataURL(record.Body, record.SHA256, record.Bytes, record.MediaType, location.Path)
+		if err != nil {
+			return nil, err
+		}
+		images[record.Source] = image
+	}
+	return images, nil
 }
 
 func readPublicationPart(form *multipart.Reader, name string, limit int64) ([]byte, error) {
