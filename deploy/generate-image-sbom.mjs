@@ -76,6 +76,15 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
   } else {
     const lock = JSON.parse(await readFile(join(root, 'deploy/typst-pdf.lock.json'), 'utf8'));
     packages.push(packageRecord('Engine', 'Typst', lock.compiler.version, lock.compiler.license, `pkg:generic/typst@${lock.compiler.version}`));
+    const preview = JSON.parse(await readFile(join(root, 'deploy/typst-html-toolchain.lock.json'), 'utf8')).packages;
+    if (lock.previewPackageCache.packageSetDigest !== preview.packageSetDigest) throw new Error('Typst preview cache disagrees with its sealed lock');
+    for (const { name, version, license, archiveSha256 } of preview.approved) {
+      packages.push({
+        ...packageRecord('TypstPreview', name, version, license, `pkg:generic/typst-preview/${name}@${version}`),
+        downloadLocation: `https://packages.typst.org/preview/${name}-${version}.tar.gz`,
+        checksums: [{ algorithm: 'SHA256', checksumValue: archiveSha256 }],
+      });
+    }
   }
   const ids = new Set();
   for (const item of packages) {
@@ -90,7 +99,7 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
     creationInfo: { created, creators: ['Tool: rin-renderer-generate-image-sbom/v1'] },
     documentDescribes: packages.map(item => item.SPDXID), packages,
     annotations: [{ annotationDate: created, annotationType: 'OTHER', annotator: 'Tool: rin-renderer-generate-image-sbom/v1',
-      comment: `OCI reference ${reference}; system and added TeX Live package notices are retained in the matching notice bundle.` }],
+      comment: `OCI reference ${reference}; system and added package notices are retained in the matching notice bundle.` }],
   };
 }
 

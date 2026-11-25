@@ -183,6 +183,15 @@ jobs:
           else
             cp "deploy/${COMPONENT}.lock.json" evidence/notices/renderer-source/
           fi
+          if [ "$COMPONENT" = typst-pdf ]; then
+            cp deploy/typst-html-toolchain.lock.json evidence/notices/renderer-source/
+            docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+              --entrypoint /bin/tar "$REFERENCE" -cf - -C /opt/rinspace/typst-package-cache . \
+              > evidence/typst-preview-sources.tar
+            mkdir -p evidence/notices/typst-preview-sources
+            tar -xf evidence/typst-preview-sources.tar -C evidence/notices/typst-preview-sources
+            node deploy/typst-packages.mjs verify deploy/typst-html-toolchain.lock.json evidence/notices/typst-preview-sources
+          fi
           node deploy/fetch-notice-sources.mjs deploy/notice-sources.lock.json evidence/notices/upstream
       - name: Verify installed Chromium and CJK fonts in the exact runtime image
         if: inputs.component == 'runtime'
@@ -277,6 +286,27 @@ jobs:
           test "$(head -c 8 "$sample/output/main.pdf")" = '%PDF-2.0'
           test -s "$sample/output/chapters/last.aux"
           sha256sum "$sample/output/main.pdf" | tee evidence/latex-publication-pdf.sha256
+      - name: Exercise the sealed package cache in the exact Typst image
+        if: inputs.component == 'typst-pdf'
+        shell: bash
+        run: |
+          set -euo pipefail
+          flags=(--rm --network none --read-only --user 65532:65532 --cap-drop ALL
+            --security-opt no-new-privileges --cpus 1 --memory 768m --memory-swap 768m --pids-limit 128)
+          docker run "${flags[@]}" --entrypoint /usr/local/bin/verify-typst-pdf-runtime "$REFERENCE" \
+            | tee evidence/typst-pdf-runtime.txt
+          sample="$(mktemp -d)"
+          trap 'rm -rf -- "$sample"' EXIT
+          mkdir "$sample/workspace" "$sample/output"
+          chmod 0777 "$sample/output"
+          printf '%s\n' '#import "@preview/ctheorems:1.1.3": thmbox' '= Offline PDF import' > "$sample/workspace/main.typ"
+          docker run "${flags[@]}" \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
+            --mount "type=bind,src=$sample/workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$sample/output,dst=/output" \
+            "$REFERENCE" main.typ
+          test "$(head -c 5 "$sample/output/main.pdf")" = '%PDF-'
+          sha256sum "$sample/output/main.pdf" | tee evidence/typst-publication-pdf.sha256
       - name: Seal SPDX and the full notice bundle
         shell: bash
         run: |
@@ -312,4 +342,6 @@ jobs:
             evidence/*.NOTICES.tar.gz
             evidence/image-evidence.json
             evidence/markdown-pdf-sandbox.txt
+            evidence/typst-pdf-runtime.txt
+            evidence/typst-publication-pdf.sha256
           if-no-files-found: error

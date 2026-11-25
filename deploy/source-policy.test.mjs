@@ -61,6 +61,19 @@ test('Typst compiler remains pinned and offline', () => {
   const html = json('typst-html-toolchain.lock.json');
   assert.deepEqual(candidate.packagePolicy.approvedPackages, html.packages.approved.map(item => `${item.name}@${item.version}`));
   assert.equal(candidate.packagePolicy.packageSetDigest, html.packages.packageSetDigest);
+  assert.deepEqual(lock.previewPackageCache, {
+    lock: 'typst-html-toolchain.lock.json', packageSetDigest: html.packages.packageSetDigest,
+  });
+  assert.equal(lock.runtime.packageDownloads, false);
+  assert.equal(lock.runtime.network, 'none');
+  assert.equal(lock.limits.nanoCpus, 1_000_000_000);
+  assert.equal(lock.limits.memoryBytes, 768 * 1024 * 1024);
+  assert.equal(lock.limits.memorySwapBytes, lock.limits.memoryBytes);
+  assert.ok(lock.compiler.arguments.includes('--jobs=1'));
+  const dockerfile = read('Dockerfile.typst-pdf').toString('utf8');
+  assert.ok(dockerfile.includes(`ARG TYPST_PACKAGE_SET_SHA256=${html.packages.packageSetDigest}\n`));
+  assert.match(dockerfile, /COPY --from=typst-packages \/out\/packages/);
+  assert.match(read('verify-typst-pdf-runtime.sh').toString('utf8'), /sealed Typst package cache digest mismatch/);
   assert.equal(html.profile.mathPresentation, 'mathjax-chtml');
   assert.equal(html.rendererEnvironment.defaults.RIN_RENDERER_TYPST_TIMEOUT_SECONDS, '120');
 });
