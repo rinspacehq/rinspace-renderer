@@ -9,7 +9,8 @@ ARG BASE_IMAGE=docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497
 FROM --platform=linux/amd64 ${NODE_IMAGE} AS typst-packages
 ARG RENDERER_SOURCE_ROOT=.
 COPY ${RENDERER_SOURCE_ROOT}/deploy/typst-packages.mjs ${RENDERER_SOURCE_ROOT}/deploy/typst-html-toolchain.lock.json /tmp/
-RUN node /tmp/typst-packages.mjs assemble /tmp/typst-html-toolchain.lock.json /out/packages \
+RUN mkdir -p /out \
+    && node /tmp/typst-packages.mjs assemble /tmp/typst-html-toolchain.lock.json /out/packages \
     && chmod -R a-w /out/packages
 
 FROM --platform=linux/amd64 ${BASE_IMAGE} AS typst-builder
