@@ -286,6 +286,23 @@ jobs:
           test "$(head -c 8 "$sample/output/main.pdf")" = '%PDF-2.0'
           test -s "$sample/output/chapters/last.aux"
           sha256sum "$sample/output/main.pdf" | tee evidence/latex-publication-pdf.sha256
+          mkdir "$sample/legacy-output"
+          chmod 0777 "$sample/legacy-output"
+          cat > "$sample/workspace/legacy.tex" <<'TEX'
+          \documentclass{article}
+          \begin{document}
+          \begin{tikzcd} A \arrow[r] & B \end{tikzcd}
+          \end{document}
+          TEX
+          docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 256 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
+            --mount "type=bind,src=$sample/workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$sample/legacy-output,dst=/output" \
+            "$REFERENCE" legacy.tex
+          grep -Fxq 'Rinspace legacy package: tikz-cd' "$sample/legacy-output/compile.log"
+          test "$(head -c 5 "$sample/legacy-output/legacy.pdf")" = '%PDF-'
+          sha256sum "$sample/legacy-output/legacy.pdf" | tee evidence/latex-legacy-package-pdf.sha256
       - name: Exercise the sealed package cache in the exact Typst image
         if: inputs.component == 'typst-pdf'
         shell: bash
@@ -342,6 +359,7 @@ jobs:
             evidence/*.NOTICES.tar.gz
             evidence/image-evidence.json
             evidence/markdown-pdf-sandbox.txt
+            evidence/latex-legacy-package-pdf.sha256
             evidence/typst-pdf-runtime.txt
             evidence/typst-publication-pdf.sha256
           if-no-files-found: error

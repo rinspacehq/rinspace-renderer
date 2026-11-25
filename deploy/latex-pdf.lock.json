@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "bfa1cea979969f599c58ca091f775a47936a54cb53b19a3e0e47218d3afa9a0f",
+    "sha256": "75449353f0eb0533bb210743fcdb1f99556a47a248be635050ee356873cc3dcf",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -40,7 +40,14 @@
       "-synctex=1",
       "-outdir=/output"
     ],
-    "xdvipdfmxVersion": "20211117"
+    "xdvipdfmxVersion": "20211117",
+    "legacyPackageRetry": {
+      "maxRetries": 1,
+      "packages": [
+        "tikz-cd",
+        "mathtools"
+      ]
+    }
   },
   "texlive": {
     "distribution": "TeX Live 2022/Debian",

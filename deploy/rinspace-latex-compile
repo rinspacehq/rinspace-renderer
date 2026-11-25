@@ -37,37 +37,73 @@ export openout_any=p
 export shell_escape=f
 mkdir -p "$HOME" "$TEXMFHOME" "$TEXMFVAR" "$TEXMFCONFIG"
 
-# Nested \include commands need directories for their auxiliary files in /output.
-find "$workspace" -mindepth 1 -type d -exec sh -eu -c '
-  output="$1"
-  workspace="$2"
-  shift 2
-  for directory do
-    mkdir -p -- "$output/${directory#"$workspace"/}"
-  done
-' sh "$output" "$workspace" {} +
+stem="$(basename "$entrypoint")"
+stem="${stem%.*}"
+pretex='\PassOptionsToPackage{new-dvipdfmx}{bxpdfver}'
 
-# The fixed xdvipdfmx supports PDF 2.0. bxpdfver can use its documented
-# option for this driver without probing it through TeX shell escape.
-compile_log="$output/compile.log"
-set +e
-(
-  cd "$workspace"
+compile() (
+  destination="$1"
+  prelude="$2"
+  shift 2
+  export TEXMFOUTPUT="$destination"
+  # Nested \include writes an auxiliary file under its source-relative directory.
+  find "$workspace" -mindepth 1 -type d -exec sh -eu -c '
+    destination="$1"
+    workspace="$2"
+    shift 2
+    for directory do
+      mkdir -p -- "$destination/${directory#"$workspace"/}"
+    done
+  ' sh "$destination" "$workspace" {} + || exit 1
+  cd "$workspace" || exit 1
   latexmk \
     -norc \
     -no-shell-escape \
     -pdfxe \
-    '-usepretex=\PassOptionsToPackage{new-dvipdfmx}{bxpdfver}' \
+    "-usepretex=$prelude" \
     -interaction=nonstopmode \
     -halt-on-error \
     -file-line-error \
     -recorder \
     -synctex=1 \
-    -outdir="$output" \
+    -outdir="$destination" \
+    "$@" \
     "$entrypoint"
-) >"$compile_log" 2>&1
-status=$?
-set -e
+)
+
+# bxpdfver can select PDF 2.0 without probing the pinned driver via shell escape.
+compile_log="$output/compile.log"
+status=0
+compile "$output" "$pretex" >"$compile_log" 2>&1 || status=$?
+
+# Some legacy sources rely on these bundled packages without declaring them.
+# Retry only a recognized failure, using the same read-only source and sandbox.
+package=''
+if [ "$status" -ne 0 ]; then
+  if grep -Fq 'LaTeX Error: Environment tikzcd undefined.' "$compile_log"; then
+    package='tikz-cd'
+  elif awk '/Undefined control sequence\./ {
+    if (getline && $0 ~ /\\coloneqq([^[:alpha:]@]|$)/) known=1
+  } END { exit !known }' "$compile_log"; then
+    package='mathtools'
+  fi
+fi
+if [ -n "$package" ]; then
+  retry_directory="$(mktemp -d "$output/.compatibility.XXXXXX")"
+  trap 'rm -rf -- "$retry_directory"' EXIT
+  status=0
+  compile "$retry_directory" "\RequirePackage{$package}$pretex" \
+    "-jobname=$stem" >"$retry_directory/compile.log" 2>&1 || status=$?
+  {
+    printf 'Rinspace legacy package: %s\n' "$package"
+    cat "$retry_directory/compile.log"
+  } >"$compile_log"
+  if [ "$status" -eq 0 ]; then
+    mv -- "$retry_directory/$stem.pdf" "$output/$stem.pdf"
+  fi
+  rm -rf -- "$retry_directory"
+  trap - EXIT
+fi
 
 log_limit=2097152
 if [ "$(wc -c < "$compile_log")" -gt "$log_limit" ]; then
@@ -77,8 +113,6 @@ fi
 
 [ "$status" -eq 0 ] || exit "$status"
 
-stem="$(basename "$entrypoint")"
-stem="${stem%.*}"
 pdf="$output/$stem.pdf"
 [ -f "$pdf" ] || fail "compiler completed without the expected PDF"
 pdf_bytes="$(wc -c < "$pdf")"
