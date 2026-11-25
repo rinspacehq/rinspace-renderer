@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "b7c66b6214b99a70c6631e755f528060c33e0695f49b2923e9a6e57d0bf09b8f",
+    "sha256": "c9695f11f0bc1f6044ff55415902290c0b84920c7d958ae320a8c495c719819a",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -47,6 +47,12 @@
         "tikz-cd",
         "mathtools"
       ]
+    },
+    "legacyTheoremRetry": {
+      "style": "unnumbered",
+      "environments": ["definition", "example", "lemma", "proposition", "theorem"],
+      "packages": ["amsthm", "tikz-cd", "xeCJK"],
+      "fallbackCJKFont": "Noto Serif CJK SC"
     },
     "biberVersion": "2.18"
   },
