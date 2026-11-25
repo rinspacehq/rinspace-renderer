@@ -1,0 +1,5 @@
+% SPDX-License-Identifier: AGPL-3.0-only
+\defaultfontfeatures[SimHei]{
+  UprightFont = {Noto Sans CJK SC},
+  BoldFont = {Noto Sans CJK SC Bold}
+}

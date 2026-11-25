@@ -249,24 +249,33 @@ jobs:
         run: |
           set -euo pipefail
           sample="$(mktemp -d)"
-          mkdir "$sample/workspace" "$sample/output"
+          mkdir -p "$sample/workspace/chapters" "$sample/output"
           chmod 0777 "$sample/output"
           cat > "$sample/workspace/main.ltx" <<'TEX'
           \documentclass{article}
+          \usepackage[2.0,compress]{bxpdfver}
+          \usepackage{fontspec,courierten,biolinum,algorithm2e}
+          \usepackage[cal=boondoxo]{mathalpha}
+          \newfontfamily\song{SimSun}
+          \newfontfamily\hei{SimHei}
           \begin{document}
-          Committed LaTeX PDF.
-          \newpage
-          \input{chapter.tex}
+          {\song 中文正文。} {\hei\bfseries 中文标题。} $\mathcal{C}$.
+          \textsf{Biolinum} \texttt{Courier}
+          \begin{algorithm}
+          \KwIn{A number}
+          \end{algorithm}
+          \include{chapters/last}
           \end{document}
           TEX
-          printf '%s\n' 'Final chapter from the same archive.' > "$sample/workspace/chapter.tex"
+          printf '%s\n' 'Final chapter from the same archive.' > "$sample/workspace/chapters/last.tex"
           docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
             --security-opt no-new-privileges --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 256 \
             --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
             --mount "type=bind,src=$sample/workspace,dst=/workspace,readonly" \
             --mount "type=bind,src=$sample/output,dst=/output" \
             "$REFERENCE" main.ltx
-          test "$(head -c 5 "$sample/output/main.pdf")" = '%PDF-'
+          test "$(head -c 8 "$sample/output/main.pdf")" = '%PDF-2.0'
+          test -s "$sample/output/chapters/last.aux"
           sha256sum "$sample/output/main.pdf" | tee evidence/latex-publication-pdf.sha256
       - name: Seal SPDX and the full notice bundle
         shell: bash

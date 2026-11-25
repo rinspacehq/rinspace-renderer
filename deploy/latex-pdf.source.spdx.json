@@ -24,7 +24,12 @@
     "SPDXRef-Package-texlive-latex-recommended",
     "SPDXRef-Package-texlive-luatex",
     "SPDXRef-Package-texlive-pictures",
-    "SPDXRef-Package-texlive-xetex"
+    "SPDXRef-Package-texlive-xetex",
+    "SPDXRef-Package-xz-utils",
+    "SPDXRef-TeXLive-courierten",
+    "SPDXRef-TeXLive-libertine",
+    "SPDXRef-TeXLive-algorithm2e",
+    "SPDXRef-TeXLive-boondox"
   ],
   "packages": [
     { "name": "ca-certificates", "SPDXID": "SPDXRef-Package-ca-certificates", "versionInfo": "20250419~deb12u2", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
@@ -42,6 +47,11 @@
     { "name": "texlive-latex-recommended", "SPDXID": "SPDXRef-Package-texlive-latex-recommended", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
     { "name": "texlive-luatex", "SPDXID": "SPDXRef-Package-texlive-luatex", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
     { "name": "texlive-pictures", "SPDXID": "SPDXRef-Package-texlive-pictures", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
-    { "name": "texlive-xetex", "SPDXID": "SPDXRef-Package-texlive-xetex", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" }
+    { "name": "texlive-xetex", "SPDXID": "SPDXRef-Package-texlive-xetex", "versionInfo": "2022.20230122-3", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    { "name": "xz-utils", "SPDXID": "SPDXRef-Package-xz-utils", "versionInfo": "5.4.1-1+deb12u2", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION" },
+    {"name": "courierten", "SPDXID": "SPDXRef-TeXLive-courierten", "versionInfo": "55436", "downloadLocation": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/courierten.tar.xz", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "checksums": [{"algorithm": "SHA256", "checksumValue": "66d4aa657d0fbf7bdacfc980ea6d0ecb8c19e535ea2fa6b90f6f9e4ae0b4cb75"}]},
+    {"name": "libertine", "SPDXID": "SPDXRef-TeXLive-libertine", "versionInfo": "64359", "downloadLocation": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/libertine.tar.xz", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "checksums": [{"algorithm": "SHA256", "checksumValue": "d5fba52d7987aa6add318649fc050067328179278d7cab644f750bf255c79eb3"}]},
+    {"name": "algorithm2e", "SPDXID": "SPDXRef-TeXLive-algorithm2e", "versionInfo": "44846", "downloadLocation": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/algorithm2e.tar.xz", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "LPPL-1.3c", "copyrightText": "NOASSERTION", "checksums": [{"algorithm": "SHA256", "checksumValue": "402084ba84ae4f1b86dee6fc44042e0643e097f95fd5cd514966819a962915f1"}]},
+    {"name": "boondox", "SPDXID": "SPDXRef-TeXLive-boondox", "versionInfo": "54512", "downloadLocation": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/boondox.tar.xz", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "checksums": [{"algorithm": "SHA256", "checksumValue": "60fe27edf2325cecc1e9b7e4d36f03cdc9c3c5c441a4c839497ca29f3e857071"}]}
   ]
 }

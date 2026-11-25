@@ -1,4 +1,21 @@
+# syntax=docker/dockerfile:1.7
 ARG BASE_IMAGE=docker.io/library/debian@sha256:5ae3c39ebd15e229dcedd5cee596b2497182493d41ff162e824ba13fc1b2b867
+
+FROM scratch AS texlive-archives
+ARG RENDERER_SOURCE_ROOT=.
+ARG TEXLIVE_ARCHIVE=https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive
+ADD --checksum=sha256:66d4aa657d0fbf7bdacfc980ea6d0ecb8c19e535ea2fa6b90f6f9e4ae0b4cb75 ${TEXLIVE_ARCHIVE}/courierten.tar.xz /archives/courierten.tar.xz
+ADD --checksum=sha256:d5fba52d7987aa6add318649fc050067328179278d7cab644f750bf255c79eb3 ${TEXLIVE_ARCHIVE}/libertine.tar.xz /archives/libertine.tar.xz
+ADD --checksum=sha256:402084ba84ae4f1b86dee6fc44042e0643e097f95fd5cd514966819a962915f1 ${TEXLIVE_ARCHIVE}/algorithm2e.tar.xz /archives/algorithm2e.tar.xz
+ADD --checksum=sha256:60fe27edf2325cecc1e9b7e4d36f03cdc9c3c5c441a4c839497ca29f3e857071 ${TEXLIVE_ARCHIVE}/boondox.tar.xz /archives/boondox.tar.xz
+ADD --checksum=sha256:a4c99199033bd8c288a7adf69e22db073ad118253bf1eaf883215f8400a2805a ${TEXLIVE_ARCHIVE}/courierten.doc.tar.xz /archives/courierten.doc.tar.xz
+ADD --checksum=sha256:24a694cafb9b37b7164844473b07f7bd3bffeb2b3fea11afee82f4ab02a86d9c ${TEXLIVE_ARCHIVE}/libertine.doc.tar.xz /archives/libertine.doc.tar.xz
+ADD --checksum=sha256:6ac0c3f222167dcb7e701a9168b077e5abc6c705301bb9d0e2d96060f436a759 ${TEXLIVE_ARCHIVE}/algorithm2e.doc.tar.xz /archives/algorithm2e.doc.tar.xz
+ADD --checksum=sha256:b62bd8cbf4bb2c1b7f4c507fa37002f0d3b60de5b84f93a52155abd9e709f524 ${TEXLIVE_ARCHIVE}/boondox.doc.tar.xz /archives/boondox.doc.tar.xz
+ADD --checksum=sha256:ba485390a8e857c6baf37aa3b1d9c6fe7c0782a1fdc1791b9e41938da97ceba7 ${TEXLIVE_ARCHIVE}/stix.doc.tar.xz /archives/stix.doc.tar.xz
+ADD --checksum=sha256:c1ae6e179a6d28bbd5c483fbacc744acc75e922d598281dc3390aab26126e163 https://www.latex-project.org/lppl/lppl-1-3c.txt /archives/LICENSE.LPPL-1.3c
+ADD --checksum=sha256:1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e https://openfontlicense.org/documents/OFL.txt /archives/LICENSE.OFL-1.1
+
 FROM --platform=linux/amd64 ${BASE_IMAGE}
 ARG RENDERER_SOURCE_ROOT=.
 
@@ -37,17 +54,34 @@ RUN apt-get update \
       texlive-luatex=2022.20230122-3 \
       texlive-pictures=2022.20230122-3 \
       texlive-xetex=2022.20230122-3 \
+      xz-utils=5.4.1-1+deb12u2 \
     && rm -f /usr/bin/tlmgr \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /root/.cache
 
 COPY ${RENDERER_SOURCE_ROOT}/deploy/texmf-rinspace.cnf /etc/texmf/web2c/texmf.cnf.d/99-rinspace.cnf
 COPY ${RENDERER_SOURCE_ROOT}/deploy/latex-pdf.lock.json /opt/rinspace/latex-pdf.lock.json
+COPY ${RENDERER_SOURCE_ROOT}/deploy/latex-font-aliases/ /usr/local/share/texmf/tex/latex/rinspace-font-aliases/
 COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/rinspace-latex-compile /usr/local/bin/rinspace-latex-compile
 COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/verify-latex-pdf-runtime.sh /usr/local/bin/verify-latex-pdf-runtime
 
-RUN mkdir -p /workspace /output \
+RUN --network=none --mount=type=bind,from=texlive-archives,source=/archives,target=/archives,readonly \
+    set -eu; \
+    notices=/usr/share/doc/rinspace-texlive-extra; \
+    mkdir -p /usr/local/share/texmf "$notices"; \
+    for package in courierten libertine algorithm2e boondox; do \
+      tar -xJf "/archives/$package.tar.xz" -C /usr/local/share/texmf --exclude='tlpkg/*'; \
+      case "$package" in algorithm2e) docs=latex ;; *) docs=fonts ;; esac; \
+      tar -xOJf "/archives/$package.doc.tar.xz" "doc/$docs/$package/README" > "$notices/NOTICE.$package"; \
+    done; \
+    tar -xOJf /archives/courierten.doc.tar.xz doc/fonts/courierten/COPYING > "$notices/COPYING.courierten"; \
+    tar -xOJf /archives/libertine.doc.tar.xz doc/fonts/libertine/LICENCE.txt > "$notices/NOTICE.libertine-license"; \
+    tar -xOJf /archives/libertine.doc.tar.xz doc/fonts/libertine/GPL.txt > "$notices/LICENSE.libertine-GPL-with-font-exception"; \
+    tar -xOJf /archives/stix.doc.tar.xz doc/fonts/stix/STIX_Font_License_2010.txt > "$notices/LICENSE.boondox-STIX"; \
+    install -m 0644 /archives/LICENSE.* "$notices/"; \
+    mkdir -p /workspace /output \
     && chown 65532:65532 /workspace /output \
-    && mktexlsr
+    && mktexlsr \
+    && updmap-sys --enable Map=CourierOneZeroPitch.map --enable Map=libertine.map --enable Map=boondox.map
 
 USER 65532:65532
 WORKDIR /workspace

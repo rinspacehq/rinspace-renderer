@@ -66,6 +66,13 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
   } else if (component === 'latex-pdf') {
     const lock = JSON.parse(await readFile(join(root, 'deploy/latex-pdf.lock.json'), 'utf8'));
     packages.push(packageRecord('Engine', 'XeTeX', lock.compiler.engineVersion, 'NOASSERTION', 'pkg:generic/xetex@2022'));
+    for (const [name, { revision, archive }] of Object.entries(lock.texlive.compatibilityPackages)) {
+      packages.push({
+        ...packageRecord('TeXLive', name, revision, 'NOASSERTION', `pkg:generic/${name}@${revision}`),
+        downloadLocation: archive.url,
+        checksums: [{ algorithm: 'SHA256', checksumValue: archive.sha256 }],
+      });
+    }
   } else {
     const lock = JSON.parse(await readFile(join(root, 'deploy/typst-pdf.lock.json'), 'utf8'));
     packages.push(packageRecord('Engine', 'Typst', lock.compiler.version, lock.compiler.license, `pkg:generic/typst@${lock.compiler.version}`));
@@ -83,7 +90,7 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
     creationInfo: { created, creators: ['Tool: rin-renderer-generate-image-sbom/v1'] },
     documentDescribes: packages.map(item => item.SPDXID), packages,
     annotations: [{ annotationDate: created, annotationType: 'OTHER', annotator: 'Tool: rin-renderer-generate-image-sbom/v1',
-      comment: `OCI reference ${reference}; Debian licenses are retained in the matching notice bundle.` }],
+      comment: `OCI reference ${reference}; system and added TeX Live package notices are retained in the matching notice bundle.` }],
   };
 }
 

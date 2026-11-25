@@ -50,8 +50,14 @@ esac
 
 xelatex_version="$(xelatex --version | sed -n '1p')"
 lualatex_version="$(lualatex --version | sed -n '1p')"
+xdvipdfmx_version="$(xdvipdfmx --version | sed -n '1s/^This is xdvipdfmx Version \([0-9]*\) .*/\1/p')"
 case "$xelatex_version" in *"TeX Live 2022/Debian"*) ;; *) fail "unexpected XeLaTeX version" ;; esac
 case "$lualatex_version" in *"TeX Live 2022/Debian"*) ;; *) fail "unexpected LuaLaTeX version" ;; esac
+[ "$xdvipdfmx_version" = "$(json_scalar compiler xdvipdfmxVersion)" ] || fail "xdvipdfmx version mismatch"
+
+for resource in SimSun.fontspec SimHei.fontspec courierten.sty biolinum.sty algorithm2e.sty BOONDOX-r-calo.tfm; do
+  kpsewhich "$resource" >/dev/null || fail "TeX resource is missing: $resource"
+done
 
 [ "$(kpsewhich -var-value=openin_any)" = p ] || fail "openin_any is not paranoid"
 [ "$(kpsewhich -var-value=openout_any)" = p ] || fail "openout_any is not paranoid"

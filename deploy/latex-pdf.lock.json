@@ -14,13 +14,17 @@
   },
   "packageRepository": {
     "source": "base-image-debian.sources",
-    "suites": ["bookworm", "bookworm-updates", "bookworm-security"],
+    "suites": [
+      "bookworm",
+      "bookworm-updates",
+      "bookworm-security"
+    ],
     "integrity": "Debian signed InRelease plus exact direct package versions",
     "dependencyClosure": "CI dpkg SPDX plus immutable image digest"
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "3ce0ffccab80a955683b147e5b9b027d8203acc297589beae98052b5b358d79a",
+    "sha256": "bfa1cea979969f599c58ca091f775a47936a54cb53b19a3e0e47218d3afa9a0f",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -28,17 +32,83 @@
       "-norc",
       "-no-shell-escape",
       "-pdfxe",
+      "-usepretex=\\PassOptionsToPackage{new-dvipdfmx}{bxpdfver}",
       "-interaction=nonstopmode",
       "-halt-on-error",
       "-file-line-error",
       "-recorder",
       "-synctex=1",
       "-outdir=/output"
-    ]
+    ],
+    "xdvipdfmxVersion": "20211117"
   },
   "texlive": {
     "distribution": "TeX Live 2022/Debian",
-    "luaEngineVersion": "LuaHBTeX 1.15.0 (TeX Live 2022/Debian)"
+    "luaEngineVersion": "LuaHBTeX 1.15.0 (TeX Live 2022/Debian)",
+    "compatibilityPackages": {
+      "courierten": {
+        "revision": "55436",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/courierten.tar.xz",
+          "sha256": "66d4aa657d0fbf7bdacfc980ea6d0ecb8c19e535ea2fa6b90f6f9e4ae0b4cb75"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/courierten.doc.tar.xz",
+          "sha256": "a4c99199033bd8c288a7adf69e22db073ad118253bf1eaf883215f8400a2805a"
+        }
+      },
+      "libertine": {
+        "revision": "64359",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/libertine.tar.xz",
+          "sha256": "d5fba52d7987aa6add318649fc050067328179278d7cab644f750bf255c79eb3"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/libertine.doc.tar.xz",
+          "sha256": "24a694cafb9b37b7164844473b07f7bd3bffeb2b3fea11afee82f4ab02a86d9c"
+        }
+      },
+      "algorithm2e": {
+        "revision": "44846",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/algorithm2e.tar.xz",
+          "sha256": "402084ba84ae4f1b86dee6fc44042e0643e097f95fd5cd514966819a962915f1"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/algorithm2e.doc.tar.xz",
+          "sha256": "6ac0c3f222167dcb7e701a9168b077e5abc6c705301bb9d0e2d96060f436a759"
+        }
+      },
+      "boondox": {
+        "revision": "54512",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/boondox.tar.xz",
+          "sha256": "60fe27edf2325cecc1e9b7e4d36f03cdc9c3c5c441a4c839497ca29f3e857071"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/boondox.doc.tar.xz",
+          "sha256": "b62bd8cbf4bb2c1b7f4c507fa37002f0d3b60de5b84f93a52155abd9e709f524"
+        }
+      }
+    },
+    "compatibilityLicenseSources": {
+      "stix.doc.tar.xz": {
+        "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/stix.doc.tar.xz",
+        "sha256": "ba485390a8e857c6baf37aa3b1d9c6fe7c0782a1fdc1791b9e41938da97ceba7"
+      },
+      "LICENSE.LPPL-1.3c": {
+        "url": "https://www.latex-project.org/lppl/lppl-1-3c.txt",
+        "sha256": "c1ae6e179a6d28bbd5c483fbacc744acc75e922d598281dc3390aab26126e163"
+      },
+      "LICENSE.OFL-1.1": {
+        "url": "https://openfontlicense.org/documents/OFL.txt",
+        "sha256": "1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e"
+      }
+    },
+    "cjkFontAliases": {
+      "SimSun": "Noto Serif CJK SC",
+      "SimHei": "Noto Sans CJK SC"
+    }
   },
   "packages": {
     "ca-certificates": "20250419~deb12u2",
@@ -56,14 +126,17 @@
     "texlive-latex-recommended": "2022.20230122-3",
     "texlive-luatex": "2022.20230122-3",
     "texlive-pictures": "2022.20230122-3",
-    "texlive-xetex": "2022.20230122-3"
+    "texlive-xetex": "2022.20230122-3",
+    "xz-utils": "5.4.1-1+deb12u2"
   },
   "runtime": {
     "uid": 65532,
     "gid": 65532,
     "network": "none",
     "readOnlyRootFilesystem": true,
-    "capDrop": ["ALL"],
+    "capDrop": [
+      "ALL"
+    ],
     "noNewPrivileges": true,
     "workspaceMount": "/workspace:ro",
     "outputMount": "/output:rw",

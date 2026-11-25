@@ -1,0 +1,5 @@
+% SPDX-License-Identifier: AGPL-3.0-only
+\defaultfontfeatures[SimSun]{
+  UprightFont = {Noto Serif CJK SC},
+  BoldFont = {Noto Serif CJK SC Bold}
+}

@@ -37,6 +37,18 @@ export openout_any=p
 export shell_escape=f
 mkdir -p "$HOME" "$TEXMFHOME" "$TEXMFVAR" "$TEXMFCONFIG"
 
+# Nested \include commands need directories for their auxiliary files in /output.
+find "$workspace" -mindepth 1 -type d -exec sh -eu -c '
+  output="$1"
+  workspace="$2"
+  shift 2
+  for directory do
+    mkdir -p -- "$output/${directory#"$workspace"/}"
+  done
+' sh "$output" "$workspace" {} +
+
+# The fixed xdvipdfmx supports PDF 2.0. bxpdfver can use its documented
+# option for this driver without probing it through TeX shell escape.
 compile_log="$output/compile.log"
 set +e
 (
@@ -45,6 +57,7 @@ set +e
     -norc \
     -no-shell-escape \
     -pdfxe \
+    '-usepretex=\PassOptionsToPackage{new-dvipdfmx}{bxpdfver}' \
     -interaction=nonstopmode \
     -halt-on-error \
     -file-line-error \
