@@ -119,6 +119,51 @@ func TestArchivedMarkdownPublicationPDFUsesPersistedResult(t *testing.T) {
 	}
 }
 
+func TestArchivedMarkdownPublicationPDFUsesVerifiedImages(t *testing.T) {
+	handler, input := publicationPDFFixture(t, printFixture{})
+	reading, archive := expirePublicationFixture(t, handler)
+	const imageURL = "https://example.invalid/original.png"
+	var result contracts.RenderResult
+	if err := json.Unmarshal(reading, &result); err != nil {
+		t.Fatal(err)
+	}
+	result.Inline.Pages[0].Fragment += `<img src="` + imageURL + `" alt="Historical upload">`
+	reading, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pngBytes bytes.Buffer
+	if err := png.Encode(&pngBytes, image.NewRGBA(image.Rect(0, 0, 10, 10))); err != nil {
+		t.Fatal(err)
+	}
+	verified := publicationArchiveImage{
+		Source: imageURL, SHA256: publicationFixtureSHA(pngBytes.Bytes()), Bytes: int64(pngBytes.Len()),
+		MediaType: "image/png", Body: pngBytes.Bytes(),
+	}
+	wrongDigest := verified
+	wrongDigest.SHA256 = strings.Repeat("0", 64)
+	for _, tc := range []struct {
+		name   string
+		images []publicationArchiveImage
+		status int
+	}{
+		{"exact source", []publicationArchiveImage{verified}, http.StatusOK},
+		{"missing original", nil, http.StatusUnprocessableEntity},
+		{"wrong digest", []publicationArchiveImage{wrongDigest}, http.StatusUnprocessableEntity},
+		{"duplicate source", []publicationArchiveImage{verified, verified}, http.StatusUnprocessableEntity},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			response := requestArchivedMarkdownPDF(t, handler, "token-a", input.ProjectID, input, reading, archive, tc.images...)
+			if response.Code != tc.status {
+				t.Fatalf("archived PDF = %d %s", response.Code, response.Body.String())
+			}
+			if tc.status == http.StatusOK {
+				assertPDFReceipt(t, response, input, 2)
+			}
+		})
+	}
+}
+
 func expirePublicationFixture(t *testing.T, handler *Handler) (json.RawMessage, []byte) {
 	t.Helper()
 	store := handler.store.(*fakeStore)
@@ -139,7 +184,7 @@ func expirePublicationFixture(t *testing.T, handler *Handler) (json.RawMessage, 
 	return reading, archive
 }
 
-func requestArchivedMarkdownPDF(t *testing.T, handler *Handler, token, scope string, input contracts.PublicationPDFInput, reading json.RawMessage, archive []byte) *httptest.ResponseRecorder {
+func requestArchivedMarkdownPDF(t *testing.T, handler *Handler, token, scope string, input contracts.PublicationPDFInput, reading json.RawMessage, archive []byte, images ...publicationArchiveImage) *httptest.ResponseRecorder {
 	t.Helper()
 	_, key, err := input.Identity()
 	if err != nil {
@@ -163,6 +208,15 @@ func requestArchivedMarkdownPDF(t *testing.T, handler *Handler, token, scope str
 	}
 	if _, err := part.Write(archive); err != nil {
 		t.Fatal(err)
+	}
+	if len(images) != 0 {
+		manifest, err := json.Marshal(images)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := form.WriteField("verifiedImages", string(manifest)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := form.Close(); err != nil {
 		t.Fatal(err)
