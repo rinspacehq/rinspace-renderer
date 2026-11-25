@@ -67,20 +67,32 @@ func (executor *Executor) collectAndStore(
 	if failure := validateOutputDirectory(outputDirectory); failure != nil {
 		return nil, []renderapi.Diagnostic{}, failure
 	}
+	// The compiler mirrors source directories for nested LaTeX auxiliary files.
 	var total int64
-	entries, err := os.ReadDir(outputDirectory)
-	if err != nil {
-		return nil, []renderapi.Diagnostic{}, retryableFailure("pdf_artifact_storage_failed", "PDF compiler output is unavailable")
-	}
-	for _, entry := range entries {
+	err := filepath.WalkDir(outputDirectory, func(_ string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
 		info, infoErr := entry.Info()
-		if infoErr != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() < 0 {
-			return nil, []renderapi.Diagnostic{}, invalidFailure("invalid_pdf_artifact", "PDF compiler emitted an unsafe artifact")
+		if infoErr != nil || !info.Mode().IsRegular() || info.Size() < 0 {
+			return errUnsafeArtifactEntry
 		}
 		if info.Size() > (48<<20)-total {
-			return nil, []renderapi.Diagnostic{}, &Failure{Code: "pdf_artifact_quota_exceeded", Status: 413, Message: "PDF artifacts exceed 48 MiB", Diagnostics: []renderapi.Diagnostic{}}
+			return errArtifactTooLarge
 		}
 		total += info.Size()
+		return nil
+	})
+	switch {
+	case errors.Is(err, errUnsafeArtifactEntry):
+		return nil, []renderapi.Diagnostic{}, invalidFailure("invalid_pdf_artifact", "PDF compiler emitted an unsafe artifact")
+	case errors.Is(err, errArtifactTooLarge):
+		return nil, []renderapi.Diagnostic{}, &Failure{Code: "pdf_artifact_quota_exceeded", Status: 413, Message: "PDF artifacts exceed 48 MiB", Diagnostics: []renderapi.Diagnostic{}}
+	case err != nil:
+		return nil, []renderapi.Diagnostic{}, retryableFailure("pdf_artifact_storage_failed", "PDF compiler output is unavailable")
 	}
 
 	candidates := make([]artifactCandidate, 0, len(specifications))
@@ -148,7 +160,10 @@ func (executor *Executor) collectAndStore(
 	return artifacts, diagnostics, nil
 }
 
-var errArtifactTooLarge = errors.New("PDF artifact exceeds its limit")
+var (
+	errArtifactTooLarge    = errors.New("PDF artifact exceeds its limit")
+	errUnsafeArtifactEntry = errors.New("PDF compiler artifact is not a regular file")
+)
 
 func readOutputFile(directory, filename string, maximum int64) ([]byte, bool, error) {
 	target := filepath.Join(directory, filename)
