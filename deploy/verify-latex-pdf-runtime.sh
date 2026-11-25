@@ -55,9 +55,16 @@ case "$xelatex_version" in *"TeX Live 2022/Debian"*) ;; *) fail "unexpected XeLa
 case "$lualatex_version" in *"TeX Live 2022/Debian"*) ;; *) fail "unexpected LuaLaTeX version" ;; esac
 [ "$xdvipdfmx_version" = "$(json_scalar compiler xdvipdfmxVersion)" ] || fail "xdvipdfmx version mismatch"
 
-for resource in SimSun.fontspec SimHei.fontspec courierten.sty biolinum.sty algorithm2e.sty BOONDOX-r-calo.tfm; do
+biber_version="$(biber --version)"
+[ "$biber_version" = "biber version: $(json_scalar compiler biberVersion)" ] || fail "Biber version mismatch"
+
+for resource in SimSun.fontspec SimHei.fontspec courierten.sty biolinum.sty algorithm2e.sty BOONDOX-r-calo.tfm \
+  biblatex.sty logreq.sty adforn.sty bbding.sty cmupint.sty extarrows.sty physics.sty soul.sty \
+  TeXGyreTermesX-Regular.otf TeXGyreTermesX-Italic.otf TeXGyreTermesX-Bold.otf TeXGyreTermesX-BoldItalic.otf; do
   kpsewhich "$resource" >/dev/null || fail "TeX resource is missing: $resource"
 done
+biblatex_version="$(sed -n 's/^\\def\\abx@version{\([^}]*\)}$/\1/p' "$(kpsewhich biblatex.sty)")"
+[ "$biblatex_version" = "$(json_scalar texlive bibliography packageVersions biblatex)" ] || fail "BibLaTeX version mismatch"
 
 [ "$(kpsewhich -var-value=openin_any)" = p ] || fail "openin_any is not paranoid"
 [ "$(kpsewhich -var-value=openout_any)" = p ] || fail "openout_any is not paranoid"
@@ -73,5 +80,6 @@ printf 'compilerSha256=%s\n' "$actual_compiler_sha"
 printf 'latexmk=%s\n' "$latexmk_version"
 printf 'xelatex=%s\n' "$xelatex_version"
 printf 'lualatex=%s\n' "$lualatex_version"
+printf '%s\n' "$biber_version"
 printf '%s\n' "$json_packages"
 printf '%s\n' 'latex-pdf runtime verification passed'

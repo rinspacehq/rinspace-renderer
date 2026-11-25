@@ -303,6 +303,36 @@ jobs:
           grep -Fxq 'Rinspace legacy package: tikz-cd' "$sample/legacy-output/compile.log"
           test "$(head -c 5 "$sample/legacy-output/legacy.pdf")" = '%PDF-'
           sha256sum "$sample/legacy-output/legacy.pdf" | tee evidence/latex-legacy-package-pdf.sha256
+          mkdir "$sample/bibliography-output"
+          chmod 0777 "$sample/bibliography-output"
+          cat > "$sample/workspace/bibliography.tex" <<'TEX'
+          \documentclass{article}
+          \usepackage{fontspec,bbding,adforn,cmupint,extarrows,physics,soul}
+          \setmainfont[
+            UprightFont=*-Regular,ItalicFont=*-Italic,BoldFont=*-Bold,BoldItalicFont=*-BoldItalic,
+            Extension=.otf
+          ]{TeXGyreTermesX}
+          \usepackage[backend=biber]{biblatex}
+          \addbibresource{references.bib}
+          \begin{document}
+          \Checkmark{} \textit{Offline typesetting} \parencite{example}.
+          \printbibliography
+          \end{document}
+          TEX
+          printf '%s\n' '@book{example,author={A. Example},title={Reference Example},year={2024}}' \
+            > "$sample/workspace/references.bib"
+          flags=(--rm --network none --read-only --user 65532:65532 --cap-drop ALL
+            --security-opt no-new-privileges --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 256
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777)
+          docker run "${flags[@]}" --entrypoint /usr/local/bin/verify-latex-pdf-runtime "$REFERENCE" \
+            | tee evidence/latex-pdf-runtime.txt
+          docker run "${flags[@]}" \
+            --mount "type=bind,src=$sample/workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$sample/bibliography-output,dst=/output" \
+            "$REFERENCE" bibliography.tex
+          test "$(head -c 5 "$sample/bibliography-output/bibliography.pdf")" = '%PDF-'
+          grep -Fq '\entry{example}{book}' "$sample/bibliography-output/bibliography.bbl"
+          sha256sum "$sample/bibliography-output/bibliography.pdf" | tee evidence/latex-bibliography-pdf.sha256
       - name: Exercise the sealed package cache in the exact Typst image
         if: inputs.component == 'typst-pdf'
         shell: bash
@@ -360,6 +390,8 @@ jobs:
             evidence/image-evidence.json
             evidence/markdown-pdf-sandbox.txt
             evidence/latex-legacy-package-pdf.sha256
+            evidence/latex-pdf-runtime.txt
+            evidence/latex-bibliography-pdf.sha256
             evidence/typst-pdf-runtime.txt
             evidence/typst-publication-pdf.sha256
           if-no-files-found: error

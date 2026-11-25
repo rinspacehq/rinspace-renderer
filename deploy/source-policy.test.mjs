@@ -25,6 +25,8 @@ test('LaTeX compatibility archives match the image and source SPDX pins', () => 
   const archiveBase = /^ARG TEXLIVE_ARCHIVE=(.+)$/m.exec(dockerfile)[1];
   const spdx = json('latex-pdf.source.spdx.json');
   const artifacts = { ...texlive.compatibilityLicenseSources };
+  const bibliography = texlive.bibliography;
+  artifacts[`${bibliography.sourcePackage}.deb`] = bibliography.archive;
   for (const [name, { archive, documentation, revision }] of Object.entries(texlive.compatibilityPackages)) {
     artifacts[`${name}.tar.xz`] = archive;
     artifacts[`${name}.doc.tar.xz`] = documentation;
@@ -32,6 +34,12 @@ test('LaTeX compatibility archives match the image and source SPDX pins', () => 
     assert.equal(record.versionInfo, revision);
     assert.equal(record.downloadLocation, archive.url);
     assert.deepEqual(record.checksums, [{ algorithm: 'SHA256', checksumValue: archive.sha256 }]);
+  }
+  for (const [name, version] of Object.entries(bibliography.packageVersions)) {
+    const record = spdx.packages.find(item => item.SPDXID === `SPDXRef-TeXLive-${name}`);
+    assert.equal(record.versionInfo, version);
+    assert.equal(record.downloadLocation, bibliography.archive.url);
+    assert.deepEqual(record.checksums, [{ algorithm: 'SHA256', checksumValue: bibliography.archive.sha256 }]);
   }
   const imageArtifacts = Object.fromEntries([...dockerfile.matchAll(/^ADD --checksum=sha256:([a-f0-9]{64}) (\S+) \/archives\/(\S+)$/gm)]
     .map(([, sha256, source, name]) => [name, { url: source.replace('${TEXLIVE_ARCHIVE}', archiveBase), sha256 }]));

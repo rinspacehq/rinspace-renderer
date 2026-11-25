@@ -28,6 +28,11 @@ esac
 export HOME=/tmp/rinspace-home
 export TEXMFHOME=/tmp/rinspace-texmf-home
 export TEXMFVAR=/tmp/rinspace-texmf-var
+
+# Bitmap font generation needs a writable cache even under a read-only workspace.
+export VARTEXFONTS="$TEXMFVAR/fonts"
+export MT_DEFAULT_DESTROOT="$VARTEXFONTS"
+export PKFONTS="$VARTEXFONTS//:"
 export TEXMFCONFIG=/tmp/rinspace-texmf-config
 export TEXMFOUTPUT="$output"
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}"
@@ -35,7 +40,7 @@ export FORCE_SOURCE_DATE=1
 export openin_any=p
 export openout_any=p
 export shell_escape=f
-mkdir -p "$HOME" "$TEXMFHOME" "$TEXMFVAR" "$TEXMFCONFIG"
+mkdir -p "$HOME" "$TEXMFHOME" "$VARTEXFONTS" "$TEXMFCONFIG"
 
 stem="$(basename "$entrypoint")"
 stem="${stem%.*}"
