@@ -55,7 +55,7 @@
   ],
   "packagePath": "/opt/rinspace/typst-packages",
   "packages": {
-    "ca-certificates": "20250419~deb12u1",
+    "ca-certificates": "20250419~deb12u2",
     "fonts-wqy-zenhei": "0.9.45-8"
   },
   "runtime": {

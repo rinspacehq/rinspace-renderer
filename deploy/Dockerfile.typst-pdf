@@ -24,7 +24,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      ca-certificates=20250419~deb12u1 \
+      ca-certificates=20250419~deb12u2 \
       curl=7.88.1-10+deb12u15 \
       xz-utils=5.4.1-1+deb12u1 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /root/.cache
@@ -67,7 +67,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      ca-certificates=20250419~deb12u1 \
+      ca-certificates=20250419~deb12u2 \
       fonts-wqy-zenhei=0.9.45-8 \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /root/.cache
 
