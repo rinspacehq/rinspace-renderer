@@ -73,6 +73,14 @@ export async function generateImageSBOM({ component, reference, dpkgPath, goModu
         checksums: [{ algorithm: 'SHA256', checksumValue: archive.sha256 }],
       });
     }
+    const { archive, packageVersions } = lock.texlive.bibliography;
+    for (const [name, version] of Object.entries(packageVersions)) {
+      packages.push({
+        ...packageRecord('TeXLive', name, version, 'NOASSERTION', `pkg:generic/${name}@${version}`),
+        downloadLocation: archive.url,
+        checksums: [{ algorithm: 'SHA256', checksumValue: archive.sha256 }],
+      });
+    }
   } else {
     const lock = JSON.parse(await readFile(join(root, 'deploy/typst-pdf.lock.json'), 'utf8'));
     packages.push(packageRecord('Engine', 'Typst', lock.compiler.version, lock.compiler.license, `pkg:generic/typst@${lock.compiler.version}`));

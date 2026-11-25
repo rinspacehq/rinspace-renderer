@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "75449353f0eb0533bb210743fcdb1f99556a47a248be635050ee356873cc3dcf",
+    "sha256": "b7c66b6214b99a70c6631e755f528060c33e0695f49b2923e9a6e57d0bf09b8f",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -47,7 +47,8 @@
         "tikz-cd",
         "mathtools"
       ]
-    }
+    },
+    "biberVersion": "2.18"
   },
   "texlive": {
     "distribution": "TeX Live 2022/Debian",
@@ -96,6 +97,83 @@
           "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/boondox.doc.tar.xz",
           "sha256": "b62bd8cbf4bb2c1b7f4c507fa37002f0d3b60de5b84f93a52155abd9e709f524"
         }
+      },
+      "adforn": {
+        "revision": "54512",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/adforn.tar.xz",
+          "sha256": "afb5ba969340b1808f23a111a3cf6614480a1f52a2b589448c86ec064b3ff71b"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/adforn.doc.tar.xz",
+          "sha256": "503fcc29c691b588171a777ef911ba3aedeae888a662d3c68bcb8c450bdaf7e8"
+        }
+      },
+      "bbding": {
+        "revision": "17186",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/bbding.tar.xz",
+          "sha256": "8cc820e97a91190679cdc963dc162b28955c367d57f406bc96d82e1e2821efa2"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/bbding.doc.tar.xz",
+          "sha256": "261491ad37eee46476c6a3629c7163127fe279fe3cb0621609fece7109a0d3af"
+        }
+      },
+      "cmupint": {
+        "revision": "54735",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/cmupint.tar.xz",
+          "sha256": "e4dd76ffb0afa4ba25dea2e4fd3244ed33b62f84498d83a8ef83a994a73d8bc5"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/cmupint.doc.tar.xz",
+          "sha256": "ef2b807a64fcf1d237fda466072507ba3565a66126f5b892a3e5aaa11c46c000"
+        }
+      },
+      "extarrows": {
+        "revision": "54400",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/extarrows.tar.xz",
+          "sha256": "7f3b49c11014db349728fb8c0e411955dd745872222686e0b46851069bcfecef"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/extarrows.doc.tar.xz",
+          "sha256": "a10e92523123b7eafd86d02db6447c7fa5542a0df5e582565a9c6d63a102a4e2"
+        }
+      },
+      "newtx": {
+        "revision": "62369",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/newtx.tar.xz",
+          "sha256": "50bfa3e5182ce32281cef269dbb8d4d2b727899391df1ef6c1ca1be2108e215e"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/newtx.doc.tar.xz",
+          "sha256": "7930c91eba52d057f133245d43255f1fe331d2b6d84c149cea3d824d85b8efd2"
+        }
+      },
+      "physics": {
+        "revision": "28590",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/physics.tar.xz",
+          "sha256": "5d2e75dba828d677311b9eda17dc678b61c63a27bae0babf1169461b41fe9f98"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/physics.doc.tar.xz",
+          "sha256": "6fc01e5e4efd11dbf08db1df4a79e7961e9a863a2460382b3bb048771d777239"
+        }
+      },
+      "soul": {
+        "revision": "65906",
+        "archive": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/soul.tar.xz",
+          "sha256": "5b268a4ee7a7a2ae8d04a04e5f7a6228d76e2eddaf735254f671e8bb00baca9e"
+        },
+        "documentation": {
+          "url": "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2022/tlnet-final/archive/soul.doc.tar.xz",
+          "sha256": "e97efb44a060751b381dcff8adbfa0e72086cf06255d7acc56f74ae5c5c7ea1b"
+        }
       }
     },
     "compatibilityLicenseSources": {
@@ -115,9 +193,22 @@
     "cjkFontAliases": {
       "SimSun": "Noto Serif CJK SC",
       "SimHei": "Noto Sans CJK SC"
+    },
+    "bibliography": {
+      "archive": {
+        "url": "https://deb.debian.org/debian/pool/main/t/texlive-extra/texlive-bibtex-extra_2022.20230122-4_all.deb",
+        "sha256": "66eee0362a9db0408d5fb436ba7e8bd57e0e87441eeb9f8ec0166fbb4aa5be6d"
+      },
+      "sourcePackage": "texlive-bibtex-extra",
+      "sourceVersion": "2022.20230122-4",
+      "packageVersions": {
+        "biblatex": "3.18b",
+        "logreq": "1.0"
+      }
     }
   },
   "packages": {
+    "biber": "2.18-1",
     "ca-certificates": "20250419~deb12u2",
     "fonts-lmodern": "2.005-1",
     "fonts-noto-cjk": "1:20220127+repack1-1",
@@ -151,7 +242,8 @@
     "openinAny": "p",
     "openoutAny": "p",
     "shellEscape": false,
-    "packageDownloads": false
+    "packageDownloads": false,
+    "generatedFontCache": "/tmp/rinspace-texmf-var/fonts"
   },
   "limits": {
     "nanoCpus": 1000000000,
