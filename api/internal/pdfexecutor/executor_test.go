@@ -276,7 +276,15 @@ func TestExecutorStoresOnlyCommittedLaTeXPDFArtifacts(t *testing.T) {
 		if err != nil || string(body) != chapter {
 			return fmt.Errorf("LaTeX chapter did not survive committed archive import: %v", err)
 		}
-		return writeSuccessfulOutput(filepath.Join(fixture.root, id, "output"), false)
+		output := filepath.Join(fixture.root, id, "output")
+		chapters := filepath.Join(output, "chapters")
+		if err := os.Mkdir(chapters, 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(chapters, "end.aux"), []byte("\\relax\n"), 0o600); err != nil {
+			return err
+		}
+		return writeSuccessfulOutput(output, false)
 	}
 	outcome := fixture.executor.Execute(t.Context(), job)
 	if outcome.Failure != nil {
@@ -392,11 +400,26 @@ func TestExecutorRejectsUnsafePDFAndArtifactQuota(t *testing.T) {
 			if err := writeSuccessfulOutput(directory, false); err != nil {
 				return err
 			}
-			if err := os.WriteFile(filepath.Join(directory, "unexpected.bin"), nil, 0o600); err != nil {
+			nested := filepath.Join(directory, "chapters")
+			if err := os.Mkdir(nested, 0o700); err != nil {
 				return err
 			}
-			return os.Truncate(filepath.Join(directory, "unexpected.bin"), (48<<20)+1)
+			file := filepath.Join(nested, "unexpected.bin")
+			if err := os.WriteFile(file, nil, 0o600); err != nil {
+				return err
+			}
+			return os.Truncate(file, (48<<20)+1)
 		}, wantCode: "pdf_artifact_quota_exceeded"},
+		{name: "nested-unsafe-output", prepare: func(directory string) error {
+			if err := writeSuccessfulOutput(directory, false); err != nil {
+				return err
+			}
+			nested := filepath.Join(directory, "chapters")
+			if err := os.Mkdir(nested, 0o700); err != nil {
+				return err
+			}
+			return os.Symlink("../main.pdf", filepath.Join(nested, "linked.pdf"))
+		}, wantCode: "invalid_pdf_artifact"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			fixture := newExecutorFixture(t, 100*time.Millisecond)
