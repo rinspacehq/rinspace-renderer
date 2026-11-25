@@ -52,6 +52,7 @@ set +e
     --root /workspace \
     --font-path "$font_path" \
     --ignore-system-fonts \
+    --jobs 1 \
     --package-path "$package_path" \
     --package-cache-path "$package_cache_path" \
     --format pdf \

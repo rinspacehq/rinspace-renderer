@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-typst-compile",
-    "sha256": "e8b928f29db35c02a7e882ae93dd032ea586cf07efa07d769af6aaab837ee8a6",
+    "sha256": "a8330e6a20b6d0908d0a465e71061f31a4fb9e9e1cc545994803060ae9de97a6",
     "engine": "typst",
     "version": "0.15.1",
     "release": "https://github.com/typst/typst/releases/tag/v0.15.1",
@@ -39,6 +39,7 @@
       "--root=/workspace",
       "--font-path=/usr/share/fonts/truetype/wqy",
       "--ignore-system-fonts",
+      "--jobs=1",
       "--package-path=/opt/rinspace/typst-packages",
       "--package-cache-path=/opt/rinspace/typst-package-cache",
       "--format=pdf"
@@ -74,13 +75,17 @@
   },
   "limits": {
     "nanoCpus": 1000000000,
-    "memoryBytes": 536870912,
-    "memorySwapBytes": 536870912,
+    "memoryBytes": 805306368,
+    "memorySwapBytes": 805306368,
     "pids": 128,
     "wallTimeSeconds": 30,
     "pdfBytes": 33554432,
     "logBytes": 2097152,
     "artifactBytes": 50331648
   },
-  "packageCachePath": "/opt/rinspace/typst-package-cache"
+  "packageCachePath": "/opt/rinspace/typst-package-cache",
+  "previewPackageCache": {
+    "lock": "typst-html-toolchain.lock.json",
+    "packageSetDigest": "f7b444f9d865dad4abc856e2839cd9acfa41a213470d247601d14315042ab895"
+  }
 }
