@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "40242a77628969f7f21e2452c080662901e1b4bd0200bdc58dd5911367a10e2a",
+    "sha256": "68ebac009db28dfa3c50bc6ea0194623a4c4ded557b0bc2c60ce5a238299a987",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -59,6 +59,16 @@
       "labelFormats": ["(a)", "(A)", "(1)", "(i)", "(I)"],
       "packages": ["enumerate", "tikz-cd", "mathtools", "mathrsfs", "xeCJK"],
       "fallbackCJKFont": "Noto Serif CJK SC"
+    },
+    "legacyTextRetry": {
+      "mathCommandsInProse": ["in"],
+      "literalIdentifierCase": "upper-case with multiple underscores",
+      "packages": ["underscore", "xeCJK"],
+      "fallbackCJKFont": "Noto Serif CJK SC"
+    },
+    "legacyProofClosureRetry": {
+      "scope": "adjacent literal proof closures in the entrypoint",
+      "sourceOverlay": "remove the second line in a temporary copy"
     },
     "biberVersion": "2.18"
   },
