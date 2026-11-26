@@ -184,7 +184,7 @@ func TestArchivedMarkdownAcceptsBoundZhihuImageSources(t *testing.T) {
 	var images []publicationArchiveImage
 	for index := 0; index <= maxPublicationArchiveImages; index++ {
 		images = append(images, publicationArchiveImage{
-			Source: fmt.Sprintf("https://picx.zhimg.com/80/v2-%032x_1440w.png?source=0123abcd", index),
+			Source: fmt.Sprintf("https://picx.zhimg.com/80/v2-%032x_1440w.jpg?source=0123abcd", index),
 			SHA256: publicationFixtureSHA(picture.Bytes()), Bytes: int64(picture.Len()),
 			MediaType: "image/png", Body: picture.Bytes(),
 		})
@@ -193,6 +193,8 @@ func TestArchivedMarkdownAcceptsBoundZhihuImageSources(t *testing.T) {
 	unrelated.Source = strings.Replace(unrelated.Source, "picx.zhimg.com", "example.invalid", 1)
 	unapprovedQuery := images[0]
 	unapprovedQuery.Source += "&other=x"
+	badMedia := images[0]
+	badMedia.MediaType = "image/jpeg"
 	for _, test := range []struct {
 		name   string
 		images []publicationArchiveImage
@@ -202,6 +204,7 @@ func TestArchivedMarkdownAcceptsBoundZhihuImageSources(t *testing.T) {
 		{"over archive count", images, false},
 		{"unknown query origin", []publicationArchiveImage{unrelated}, false},
 		{"unknown query parameters", []publicationArchiveImage{unapprovedQuery}, false},
+		{"declared media differs from verified bytes", []publicationArchiveImage{badMedia}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			manifest, err := json.Marshal(test.images)
