@@ -244,24 +244,24 @@ func (handler *Handler) publicationImageResolver(result contracts.RenderResult, 
 		}
 	}
 	var files map[string]projectcore.File
-	return func(ctx context.Context, image publicationpdf.ImageReference) (string, error) {
+	return func(ctx context.Context, image publicationpdf.ImageReference) (publicationpdf.ResolvedImage, error) {
 		switch {
 		case image.RepositoryPath != "" && image.DiagramObjectID == "":
 			asset, exists := repositoryAssets[image.RepositoryPath]
 			if !exists {
-				return "", errors.New("repository image is not in the completed result")
+				return publicationpdf.ResolvedImage{}, errors.New("repository image is not in the completed result")
 			}
 			if files == nil {
 				raw, err := source(ctx)
 				if err != nil {
-					return "", errors.Join(errPublicationPDFAssetUnavailable, err)
+					return publicationpdf.ResolvedImage{}, errors.Join(errPublicationPDFAssetUnavailable, err)
 				}
 				items, _, err := projectcore.ImportMarkdownArchive("project.zip", raw, projectcore.Limits{
 					ArchiveMaxBytes: handler.config.MaxSourceBytes, FileMaxCount: handler.config.ProjectFileMaxCount,
 					FileMaxBytes: handler.config.ProjectFileMaxBytes,
 				})
 				if err != nil {
-					return "", err
+					return publicationpdf.ResolvedImage{}, err
 				}
 				files = make(map[string]projectcore.File, len(items))
 				for _, item := range items {
@@ -270,38 +270,39 @@ func (handler *Handler) publicationImageResolver(result contracts.RenderResult, 
 			}
 			file, exists := files[image.RepositoryPath]
 			if !exists {
-				return "", errors.New("repository image is missing from the verified source")
+				return publicationpdf.ResolvedImage{}, errors.New("repository image is missing from the verified source")
 			}
 			body, err := projectidentity.FileBytes(file)
 			if err != nil {
-				return "", err
+				return publicationpdf.ResolvedImage{}, err
 			}
-			return printAssetDataURL(body, asset.SHA256, asset.Bytes, asset.MediaType, image.RepositoryPath)
+			return verifiedPrintImage(body, asset.SHA256, asset.Bytes, asset.MediaType, image.RepositoryPath)
 		case image.DiagramObjectID != "" && image.RepositoryPath == "":
 			asset, exists := publicAssets[image.DiagramObjectID]
 			reader := handler.config.PublicationPDF.PublicAssets
 			if !exists || reader == nil || asset.Bytes <= 0 || asset.Bytes > 4<<20 {
-				return "", errors.New("diagram object is not available in the completed result")
+				return publicationpdf.ResolvedImage{}, errors.New("diagram object is not available in the completed result")
 			}
 			body, err := reader.ReadPublicObject(ctx, asset.ArtifactID, asset.Bytes)
 			if err != nil {
-				return "", errors.Join(errPublicationPDFAssetUnavailable, err)
+				return publicationpdf.ResolvedImage{}, errors.Join(errPublicationPDFAssetUnavailable, err)
 			}
-			return printAssetDataURL(body, asset.SHA256, asset.Bytes, asset.MediaType, asset.ArtifactID)
+			return verifiedPrintImage(body, asset.SHA256, asset.Bytes, asset.MediaType, asset.ArtifactID)
 		default:
-			return "", errors.New("print image has no verified repository or diagram binding")
+			return publicationpdf.ResolvedImage{}, errors.New("print image has no verified repository or diagram binding")
 		}
 	}
 }
 
-func printAssetDataURL(body []byte, expectedHash string, size int64, mediaType, name string) (string, error) {
+func verifiedPrintImage(body []byte, expectedHash string, size int64, mediaType, name string) (publicationpdf.ResolvedImage, error) {
 	digest := sha256.Sum256(body)
 	if int64(len(body)) != size || hex.EncodeToString(digest[:]) != expectedHash {
-		return "", errors.New("print asset integrity failed")
+		return publicationpdf.ResolvedImage{}, errors.New("print asset integrity failed")
 	}
 	verified, mediaType, _, err := renderstorage.VerifyRepositoryImage(body, mediaType, name)
 	if err != nil {
-		return "", err
+		return publicationpdf.ResolvedImage{}, err
 	}
-	return "data:" + strings.TrimSpace(strings.SplitN(mediaType, ";", 2)[0]) + ";base64," + base64.StdEncoding.EncodeToString(verified), nil
+	dataURL := "data:" + strings.TrimSpace(strings.SplitN(mediaType, ";", 2)[0]) + ";base64," + base64.StdEncoding.EncodeToString(verified)
+	return publicationpdf.ResolvedImage{DataURL: dataURL}, nil
 }

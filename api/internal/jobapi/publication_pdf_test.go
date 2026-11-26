@@ -142,12 +142,23 @@ func TestArchivedMarkdownPublicationPDFUsesVerifiedImages(t *testing.T) {
 	}
 	wrongDigest := verified
 	wrongDigest.SHA256 = strings.Repeat("0", 64)
+	credited := verified
+	credited.Attribution = &publicationpdf.ImageAttribution{
+		Credit: "The original figure by its author", SourceURL: "https://example.invalid/source",
+		License: "Example license", LicenseURL: "https://example.invalid/license",
+	}
+	unsafeCredit := *credited.Attribution
+	unsafeCredit.SourceURL = "javascript:alert(1)"
+	unsafe := verified
+	unsafe.Attribution = &unsafeCredit
 	for _, tc := range []struct {
 		name   string
 		images []publicationArchiveImage
 		status int
 	}{
 		{"exact source", []publicationArchiveImage{verified}, http.StatusOK},
+		{"verified image with credit", []publicationArchiveImage{credited}, http.StatusOK},
+		{"unsafe credit link", []publicationArchiveImage{unsafe}, http.StatusUnprocessableEntity},
 		{"missing original", nil, http.StatusUnprocessableEntity},
 		{"wrong digest", []publicationArchiveImage{wrongDigest}, http.StatusUnprocessableEntity},
 		{"duplicate source", []publicationArchiveImage{verified, verified}, http.StatusUnprocessableEntity},

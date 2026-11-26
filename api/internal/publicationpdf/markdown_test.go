@@ -63,8 +63,8 @@ func TestMarkdownHTMLRequiresOfflineImages(t *testing.T) {
 	if _, err := MarkdownHTML(context.Background(), bundle, false, nil); err == nil {
 		t.Fatal("accepted network image without a verified offline copy")
 	}
-	doc, err := MarkdownHTML(context.Background(), bundle, false, func(_ context.Context, image ImageReference) (string, error) {
-		return "data:image/png;base64,iVBORw0KGgo=", nil
+	doc, err := MarkdownHTML(context.Background(), bundle, false, func(_ context.Context, image ImageReference) (ResolvedImage, error) {
+		return ResolvedImage{DataURL: "data:image/png;base64,iVBORw0KGgo="}, nil
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -74,5 +74,25 @@ func TestMarkdownHTMLRequiresOfflineImages(t *testing.T) {
 	}
 	if _, err := MarkdownHTML(context.Background(), markdownBundle(`<img alt="missing">`), false, nil); err == nil {
 		t.Fatal("accepted missing image source")
+	}
+}
+
+func TestMarkdownHTMLIncludesVerifiedImageAttribution(t *testing.T) {
+	bundle := markdownBundle(`<p>Original text.</p><img src="https://assets.example.test/figure.png"><img src="https://assets.example.test/figure.png">`)
+	attribution := ImageAttribution{
+		Credit: "Figure <1> by the author", SourceURL: "https://creator.example.test/figure",
+		License: "Example license", LicenseURL: "https://license.example.test/terms",
+	}
+	doc, err := MarkdownHTML(context.Background(), bundle, false, func(_ context.Context, image ImageReference) (ResolvedImage, error) {
+		return ResolvedImage{DataURL: "data:image/png;base64,iVBORw0KGgo=", Attribution: &attribution}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{`href="https://creator.example.test/figure"`, `href="https://license.example.test/terms"`,
+		`Figure &lt;1&gt; by the author`, "<p>Original text.</p>"} {
+		if strings.Count(doc, text) != 1 {
+			t.Errorf("expected one occurrence of %q", text)
+		}
 	}
 }
