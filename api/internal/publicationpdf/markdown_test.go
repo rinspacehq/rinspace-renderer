@@ -59,7 +59,7 @@ func TestMarkdownHTMLBookKeepsOrderAndDistinctLinks(t *testing.T) {
 }
 
 func TestMarkdownHTMLRequiresOfflineImages(t *testing.T) {
-	bundle := markdownBundle(`<p>body</p><img src="https://example.test/chart.png" alt="plot"><img src="https://example.test/second.png" alt="second">`)
+	bundle := markdownBundle(`<p>body</p><img loading="lazy" src="https://example.test/chart.png" alt="plot"><img src="https://example.test/second.png" alt="second">`)
 	if _, err := MarkdownHTML(context.Background(), bundle, false, nil); err == nil {
 		t.Fatal("accepted network image without a verified offline copy")
 	}
@@ -71,6 +71,9 @@ func TestMarkdownHTMLRequiresOfflineImages(t *testing.T) {
 	}
 	if strings.Contains(doc, "https://example.test") || strings.Count(doc, "data:image/png;") != 2 {
 		t.Fatal("offline images were not substituted")
+	}
+	if !strings.Contains(doc, `loading="eager"`) || strings.Contains(doc, `loading="lazy"`) {
+		t.Fatal("print images must load before Chromium paginates the document")
 	}
 	if _, err := MarkdownHTML(context.Background(), markdownBundle(`<img alt="missing">`), false, nil); err == nil {
 		t.Fatal("accepted missing image source")

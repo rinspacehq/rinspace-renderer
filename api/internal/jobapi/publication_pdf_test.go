@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/png"
 	"mime/multipart"
@@ -170,6 +171,63 @@ func TestArchivedMarkdownPublicationPDFUsesVerifiedImages(t *testing.T) {
 			}
 			if tc.status == http.StatusOK {
 				assertPDFReceipt(t, response, input, 2)
+			}
+		})
+	}
+}
+
+func TestArchivedMarkdownAcceptsBoundZhihuImageSources(t *testing.T) {
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 3, 4))); err != nil {
+		t.Fatal(err)
+	}
+	var images []publicationArchiveImage
+	for index := 0; index <= maxPublicationArchiveImages; index++ {
+		images = append(images, publicationArchiveImage{
+			Source: fmt.Sprintf("https://picx.zhimg.com/80/v2-%032x_1440w.jpg?source=0123abcd", index),
+			SHA256: publicationFixtureSHA(picture.Bytes()), Bytes: int64(picture.Len()),
+			MediaType: "image/png", Body: picture.Bytes(),
+		})
+	}
+	unrelated := images[0]
+	unrelated.Source = strings.Replace(unrelated.Source, "picx.zhimg.com", "example.invalid", 1)
+	unapprovedQuery := images[0]
+	unapprovedQuery.Source += "&other=x"
+	badMedia := images[0]
+	badMedia.MediaType = "image/jpeg"
+	for _, test := range []struct {
+		name   string
+		images []publicationArchiveImage
+		valid  bool
+	}{
+		{"37 verified legacy sources", images[:37], true},
+		{"over archive count", images, false},
+		{"unknown query origin", []publicationArchiveImage{unrelated}, false},
+		{"unknown query parameters", []publicationArchiveImage{unapprovedQuery}, false},
+		{"declared media differs from verified bytes", []publicationArchiveImage{badMedia}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			manifest, err := json.Marshal(test.images)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body bytes.Buffer
+			form := multipart.NewWriter(&body)
+			if err := form.WriteField("verifiedImages", string(manifest)); err != nil {
+				t.Fatal(err)
+			}
+			if err := form.Close(); err != nil {
+				t.Fatal(err)
+			}
+			verified, err := readPublicationArchiveImages(multipart.NewReader(&body, form.Boundary()))
+			if !test.valid {
+				if err == nil {
+					t.Fatal("unreviewed archive image manifest was accepted")
+				}
+				return
+			}
+			if err != nil || len(verified) != len(test.images) || verified[test.images[0].Source].DataURL == "" {
+				t.Fatalf("expected all verified source URLs to keep their offline identity: %v", err)
 			}
 		})
 	}

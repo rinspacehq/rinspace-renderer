@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,14 @@ import (
 
 const maxPublicationReadingBytes = 64 << 20
 const maxPublicationImageManifestBytes = 8 << 20
+const maxPublicationArchiveImages = 48
+
+var zhihuPublicationImageHost = regexp.MustCompile(`^pic([1-4]|x|a)\.zhimg\.com$`)
+var zhihuPublicationImagePath = regexp.MustCompile(`^/([1-9][0-9]?/)?v2-[a-z0-9]{30,64}(_[a-z0-9]{1,12})?\.(jpg|jpeg|png|webp|gif)$`)
+var zhihuPublicationImageQuery = regexp.MustCompile(`^source=[a-f0-9]{8}$`)
+var archiveRasterExtensions = map[string]string{
+	"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif",
+}
 
 type publicationArchiveImage struct {
 	Source      string                           `json:"source"`
@@ -118,7 +127,7 @@ func readPublicationArchiveImages(form *multipart.Reader) (map[string]publicatio
 	decoder := json.NewDecoder(limiter)
 	decoder.DisallowUnknownFields()
 	var records []publicationArchiveImage
-	if err := decoder.Decode(&records); err != nil || len(records) == 0 || len(records) > 32 {
+	if err := decoder.Decode(&records); err != nil || len(records) == 0 || len(records) > maxPublicationArchiveImages {
 		return nil, errors.New("invalid publication image manifest")
 	}
 	if err := decoder.Decode(new(json.RawMessage)); err != io.EOF || limiter.N == 0 {
@@ -131,13 +140,30 @@ func readPublicationArchiveImages(form *multipart.Reader) (map[string]publicatio
 	for _, record := range records {
 		location, err := url.Parse(record.Source)
 		if err != nil || len(record.Source) > 1024 || location.Scheme != "https" || location.Hostname() == "" ||
-			location.User != nil || location.RawQuery != "" || location.Fragment != "" || record.Bytes <= 0 || record.Bytes > 4<<20 {
+			location.User != nil || location.Fragment != "" || record.Bytes <= 0 || record.Bytes > 4<<20 {
+			return nil, errors.New("invalid archive image identity")
+		}
+		// Preserve the original source string as the offline lookup key. Legacy Zhihu images
+		// include a fixed source code in that string. Renderer still only uses the verified bytes.
+		zhihu := location.Port() == "" && zhihuPublicationImageHost.MatchString(location.Hostname()) &&
+			zhihuPublicationImagePath.MatchString(location.EscapedPath())
+		if location.RawQuery != "" && (!zhihu || !zhihuPublicationImageQuery.MatchString(location.RawQuery)) {
 			return nil, errors.New("invalid archive image identity")
 		}
 		if _, duplicate := images[record.Source]; duplicate {
 			return nil, errors.New("duplicate archive image source")
 		}
-		image, err := verifiedPrintImage(record.Body, record.SHA256, record.Bytes, record.MediaType, location.Path)
+		name := location.Path
+		if zhihu {
+			// CDN raster responses can use a different format than the historical URL suffix.
+			// The supplied media type must still match the verified file bytes.
+			extension, ok := archiveRasterExtensions[record.MediaType]
+			if !ok {
+				return nil, errors.New("invalid archived raster media type")
+			}
+			name = "image" + extension
+		}
+		image, err := verifiedPrintImage(record.Body, record.SHA256, record.Bytes, record.MediaType, name)
 		if err != nil {
 			return nil, err
 		}
