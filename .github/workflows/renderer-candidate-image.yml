@@ -340,7 +340,6 @@ jobs:
           \newtheorem{lemma}{Lemma}
           \begin{document}
           中文列表。
-          \[\begin{tikzcd} A \arrow[r] & B \end{tikzcd}\]
           \begin{lemma} A labeled list.
           \begin{enumerate}[(a)]
           \item $\mathscr{A}\coloneqq B$
@@ -348,6 +347,7 @@ jobs:
           \ifnum\value{enumi}=2\else\errmessage{Lost the list counter}\fi
           \end{enumerate}
           \end{lemma}
+          \[\begin{tikzcd} A \arrow[r] & B \end{tikzcd}\]
           \end{document}
           TEX
           docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \

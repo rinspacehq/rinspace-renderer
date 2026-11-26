@@ -101,7 +101,7 @@ if [ "$status" -ne 0 ]; then
   # LaTeX's built-in enumerate accepts no label option. A legacy list may
   # surface only after an earlier missing math package has been resolved.
   if [ "$recipe" = 'tikz-cd' ] || [ "$recipe" = 'mathtools' ] || [ "$recipe" = 'mathrsfs' ] ||
-    grep -Fq "LaTeX Error: Something's wrong--perhaps a missing \item" "$compile_log"; then
+    grep -Fq "LaTeX Error: Something's wrong--perhaps" "$compile_log"; then
     if ! grep -Eq '/(enumerate|enumitem)\.sty' "$compile_log" &&
       source_matches '\\begin\{enumerate\}\[\([aA1iI]\)\]'; then
       recipe='legacy-enumeration'
