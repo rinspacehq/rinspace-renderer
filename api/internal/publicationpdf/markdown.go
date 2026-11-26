@@ -179,6 +179,10 @@ func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages
 					values[i] = chapter + "--" + values[i]
 				}
 				attr.Val = strings.Join(values, " ")
+			case "loading":
+				if root.DataAtom == atom.Img {
+					attr.Val = "eager"
+				}
 			case "src":
 				if root.DataAtom != atom.Img {
 					return errors.New("unsupported media source in finalized print fragment")
