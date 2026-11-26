@@ -3,6 +3,7 @@ set -eu
 
 lock_file="${RINSPACE_LATEX_PDF_LOCK_FILE:-/opt/rinspace/latex-pdf.lock.json}"
 compiler="/usr/local/bin/rinspace-latex-compile"
+source_recovery="/usr/local/bin/rinspace-latex-recover-source"
 
 fail() {
   printf '%s\n' "verify-latex-pdf-runtime: $*" >&2
@@ -29,6 +30,10 @@ json_scalar() {
 expected_compiler_sha="$(json_scalar compiler sha256)"
 actual_compiler_sha="$(sha256sum "$compiler" | awk '{ print $1 }')"
 [ "$actual_compiler_sha" = "$expected_compiler_sha" ] || fail "compiler digest mismatch"
+[ -f "$source_recovery" ] || fail "fixed source recovery is missing"
+actual_source_recovery_sha="$(sha256sum "$source_recovery" | awk '{ print $1 }')"
+[ "$actual_source_recovery_sha" = "$(json_scalar compiler legacySourceRecovery sha256)" ] ||
+  fail "source recovery digest mismatch"
 
 json_packages="$(perl -MJSON::PP -e '
   open my $fh, "<", $ARGV[0] or die "cannot open lock: $!";
@@ -78,6 +83,7 @@ done
 
 printf 'policyId=%s\n' "$(json_scalar policyId)"
 printf 'compilerSha256=%s\n' "$actual_compiler_sha"
+printf 'sourceRecoverySha256=%s\n' "$actual_source_recovery_sha"
 printf 'latexmk=%s\n' "$latexmk_version"
 printf 'xelatex=%s\n' "$xelatex_version"
 printf 'lualatex=%s\n' "$lualatex_version"

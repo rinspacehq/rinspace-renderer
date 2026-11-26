@@ -387,7 +387,7 @@ jobs:
           test "$(head -c 5 "$sample/script-output/math-script.pdf")" = '%PDF-'
           sha256sum "$sample/script-output/math-script.pdf" | tee evidence/latex-legacy-math-script-pdf.sha256
           mkdir "$sample/text-workspace"
-          for text_case in relation identifier proof; do
+          for text_case in relation identifier proof theorem-preamble math-delimiters; do
             package=''
             case "$text_case" in
               relation) prose='Read x \in the set and compare $y\in A$.' ;;
@@ -396,6 +396,25 @@ jobs:
                 package='\usepackage{amsthm}'
                 printf '%s\n' 'A proof with material from an included file.' > "$sample/text-workspace/proof-part.tex"
                 prose="$(printf '%s\n' '\begin{proof}' '\input{proof-part}' '\end{proof}' '\end{proof}')"
+                ;;
+              theorem-preamble)
+                package="$(
+                  printf '%s\n' '\usepackage{aliascnt}' '\usepackage{xeCJK}' \
+                    '\setCJKmainfont{Noto Serif CJK SC}' '\hypersetup{colorlinks=true}' '\newtheorem{theorem}{Theorem}[section]'
+                  for environment in lemma proposition corollary definition remark; do
+                    printf '\\newaliascnt{%s}{theorem}\n\\newtheorem{%s}[%s]{%s}\n\\aliascntresetthe{%s}\n' \
+                      "$environment" "$environment" "$environment" "${environment^}" "$environment"
+                  done
+                  printf '%s\n' '\usepackage{amsmath,amssymb,amsthm}' '\usepackage{hyperref}' '\newtheorem{theorem}{Theorem}'
+                  for environment in lemma proposition corollary definition remark; do
+                    printf '\\newtheorem{%s}[theorem]{%s}\n' "$environment" "${environment^}"
+                  done
+                )"
+                prose='\section{First section}\begin{theorem}\label{thm:first}A fixed theorem.\end{theorem} See Theorem~\ref{thm:first}.'
+                ;;
+              math-delimiters)
+                package="$(printf '%s\n' '\usepackage{amsmath,amsthm}' '\newtheorem{definition}{Definition}')"
+                prose="$(printf '%s\n' '\begin{definition}' 'Write (\Sigma) and (x).' '[' 'x=1' ']' '[' 'x^2=1' ']' '\end{definition}')"
                 ;;
             esac
             printf '%s\n' '\documentclass{article}' "$package" '\begin{document}' '中文。' "$prose" '\end{document}' \
@@ -412,6 +431,8 @@ jobs:
             case "$text_case" in
               identifier) expected='literal-underscores' ;;
               proof) expected='duplicate-proof-closure' ;;
+              theorem-preamble) expected='repeated-theorem-preamble' ;;
+              math-delimiters) expected='unescaped-math-delimiters' ;;
             esac
             grep -Fxq "Rinspace legacy format: $expected" "$destination/compile.log"
             if grep -Fq 'Missing character:' "$destination/compile.log"; then

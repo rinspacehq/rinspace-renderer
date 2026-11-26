@@ -78,6 +78,7 @@ COPY ${RENDERER_SOURCE_ROOT}/deploy/texmf-rinspace.cnf /etc/texmf/web2c/texmf.cn
 COPY ${RENDERER_SOURCE_ROOT}/deploy/latex-pdf.lock.json /opt/rinspace/latex-pdf.lock.json
 COPY ${RENDERER_SOURCE_ROOT}/deploy/latex-font-aliases/ /usr/local/share/texmf/tex/latex/rinspace-font-aliases/
 COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/rinspace-latex-compile /usr/local/bin/rinspace-latex-compile
+COPY ${RENDERER_SOURCE_ROOT}/deploy/rinspace-latex-recover-source.pl /usr/local/bin/rinspace-latex-recover-source
 COPY --chmod=0755 ${RENDERER_SOURCE_ROOT}/deploy/verify-latex-pdf-runtime.sh /usr/local/bin/verify-latex-pdf-runtime
 
 RUN --network=none --mount=type=bind,from=texlive-archives,source=/archives,target=/archives,readonly \

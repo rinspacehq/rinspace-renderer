@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "68ebac009db28dfa3c50bc6ea0194623a4c4ded557b0bc2c60ce5a238299a987",
+    "sha256": "fa184b06826a848cca960a5639ffa4492ba2513ea29b13f9918742a5f66ca457",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -69,6 +69,12 @@
     "legacyProofClosureRetry": {
       "scope": "adjacent literal proof closures in the entrypoint",
       "sourceOverlay": "remove the second line in a temporary copy"
+    },
+    "legacySourceRecovery": {
+      "command": "/usr/local/bin/rinspace-latex-recover-source",
+      "sha256": "039e325aab720276cbd18ae0eedbaf0c16328d87ddc6a5b00038de307d0220e6",
+      "recipes": ["theorem-preamble", "math-delimiters"],
+      "maxInputBytes": 524288
     },
     "biberVersion": "2.18"
   },
