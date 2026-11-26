@@ -315,6 +315,7 @@ jobs:
           \ifnum\value{lemma}=1\else\errmessage{Lost the original theorem counter}\fi
           \begin{definition} An unnumbered definition. \end{definition}
           \ifcsname c@definition\endcsname\errmessage{Invented a definition number}\fi
+          Accent in a math subscript: $T_{ét}$.
           \[\begin{tikzcd} A \arrow[r] & B \end{tikzcd}\]
           \end{document}
           TEX
@@ -325,7 +326,10 @@ jobs:
             --mount "type=bind,src=$sample/theorem-output,dst=/output" \
             "$REFERENCE" theorems.tex
           grep -Fxq 'Rinspace legacy format: unnumbered-theorems' "$sample/theorem-output/compile.log"
-          ! grep -Fq 'Missing character:' "$sample/theorem-output/compile.log"
+          if grep -Fq 'Missing character:' "$sample/theorem-output/compile.log"; then
+            grep -F 'Missing character:' "$sample/theorem-output/compile.log" >&2
+            exit 1
+          fi
           test "$(head -c 5 "$sample/theorem-output/theorems.pdf")" = '%PDF-'
           sha256sum "$sample/theorem-output/theorems.pdf" | tee evidence/latex-legacy-theorem-pdf.sha256
           mkdir "$sample/enumeration-output"
@@ -353,7 +357,10 @@ jobs:
             --mount "type=bind,src=$sample/enumeration-output,dst=/output" \
             "$REFERENCE" enumeration.tex
           grep -Fxq 'Rinspace legacy format: legacy-enumeration' "$sample/enumeration-output/compile.log"
-          ! grep -Fq 'Missing character:' "$sample/enumeration-output/compile.log"
+          if grep -Fq 'Missing character:' "$sample/enumeration-output/compile.log"; then
+            grep -F 'Missing character:' "$sample/enumeration-output/compile.log" >&2
+            exit 1
+          fi
           test "$(head -c 5 "$sample/enumeration-output/enumeration.pdf")" = '%PDF-'
           sha256sum "$sample/enumeration-output/enumeration.pdf" | tee evidence/latex-legacy-enumeration-pdf.sha256
           mkdir "$sample/script-workspace" "$sample/script-output"
@@ -373,7 +380,10 @@ jobs:
             --mount "type=bind,src=$sample/script-output,dst=/output" \
             "$REFERENCE" math-script.tex
           grep -Fxq 'Rinspace legacy package: mathrsfs' "$sample/script-output/compile.log"
-          ! grep -Fq 'Missing character:' "$sample/script-output/compile.log"
+          if grep -Fq 'Missing character:' "$sample/script-output/compile.log"; then
+            grep -F 'Missing character:' "$sample/script-output/compile.log" >&2
+            exit 1
+          fi
           test "$(head -c 5 "$sample/script-output/math-script.pdf")" = '%PDF-'
           sha256sum "$sample/script-output/math-script.pdf" | tee evidence/latex-legacy-math-script-pdf.sha256
           mkdir "$sample/bibliography-output"

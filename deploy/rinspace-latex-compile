@@ -123,6 +123,10 @@ if [ -n "$recipe" ]; then
       if source_matches '\\begin\{tikzcd\}'; then
         retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\RequirePackage{tikz-cd}}'
       fi
+      if source_matches 'é' && ! grep -Fq 'newunicodechar.sty' "$compile_log"; then
+        # Classic math fonts lack this character in older accented subscripts.
+        retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\RequirePackage{amsmath,newunicodechar}\newunicodechar{é}{\ifmmode\text{\itshape\char233\relax}\else\char233\relax\fi}}'
+      fi
       retry_label='Rinspace legacy format: unnumbered-theorems'
       ;;
     legacy-enumeration|mathrsfs)

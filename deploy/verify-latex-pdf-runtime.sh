@@ -59,7 +59,7 @@ biber_version="$(biber --version)"
 [ "$biber_version" = "biber version: $(json_scalar compiler biberVersion)" ] || fail "Biber version mismatch"
 
 for resource in SimSun.fontspec SimHei.fontspec courierten.sty biolinum.sty algorithm2e.sty BOONDOX-r-calo.tfm \
-  amsthm.sty enumerate.sty tikz-cd.sty mathtools.sty mathrsfs.sty xeCJK.sty \
+  amsthm.sty enumerate.sty tikz-cd.sty mathtools.sty mathrsfs.sty newunicodechar.sty xeCJK.sty \
   biblatex.sty logreq.sty adforn.sty bbding.sty cmupint.sty extarrows.sty physics.sty soul.sty \
   TeXGyreTermesX-Regular.otf TeXGyreTermesX-Italic.otf TeXGyreTermesX-Bold.otf TeXGyreTermesX-BoldItalic.otf; do
   kpsewhich "$resource" >/dev/null || fail "TeX resource is missing: $resource"
