@@ -17,6 +17,8 @@ test('compiler wrappers match their source locks', () => {
     assert.match(lock.baseImage.reference, /@sha256:[a-f0-9]{64}$/);
     assert.equal(lock.baseImage.reference.endsWith(lock.baseImage.platformDigest), true);
   }
+  const recovery = createHash('sha256').update(read('rinspace-latex-recover-source.pl')).digest('hex');
+  assert.equal(recovery, json('latex-pdf.lock.json').compiler.legacySourceRecovery.sha256);
 });
 
 test('LaTeX compatibility archives match the image and source SPDX pins', () => {

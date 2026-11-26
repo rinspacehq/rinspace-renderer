@@ -89,6 +89,8 @@ compile "$output" "$pretex" "$workspace" >"$compile_log" 2>&1 || status=$?
 # Retry a recognized legacy failure with the same read-only source and sandbox.
 recipe=''
 text_symbol=''
+source_recovery=''
+recovery_path="$entrypoint"
 if [ "$status" -ne 0 ]; then
   if grep -Fq 'LaTeX Error: Environment tikzcd undefined.' "$compile_log"; then
     recipe='tikz-cd'
@@ -112,6 +114,26 @@ if [ "$status" -ne 0 ]; then
     END { exit !duplicated }
   ' "$source_file"; then
     recipe='duplicate-proof-closure'
+  elif awk -v prefix="./$entrypoint:" '
+    index($0, prefix) == 1 && /: Undefined control sequence\.$/ { remaining = 5; next }
+    remaining > 0 && /^l\.[1-9][0-9]*[[:space:]]+\\hypersetup[[:space:]]*$/ { found = 1; exit }
+    remaining > 0 { remaining-- }
+    END { exit !found }
+  ' "$compile_log"; then
+    recipe='repeated-theorem-preamble'
+    source_recovery='theorem-preamble'
+  elif recovery_path="$(awk '
+    /^\.\// && /\.tex:[1-9][0-9]*: Missing \$ inserted\.$/ {
+      file = $0; sub(/:[1-9][0-9]*: Missing \$ inserted\.$/, "", file)
+      sub(/^\.\//, "", file); remaining = 5; next
+    }
+    remaining > 0 && /^l\.[1-9][0-9]*[[:space:]]/ && /\(\\Sigma[[:space:]]*$/ {
+      print file; exit
+    }
+    remaining > 0 { remaining-- }
+  ' "$compile_log")" && [ -n "$recovery_path" ]; then
+    recipe='unescaped-math-delimiters'
+    source_recovery='math-delimiters'
   elif text_symbol="$(awk '
     /\.([tT][eE][xX]|[lL][tT][xX]):[1-9][0-9]*: Missing \$ inserted\./ {
       remaining = 5; reported_source = 0; next
@@ -203,6 +225,10 @@ if [ -n "$recipe" ]; then
       retry_prelude=''
       retry_label='Rinspace legacy format: duplicate-proof-closure'
       ;;
+    repeated-theorem-preamble|unescaped-math-delimiters)
+      retry_prelude=''
+      retry_label="Rinspace legacy format: $recipe"
+      ;;
     *)
       retry_prelude="\RequirePackage{$recipe}"
       retry_label="Rinspace legacy package: $recipe"
@@ -210,7 +236,7 @@ if [ -n "$recipe" ]; then
   esac
   if { [ "$recipe" = 'unnumbered-theorems' ] || [ "$recipe" = 'legacy-enumeration' ] || [ "$recipe" = 'mathrsfs' ] ||
         [ "$recipe" = 'literal-math-symbol' ] || [ "$recipe" = 'literal-underscores' ] ||
-        [ "$recipe" = 'duplicate-proof-closure' ]; } &&
+        [ "$recipe" = 'duplicate-proof-closure' ] || [ "$recipe" = 'unescaped-math-delimiters' ]; } &&
     grep -Eq 'Missing character: .*\(U\+[4-9][0-9A-F]{3}\)' "$compile_log" &&
     ! grep -Fq 'xeCJK.sty' "$compile_log"; then
     retry_prelude="$retry_prelude"'\AddToHook{class/article/after}{\RequirePackage{xeCJK}\setCJKmainfont{Noto Serif CJK SC}}'
@@ -218,19 +244,30 @@ if [ -n "$recipe" ]; then
   retry_directory="$(mktemp -d "$output/.compatibility.XXXXXX")"
   trap 'rm -rf -- "$retry_directory"' EXIT
   retry_workspace="$workspace"
-  if [ "$recipe" = 'duplicate-proof-closure' ]; then
+  if [ "$recipe" = 'duplicate-proof-closure' ] || [ -n "$source_recovery" ]; then
+    original_file="$(realpath -e -- "$workspace/$recovery_path")" || exit "$status"
+    case "$original_file" in
+      "$workspace"/*) ;;
+      *) exit "$status" ;;
+    esac
+    [ -f "$original_file" ] || exit "$status"
     retry_workspace="$(mktemp -d /tmp/rinspace-compile-source.XXXXXX)"
     trap 'rm -rf -- "$retry_directory" "$retry_workspace"' EXIT
     cp -as --no-preserve=mode -- "$workspace/." "$retry_workspace/"
-    retry_source="$retry_workspace/$entrypoint"
+    retry_source="$retry_workspace/$recovery_path"
     retry_parent="$(realpath -e -- "$(dirname -- "$retry_source")")"
     case "$retry_parent/" in
       "$retry_workspace/"*) ;;
       *) fail "compatibility entrypoint escapes the temporary workspace" ;;
     esac
-    # Keep all paths aligned with the read-only archive and replace only the duplicate line.
+    # Write the recovered source in the temporary workspace at its original relative path.
     rm -- "$retry_source"
-    sed -e "${proof_line}d" -- "$source_file" >"$retry_source"
+    if [ -n "$source_recovery" ]; then
+      perl /usr/local/bin/rinspace-latex-recover-source "$source_recovery" "$original_file" >"$retry_source" ||
+        exit "$status"
+    else
+      sed -e "${proof_line}d" -- "$original_file" >"$retry_source"
+    fi
   fi
   status=0
   compile "$retry_directory" "$retry_prelude$pretex" "$retry_workspace" \
