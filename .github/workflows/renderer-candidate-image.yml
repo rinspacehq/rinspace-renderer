@@ -356,6 +356,26 @@ jobs:
           ! grep -Fq 'Missing character:' "$sample/enumeration-output/compile.log"
           test "$(head -c 5 "$sample/enumeration-output/enumeration.pdf")" = '%PDF-'
           sha256sum "$sample/enumeration-output/enumeration.pdf" | tee evidence/latex-legacy-enumeration-pdf.sha256
+          mkdir "$sample/script-workspace" "$sample/script-output"
+          chmod 0777 "$sample/script-output"
+          cat > "$sample/script-workspace/math-script.tex" <<'TEX'
+          \documentclass{article}
+          \usepackage{amsmath}
+          \begin{document}
+          中文公式。 $\mathscr{A}$.
+          \[\begin{tikzcd} A \arrow[r] & B \end{tikzcd}\]
+          \end{document}
+          TEX
+          docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+            --security-opt no-new-privileges --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 256 \
+            --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
+            --mount "type=bind,src=$sample/script-workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$sample/script-output,dst=/output" \
+            "$REFERENCE" math-script.tex
+          grep -Fxq 'Rinspace legacy package: mathrsfs' "$sample/script-output/compile.log"
+          ! grep -Fq 'Missing character:' "$sample/script-output/compile.log"
+          test "$(head -c 5 "$sample/script-output/math-script.pdf")" = '%PDF-'
+          sha256sum "$sample/script-output/math-script.pdf" | tee evidence/latex-legacy-math-script-pdf.sha256
           mkdir "$sample/bibliography-output"
           chmod 0777 "$sample/bibliography-output"
           cat > "$sample/workspace/bibliography.tex" <<'TEX'
@@ -445,6 +465,7 @@ jobs:
             evidence/latex-legacy-package-pdf.sha256
             evidence/latex-legacy-theorem-pdf.sha256
             evidence/latex-legacy-enumeration-pdf.sha256
+            evidence/latex-legacy-math-script-pdf.sha256
             evidence/latex-pdf-runtime.txt
             evidence/latex-bibliography-pdf.sha256
             evidence/typst-pdf-runtime.txt

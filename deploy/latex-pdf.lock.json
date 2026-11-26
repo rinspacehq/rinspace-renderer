@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "3a40211950b126173d4d2b9958510df4e5b0d3aa7521802bb371a579f06c0343",
+    "sha256": "64d580ae749e17797420fa2cc43f89a470d2dfa76a68041a8a3f36d431ae295c",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -45,7 +45,8 @@
       "maxRetries": 1,
       "packages": [
         "tikz-cd",
-        "mathtools"
+        "mathtools",
+        "mathrsfs"
       ]
     },
     "legacyTheoremRetry": {
