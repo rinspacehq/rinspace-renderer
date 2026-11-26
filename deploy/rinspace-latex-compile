@@ -76,6 +76,10 @@ compile() (
     "$entrypoint"
 )
 
+source_matches() {
+  grep -rEqs --include='*.[tT][eE][xX]' --include='*.[lL][tT][xX]' "$1" "$workspace"
+}
+
 # bxpdfver can select PDF 2.0 without probing the pinned driver via shell escape.
 compile_log="$output/compile.log"
 status=0
@@ -86,12 +90,22 @@ recipe=''
 if [ "$status" -ne 0 ]; then
   if grep -Fq 'LaTeX Error: Environment tikzcd undefined.' "$compile_log"; then
     recipe='tikz-cd'
-  elif awk '/Undefined control sequence\./ {
-    if (getline && $0 ~ /\\coloneqq([^[:alpha:]@]|$)/) known=1
-  } END { exit !known }' "$compile_log"; then
-    recipe='mathtools'
+  elif math_package="$(awk '/Undefined control sequence\./ && getline {
+    if ($0 ~ /\\coloneqq([^[:alpha:]@]|$)/) { print "mathtools"; exit }
+    if ($0 ~ /\\mathscr([^[:alpha:]@]|$)/) { print "mathrsfs"; exit }
+  }' "$compile_log")" && [ -n "$math_package" ]; then
+    recipe="$math_package"
   elif grep -Eq 'LaTeX Error: Environment (definition|example|lemma|proposition|theorem) undefined\.' "$compile_log"; then
     recipe='unnumbered-theorems'
+  fi
+  # LaTeX's built-in enumerate accepts no label option. A legacy list may
+  # surface only after an earlier missing math package has been resolved.
+  if [ "$recipe" = 'tikz-cd' ] || [ "$recipe" = 'mathtools' ] || [ "$recipe" = 'mathrsfs' ] ||
+    grep -Fq "LaTeX Error: Something's wrong--perhaps" "$compile_log"; then
+    if ! grep -Eq '/(enumerate|enumitem)\.sty' "$compile_log" &&
+      source_matches '\\begin\{enumerate\}\[\([aA1iI]\)\]'; then
+      recipe='legacy-enumeration'
+    fi
   fi
 fi
 if [ -n "$recipe" ]; then
@@ -106,20 +120,42 @@ if [ -n "$recipe" ]; then
         \ifcsname lemma\endcsname\else\newtheorem*{lemma}{Lemma}\fi
         \ifcsname proposition\endcsname\else\newtheorem*{proposition}{Proposition}\fi
         \ifcsname theorem\endcsname\else\newtheorem*{theorem}{Theorem}\fi}}' | tr -d '\n')"
-      if grep -rFqs --include='*.[tT][eE][xX]' --include='*.[lL][tT][xX]' '\begin{tikzcd}' "$workspace"; then
+      if source_matches '\\begin\{tikzcd\}'; then
         retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\RequirePackage{tikz-cd}}'
       fi
-      if grep -Eq 'Missing character: .*\(U\+[4-9][0-9A-F]{3}\)' "$compile_log" &&
-        ! grep -Fq 'xeCJK.sty' "$compile_log"; then
-        retry_prelude="$retry_prelude"'\AddToHook{class/article/after}{\RequirePackage{xeCJK}\setCJKmainfont{Noto Serif CJK SC}}'
+      if source_matches 'é' && ! grep -Fq 'newunicodechar.sty' "$compile_log"; then
+        # Classic math fonts lack this character in older accented subscripts.
+        retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\RequirePackage{amsmath,newunicodechar}\newunicodechar{é}{\ifmmode\text{\itshape\char233\relax}\else\char233\relax\fi}}'
       fi
       retry_label='Rinspace legacy format: unnumbered-theorems'
+      ;;
+    legacy-enumeration|mathrsfs)
+      retry_prelude=''
+      retry_label='Rinspace legacy package: mathrsfs'
+      if [ "$recipe" = 'legacy-enumeration' ]; then
+        retry_prelude='\AddToHook{begindocument/before}{\RequirePackage{enumerate}}'
+        retry_label='Rinspace legacy format: legacy-enumeration'
+      fi
+      if source_matches '\\begin\{tikzcd\}'; then
+        retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\RequirePackage{tikz-cd}}'
+      fi
+      if source_matches '\\coloneqq([^[:alpha:]@]|$)'; then
+        retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\ifcsname coloneqq\endcsname\else\RequirePackage{mathtools}\fi}'
+      fi
+      if [ "$recipe" = 'mathrsfs' ] || source_matches '\\mathscr([^[:alpha:]@]|$)'; then
+        retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\ifcsname mathscr\endcsname\else\RequirePackage{mathrsfs}\fi}'
+      fi
       ;;
     *)
       retry_prelude="\RequirePackage{$recipe}"
       retry_label="Rinspace legacy package: $recipe"
       ;;
   esac
+  if { [ "$recipe" = 'unnumbered-theorems' ] || [ "$recipe" = 'legacy-enumeration' ] || [ "$recipe" = 'mathrsfs' ]; } &&
+    grep -Eq 'Missing character: .*\(U\+[4-9][0-9A-F]{3}\)' "$compile_log" &&
+    ! grep -Fq 'xeCJK.sty' "$compile_log"; then
+    retry_prelude="$retry_prelude"'\AddToHook{class/article/after}{\RequirePackage{xeCJK}\setCJKmainfont{Noto Serif CJK SC}}'
+  fi
   retry_directory="$(mktemp -d "$output/.compatibility.XXXXXX")"
   trap 'rm -rf -- "$retry_directory"' EXIT
   status=0
