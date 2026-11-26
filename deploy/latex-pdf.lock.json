@@ -24,7 +24,7 @@
   },
   "compiler": {
     "command": "/usr/local/bin/rinspace-latex-compile",
-    "sha256": "c9695f11f0bc1f6044ff55415902290c0b84920c7d958ae320a8c495c719819a",
+    "sha256": "40242a77628969f7f21e2452c080662901e1b4bd0200bdc58dd5911367a10e2a",
     "engine": "xelatex",
     "engineVersion": "XeTeX 3.141592653-2.6-0.999994 (TeX Live 2022/Debian)",
     "latexmkVersion": "4.79",
@@ -45,13 +45,19 @@
       "maxRetries": 1,
       "packages": [
         "tikz-cd",
-        "mathtools"
+        "mathtools",
+        "mathrsfs"
       ]
     },
     "legacyTheoremRetry": {
       "style": "unnumbered",
       "environments": ["definition", "example", "lemma", "proposition", "theorem"],
-      "packages": ["amsthm", "tikz-cd", "xeCJK"],
+      "packages": ["amsthm", "amsmath", "tikz-cd", "newunicodechar", "xeCJK"],
+      "fallbackCJKFont": "Noto Serif CJK SC"
+    },
+    "legacyEnumerationRetry": {
+      "labelFormats": ["(a)", "(A)", "(1)", "(i)", "(I)"],
+      "packages": ["enumerate", "tikz-cd", "mathtools", "mathrsfs", "xeCJK"],
       "fallbackCJKFont": "Noto Serif CJK SC"
     },
     "biberVersion": "2.18"
