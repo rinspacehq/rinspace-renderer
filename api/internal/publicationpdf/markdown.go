@@ -7,8 +7,10 @@ import (
 	"fmt"
 	stdhtml "html"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
@@ -19,14 +21,42 @@ import (
 //go:embed print.css
 var printCSS string
 
-// ResolveImage returns the offline data URL for a verified source or renderer
-// artifact. The caller binds it to the immutable publication input.
-type ResolveImage func(ctx context.Context, image ImageReference) (string, error)
+// ResolveImage returns an offline copy of a verified image and its attribution, if required.
+type ResolveImage func(ctx context.Context, image ImageReference) (ResolvedImage, error)
 
 type ImageReference struct {
 	Source          string
 	RepositoryPath  string
 	DiagramObjectID string
+}
+
+type ResolvedImage struct {
+	DataURL     string
+	Attribution *ImageAttribution
+}
+
+type ImageAttribution struct {
+	Credit     string `json:"credit"`
+	SourceURL  string `json:"sourceUrl"`
+	License    string `json:"license"`
+	LicenseURL string `json:"licenseUrl"`
+}
+
+func (attribution ImageAttribution) Validate() error {
+	for _, text := range []string{attribution.Credit, attribution.License} {
+		if text == "" || len(text) > 300 || strings.TrimSpace(text) != text ||
+			strings.IndexFunc(text, unicode.IsControl) >= 0 {
+			return errors.New("invalid print image attribution text")
+		}
+	}
+	for _, link := range []string{attribution.SourceURL, attribution.LicenseURL} {
+		target, err := url.Parse(link)
+		if err != nil || len(link) > 1024 || target.Scheme != "https" || target.Hostname() == "" ||
+			target.User != nil || target.RawQuery != "" {
+			return errors.New("invalid print image attribution link")
+		}
+	}
+	return nil
 }
 
 // MarkdownHTML assembles the final fragments in the published order. It keeps
@@ -61,6 +91,7 @@ func MarkdownHTML(ctx context.Context, bundle contracts.DocumentBundle, book boo
 		doc.WriteString("<header><h1>" + stdhtml.EscapeString(bundle.Title) + "</h1></header>")
 	}
 
+	var attributions []ImageAttribution
 	for _, page := range bundle.Pages {
 		if err := ctx.Err(); err != nil {
 			return "", err
@@ -76,7 +107,7 @@ func MarkdownHTML(ctx context.Context, bundle contracts.DocumentBundle, book boo
 		for _, node := range nodes {
 			section.AppendChild(node)
 		}
-		if err := prepareFragment(ctx, section, id, pages, book, resolveImage); err != nil {
+		if err := prepareFragment(ctx, section, id, pages, book, resolveImage, &attributions); err != nil {
 			return "", fmt.Errorf("prepare print chapter %q: %w", page.ID, err)
 		}
 		section.Attr = []html.Attribute{{Key: "id", Val: id}}
@@ -101,11 +132,20 @@ func MarkdownHTML(ctx context.Context, bundle contracts.DocumentBundle, book boo
 			return "", fmt.Errorf("serialize print chapter: %w", err)
 		}
 	}
+	if len(attributions) > 0 {
+		doc.WriteString(`<aside class="print-image-attributions">`)
+		for _, attribution := range attributions {
+			fmt.Fprintf(&doc, `<p><a href="%s">%s</a> · <a href="%s">%s</a></p>`,
+				stdhtml.EscapeString(attribution.SourceURL), stdhtml.EscapeString(attribution.Credit),
+				stdhtml.EscapeString(attribution.LicenseURL), stdhtml.EscapeString(attribution.License))
+		}
+		doc.WriteString("</aside>")
+	}
 	doc.WriteString("</main></body></html>")
 	return doc.String(), nil
 }
 
-func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages map[string]string, book bool, resolveImage ResolveImage) error {
+func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages map[string]string, book bool, resolveImage ResolveImage, attributions *[]ImageAttribution) error {
 	if root.Type == html.ElementNode {
 		switch root.DataAtom {
 		case atom.Script, atom.Iframe, atom.Object, atom.Embed, atom.Base, atom.Link:
@@ -156,10 +196,16 @@ func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages
 					if err != nil {
 						return err
 					}
-					if !isDataImage(resolved) {
+					if !isDataImage(resolved.DataURL) {
 						return errors.New("invalid offline print image")
 					}
-					attr.Val = resolved
+					if attribution := resolved.Attribution; attribution != nil && !slices.Contains(*attributions, *attribution) {
+						if err := attribution.Validate(); err != nil {
+							return err
+						}
+						*attributions = append(*attributions, *attribution)
+					}
+					attr.Val = resolved.DataURL
 				}
 			case "srcset":
 				return errors.New("responsive image sources must be resolved before printing")
@@ -170,7 +216,7 @@ func prepareFragment(ctx context.Context, root *html.Node, chapter string, pages
 		}
 	}
 	for node := root.FirstChild; node != nil; node = node.NextSibling {
-		if err := prepareFragment(ctx, node, chapter, pages, book, resolveImage); err != nil {
+		if err := prepareFragment(ctx, node, chapter, pages, book, resolveImage, attributions); err != nil {
 			return err
 		}
 	}

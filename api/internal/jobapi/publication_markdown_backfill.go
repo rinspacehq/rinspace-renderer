@@ -21,11 +21,12 @@ const maxPublicationReadingBytes = 64 << 20
 const maxPublicationImageManifestBytes = 8 << 20
 
 type publicationArchiveImage struct {
-	Source    string `json:"source"`
-	SHA256    string `json:"sha256"`
-	Bytes     int64  `json:"bytes"`
-	MediaType string `json:"mediaType"`
-	Body      []byte `json:"body"`
+	Source      string                           `json:"source"`
+	SHA256      string                           `json:"sha256"`
+	Bytes       int64                            `json:"bytes"`
+	MediaType   string                           `json:"mediaType"`
+	Body        []byte                           `json:"body"`
+	Attribution *publicationpdf.ImageAttribution `json:"attribution,omitempty"`
 }
 
 func (handler *Handler) publicationMarkdownBackfill(response http.ResponseWriter, request *http.Request) {
@@ -94,7 +95,7 @@ func (handler *Handler) publicationMarkdownBackfill(response http.ResponseWriter
 		return
 	}
 	resolver := handler.publicationImageResolver(reading, func(context.Context) ([]byte, error) { return archive, nil })
-	resolveImage := func(ctx context.Context, ref publicationpdf.ImageReference) (string, error) {
+	resolveImage := func(ctx context.Context, ref publicationpdf.ImageReference) (publicationpdf.ResolvedImage, error) {
 		if ref.RepositoryPath == "" && ref.DiagramObjectID == "" {
 			if value, ok := images[ref.Source]; ok {
 				return value, nil
@@ -105,7 +106,7 @@ func (handler *Handler) publicationMarkdownBackfill(response http.ResponseWriter
 	handler.printPublicationPDF(ctx, response, input, readVersion, jobKey, *reading.Inline, strings.HasPrefix(input.ProjectID, "book:"), resolveImage)
 }
 
-func readPublicationArchiveImages(form *multipart.Reader) (map[string]string, error) {
+func readPublicationArchiveImages(form *multipart.Reader) (map[string]publicationpdf.ResolvedImage, error) {
 	part, err := form.NextPart()
 	if err == io.EOF {
 		return nil, nil
@@ -126,7 +127,7 @@ func readPublicationArchiveImages(form *multipart.Reader) (map[string]string, er
 	if _, err := form.NextPart(); err != io.EOF {
 		return nil, errors.New("unexpected field after the publication image manifest")
 	}
-	images := make(map[string]string, len(records))
+	images := make(map[string]publicationpdf.ResolvedImage, len(records))
 	for _, record := range records {
 		location, err := url.Parse(record.Source)
 		if err != nil || len(record.Source) > 1024 || location.Scheme != "https" || location.Hostname() == "" ||
@@ -136,9 +137,15 @@ func readPublicationArchiveImages(form *multipart.Reader) (map[string]string, er
 		if _, duplicate := images[record.Source]; duplicate {
 			return nil, errors.New("duplicate archive image source")
 		}
-		image, err := printAssetDataURL(record.Body, record.SHA256, record.Bytes, record.MediaType, location.Path)
+		image, err := verifiedPrintImage(record.Body, record.SHA256, record.Bytes, record.MediaType, location.Path)
 		if err != nil {
 			return nil, err
+		}
+		if record.Attribution != nil {
+			if err := record.Attribution.Validate(); err != nil {
+				return nil, err
+			}
+			image.Attribution = record.Attribution
 		}
 		images[record.Source] = image
 	}

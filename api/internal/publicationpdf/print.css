@@ -18,3 +18,4 @@ pre { margin: 3mm 0; padding: 3mm; border: 1px solid #bfcbd3; border-radius: 2mm
 pre code { font: 9pt/1.5 "DejaVu Sans Mono", "WenQuanYi Zen Hei Mono", monospace; white-space: inherit; }
 a { color: #165674; }
 .footnotes { border-top: 1px solid #a7b9c3; padding-top: 1mm; font-size: 9pt; }
+.print-image-attributions { border-top: 1px solid #a7b9c3; margin-top: 5mm; padding-top: 2mm; font-size: 9pt; break-inside: avoid; }

@@ -32,11 +32,11 @@ func runMarkdownPDF(ctx context.Context, input io.Reader, output io.Writer) erro
 		Script:   os.Getenv("RIN_RENDERER_MARKDOWN_PDF_SCRIPT"),
 		Chromium: os.Getenv("RIN_RENDERER_MARKDOWN_PDF_CHROMIUM"),
 	}
-	pdf, _, err := printer.Print(ctx, request.Bundle, request.Book, func(_ context.Context, reference publicationpdf.ImageReference) (string, error) {
+	pdf, _, err := printer.Print(ctx, request.Bundle, request.Book, func(_ context.Context, reference publicationpdf.ImageReference) (publicationpdf.ResolvedImage, error) {
 		if image := request.Images[reference.Source]; image != "" {
-			return image, nil
+			return publicationpdf.ResolvedImage{DataURL: image}, nil
 		}
-		return "", errors.New("missing staged print image")
+		return publicationpdf.ResolvedImage{}, errors.New("missing staged print image")
 	})
 	if err != nil {
 		return err
