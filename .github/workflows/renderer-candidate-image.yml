@@ -386,6 +386,41 @@ jobs:
           fi
           test "$(head -c 5 "$sample/script-output/math-script.pdf")" = '%PDF-'
           sha256sum "$sample/script-output/math-script.pdf" | tee evidence/latex-legacy-math-script-pdf.sha256
+          mkdir "$sample/text-workspace"
+          for text_case in relation identifier proof; do
+            package=''
+            case "$text_case" in
+              relation) prose='Read x \in the set and compare $y\in A$.' ;;
+              identifier) prose='The local state is EXAMPLE_STATE_READY.' ;;
+              proof)
+                package='\usepackage{amsthm}'
+                printf '%s\n' 'A proof with material from an included file.' > "$sample/text-workspace/proof-part.tex"
+                prose="$(printf '%s\n' '\begin{proof}' '\input{proof-part}' '\end{proof}' '\end{proof}')"
+                ;;
+            esac
+            printf '%s\n' '\documentclass{article}' "$package" '\begin{document}' '中文。' "$prose" '\end{document}' \
+              > "$sample/text-workspace/$text_case.tex"
+            destination="$sample/text-$text_case-output"
+            mkdir -m 0777 "$destination"
+            docker run --rm --network none --read-only --user 65532:65532 --cap-drop ALL \
+              --security-opt no-new-privileges --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 256 \
+              --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m,mode=1777 \
+              --mount "type=bind,src=$sample/text-workspace,dst=/workspace,readonly" \
+              --mount "type=bind,src=$destination,dst=/output" \
+              "$REFERENCE" "$text_case.tex"
+            expected='literal-math-symbol'
+            case "$text_case" in
+              identifier) expected='literal-underscores' ;;
+              proof) expected='duplicate-proof-closure' ;;
+            esac
+            grep -Fxq "Rinspace legacy format: $expected" "$destination/compile.log"
+            if grep -Fq 'Missing character:' "$destination/compile.log"; then
+              grep -F 'Missing character:' "$destination/compile.log" >&2
+              exit 1
+            fi
+            test "$(head -c 5 "$destination/$text_case.pdf")" = '%PDF-'
+            sha256sum "$destination/$text_case.pdf" | tee "evidence/latex-legacy-text-$text_case-pdf.sha256"
+          done
           mkdir "$sample/bibliography-output"
           chmod 0777 "$sample/bibliography-output"
           cat > "$sample/workspace/bibliography.tex" <<'TEX'
@@ -476,6 +511,7 @@ jobs:
             evidence/latex-legacy-theorem-pdf.sha256
             evidence/latex-legacy-enumeration-pdf.sha256
             evidence/latex-legacy-math-script-pdf.sha256
+            evidence/latex-legacy-text-*-pdf.sha256
             evidence/latex-pdf-runtime.txt
             evidence/latex-bibliography-pdf.sha256
             evidence/typst-pdf-runtime.txt

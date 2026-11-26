@@ -49,7 +49,8 @@ pretex='\PassOptionsToPackage{new-dvipdfmx}{bxpdfver}'
 compile() (
   destination="$1"
   prelude="$2"
-  shift 2
+  working_directory="$3"
+  shift 3
   export TEXMFOUTPUT="$destination"
   # Nested \include writes an auxiliary file under its source-relative directory.
   find "$workspace" -mindepth 1 -type d -exec sh -eu -c '
@@ -60,7 +61,7 @@ compile() (
       mkdir -p -- "$destination/${directory#"$workspace"/}"
     done
   ' sh "$destination" "$workspace" {} + || exit 1
-  cd "$workspace" || exit 1
+  cd "$working_directory" || exit 1
   latexmk \
     -norc \
     -no-shell-escape \
@@ -83,10 +84,11 @@ source_matches() {
 # bxpdfver can select PDF 2.0 without probing the pinned driver via shell escape.
 compile_log="$output/compile.log"
 status=0
-compile "$output" "$pretex" >"$compile_log" 2>&1 || status=$?
+compile "$output" "$pretex" "$workspace" >"$compile_log" 2>&1 || status=$?
 
 # Retry a recognized legacy failure with the same read-only source and sandbox.
 recipe=''
+text_symbol=''
 if [ "$status" -ne 0 ]; then
   if grep -Fq 'LaTeX Error: Environment tikzcd undefined.' "$compile_log"; then
     recipe='tikz-cd'
@@ -97,6 +99,47 @@ if [ "$status" -ne 0 ]; then
     recipe="$math_package"
   elif grep -Eq 'LaTeX Error: Environment (definition|example|lemma|proposition|theorem) undefined\.' "$compile_log"; then
     recipe='unnumbered-theorems'
+  elif proof_line="$(awk -v prefix="./$entrypoint:" '
+    index($0, prefix) == 1 {
+      diagnostic = substr($0, length(prefix) + 1)
+      if (diagnostic ~ /^[1-9][0-9]*: LaTeX Error: \\begin\{document\} ended by \\end\{proof\}\.$/) {
+        sub(/:.*/, "", diagnostic); print diagnostic; exit
+      }
+    }
+  ' "$compile_log")" && [ -n "$proof_line" ] && awk -v line="$proof_line" '
+    NR == line - 1 { previous = $0 ~ /^[[:space:]]*\\end\{proof\}[[:space:]]*$/ }
+    NR == line { duplicated = previous && $0 ~ /^[[:space:]]*\\end\{proof\}[[:space:]]*$/; exit }
+    END { exit !duplicated }
+  ' "$source_file"; then
+    recipe='duplicate-proof-closure'
+  elif text_symbol="$(awk '
+    /\.([tT][eE][xX]|[lL][tT][xX]):[1-9][0-9]*: Missing \$ inserted\./ {
+      remaining = 5; reported_source = 0; next
+    }
+    remaining > 0 {
+      if ($0 ~ /^l\.[1-9][0-9]*[[:space:]]/) {
+        if ($0 ~ /\\in[[:space:]]*$/) { print "in"; exit }
+        reported_source = 1
+        source = $0
+      } else if (reported_source && $0 ~ /^[[:blank:]]+/) {
+        continuation = $0
+        sub(/^[[:blank:]]+/, "", continuation)
+        source = source continuation
+      }
+      if (reported_source && source ~ /(^|[^[:alnum:]_])[A-Z][A-Z0-9]*_[A-Z0-9]+(_[A-Z0-9]+)+([^[:alnum:]_]|$)/) {
+        print "underscore"; exit
+      }
+      remaining--
+    }
+  ' "$compile_log")"; then
+    case "$text_symbol" in
+      in) recipe='literal-math-symbol' ;;
+      underscore)
+        if ! grep -Fq 'underscore.sty' "$compile_log"; then
+          recipe='literal-underscores'
+        fi
+        ;;
+    esac
   fi
   # LaTeX's built-in enumerate accepts no label option. A legacy list may
   # surface only after an earlier missing math package has been resolved.
@@ -146,20 +189,51 @@ if [ -n "$recipe" ]; then
         retry_prelude="$retry_prelude"'\AddToHook{begindocument/before}{\ifcsname mathscr\endcsname\else\RequirePackage{mathrsfs}\fi}'
       fi
       ;;
+    literal-math-symbol)
+      # Use the original mathematical symbol in both prose and math mode.
+      # Font packages set the final math symbols in their begin-document hooks.
+      retry_prelude='\AddToHook{begindocument/end}{\let\RinspaceOriginalIn\in\protected\def\in{\ensuremath{\RinspaceOriginalIn}}}'
+      retry_label='Rinspace legacy format: literal-math-symbol'
+      ;;
+    literal-underscores)
+      retry_prelude='\AddToHook{begindocument/before}{\RequirePackage[strings]{underscore}}'
+      retry_label='Rinspace legacy format: literal-underscores'
+      ;;
+    duplicate-proof-closure)
+      retry_prelude=''
+      retry_label='Rinspace legacy format: duplicate-proof-closure'
+      ;;
     *)
       retry_prelude="\RequirePackage{$recipe}"
       retry_label="Rinspace legacy package: $recipe"
       ;;
   esac
-  if { [ "$recipe" = 'unnumbered-theorems' ] || [ "$recipe" = 'legacy-enumeration' ] || [ "$recipe" = 'mathrsfs' ]; } &&
+  if { [ "$recipe" = 'unnumbered-theorems' ] || [ "$recipe" = 'legacy-enumeration' ] || [ "$recipe" = 'mathrsfs' ] ||
+        [ "$recipe" = 'literal-math-symbol' ] || [ "$recipe" = 'literal-underscores' ] ||
+        [ "$recipe" = 'duplicate-proof-closure' ]; } &&
     grep -Eq 'Missing character: .*\(U\+[4-9][0-9A-F]{3}\)' "$compile_log" &&
     ! grep -Fq 'xeCJK.sty' "$compile_log"; then
     retry_prelude="$retry_prelude"'\AddToHook{class/article/after}{\RequirePackage{xeCJK}\setCJKmainfont{Noto Serif CJK SC}}'
   fi
   retry_directory="$(mktemp -d "$output/.compatibility.XXXXXX")"
   trap 'rm -rf -- "$retry_directory"' EXIT
+  retry_workspace="$workspace"
+  if [ "$recipe" = 'duplicate-proof-closure' ]; then
+    retry_workspace="$(mktemp -d /tmp/rinspace-compile-source.XXXXXX)"
+    trap 'rm -rf -- "$retry_directory" "$retry_workspace"' EXIT
+    cp -as --no-preserve=mode -- "$workspace/." "$retry_workspace/"
+    retry_source="$retry_workspace/$entrypoint"
+    retry_parent="$(realpath -e -- "$(dirname -- "$retry_source")")"
+    case "$retry_parent/" in
+      "$retry_workspace/"*) ;;
+      *) fail "compatibility entrypoint escapes the temporary workspace" ;;
+    esac
+    # Keep all paths aligned with the read-only archive and replace only the duplicate line.
+    rm -- "$retry_source"
+    sed -e "${proof_line}d" -- "$source_file" >"$retry_source"
+  fi
   status=0
-  compile "$retry_directory" "$retry_prelude$pretex" \
+  compile "$retry_directory" "$retry_prelude$pretex" "$retry_workspace" \
     "-jobname=$stem" >"$retry_directory/compile.log" 2>&1 || status=$?
   {
     printf '%s\n' "$retry_label"
@@ -169,6 +243,9 @@ if [ -n "$recipe" ]; then
     mv -- "$retry_directory/$stem.pdf" "$output/$stem.pdf"
   fi
   rm -rf -- "$retry_directory"
+  if [ "$retry_workspace" != "$workspace" ]; then
+    rm -rf -- "$retry_workspace"
+  fi
   trap - EXIT
 fi
 
